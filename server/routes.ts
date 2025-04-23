@@ -1,12 +1,18 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage, DatabaseStorage } from "./storage";
 import { setupAuth } from "./auth";
 import { productSchema } from "@shared/schema";
+import { db } from "./db";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
+
+  // Seed demo products if database is empty
+  if (storage instanceof DatabaseStorage) {
+    await storage.seedDemoProducts();
+  }
 
   // API Routes
   // Get all products
