@@ -1,3 +1,4 @@
+import React from "react";
 import { cn } from "@/lib/utils";
 import { User as UserType } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
