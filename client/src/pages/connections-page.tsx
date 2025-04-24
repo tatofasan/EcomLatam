@@ -252,7 +252,7 @@ export default function ConnectionsPage() {
       
       <main className="flex-1 p-6 pl-[220px]">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Connections</h1>
+          <h1 className="text-2xl font-bold">Conexiones</h1>
           <Dialog>
             <DialogTrigger asChild>
               <Button className="flex items-center gap-2">
