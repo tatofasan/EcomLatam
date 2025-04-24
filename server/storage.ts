@@ -1,7 +1,13 @@
-import { users, type User, type InsertUser } from "@shared/schema";
-import { products, type Product, type InsertProduct } from "@shared/schema";
+import { 
+  users, type User, type InsertUser,
+  products, type Product, type InsertProduct,
+  orders, type Order, type InsertOrder,
+  orderItems, type OrderItem, type InsertOrderItem,
+  connections, type Connection, type InsertConnection,
+  transactions, type Transaction, type InsertTransaction
+} from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, desc, and, asc } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -10,9 +16,11 @@ import { pool } from "./db";
 // you might need
 
 export interface IStorage {
+  // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, userData: Partial<InsertUser>): Promise<User | undefined>;
   
   // Product methods
   getAllProducts(): Promise<Product[]>;
@@ -20,6 +28,34 @@ export interface IStorage {
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: number, product: InsertProduct): Promise<Product | undefined>;
   deleteProduct(id: number): Promise<boolean>;
+
+  // Order methods
+  getAllOrders(userId?: number): Promise<Order[]>;
+  getOrder(id: number): Promise<Order | undefined>;
+  createOrder(order: InsertOrder, userId: number): Promise<Order>;
+  updateOrderStatus(id: number, status: string): Promise<Order | undefined>;
+  
+  // Order Items methods
+  getOrderItems(orderId: number): Promise<OrderItem[]>;
+  addOrderItem(item: InsertOrderItem): Promise<OrderItem>;
+  
+  // Connection methods
+  getUserConnections(userId: number): Promise<Connection[]>;
+  getConnection(id: number): Promise<Connection | undefined>;
+  createConnection(connection: InsertConnection, userId: number): Promise<Connection>;
+  updateConnectionStatus(id: number, status: string): Promise<Connection | undefined>;
+  deleteConnection(id: number): Promise<boolean>;
+  
+  // Transaction methods
+  getUserTransactions(userId: number): Promise<Transaction[]>;
+  createTransaction(transaction: InsertTransaction, userId: number): Promise<Transaction>;
+  getUserBalance(userId: number): Promise<number>;
+  
+  // Seed methods
+  seedDemoProducts(): Promise<void>;
+  seedDemoOrders(userId: number): Promise<void>;
+  seedDemoConnections(userId: number): Promise<void>;
+  seedDemoTransactions(userId: number): Promise<void>;
 
   // Session store
   sessionStore: session.Store;
@@ -53,6 +89,25 @@ export class DatabaseStorage implements IStorage {
       .values(insertUser)
       .returning();
     return user;
+  }
+
+  async updateUser(id: number, userData: Partial<InsertUser>): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, id));
+    
+    if (!user) {
+      return undefined;
+    }
+    
+    const [updatedUser] = await db
+      .update(users)
+      .set(userData)
+      .where(eq(users.id, id))
+      .returning();
+    
+    return updatedUser;
   }
   
   async getAllProducts(): Promise<Product[]> {
@@ -106,6 +161,137 @@ export class DatabaseStorage implements IStorage {
       .where(eq(products.id, id));
     
     return true;
+  }
+
+  // Order methods
+  async getAllOrders(userId?: number): Promise<Order[]> {
+    if (userId) {
+      return await db.select().from(orders).where(eq(orders.userId, userId)).orderBy(desc(orders.createdAt));
+    }
+    return await db.select().from(orders).orderBy(desc(orders.createdAt));
+  }
+  
+  async getOrder(id: number): Promise<Order | undefined> {
+    const [order] = await db.select().from(orders).where(eq(orders.id, id));
+    return order || undefined;
+  }
+  
+  async createOrder(order: InsertOrder, userId: number): Promise<Order> {
+    const orderWithUserId = { ...order, userId };
+    const [newOrder] = await db
+      .insert(orders)
+      .values(orderWithUserId)
+      .returning();
+    return newOrder;
+  }
+  
+  async updateOrderStatus(id: number, status: string): Promise<Order | undefined> {
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, id));
+    
+    if (!order) {
+      return undefined;
+    }
+    
+    const [updatedOrder] = await db
+      .update(orders)
+      .set({ status })
+      .where(eq(orders.id, id))
+      .returning();
+    
+    return updatedOrder;
+  }
+  
+  // Order Items methods
+  async getOrderItems(orderId: number): Promise<OrderItem[]> {
+    return await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+  }
+  
+  async addOrderItem(item: InsertOrderItem): Promise<OrderItem> {
+    const [newItem] = await db
+      .insert(orderItems)
+      .values(item)
+      .returning();
+    return newItem;
+  }
+  
+  // Connection methods
+  async getUserConnections(userId: number): Promise<Connection[]> {
+    return await db.select().from(connections).where(eq(connections.userId, userId));
+  }
+  
+  async getConnection(id: number): Promise<Connection | undefined> {
+    const [connection] = await db.select().from(connections).where(eq(connections.id, id));
+    return connection || undefined;
+  }
+  
+  async createConnection(connection: InsertConnection, userId: number): Promise<Connection> {
+    const connectionWithUserId = { ...connection, userId };
+    const [newConnection] = await db
+      .insert(connections)
+      .values(connectionWithUserId)
+      .returning();
+    return newConnection;
+  }
+  
+  async updateConnectionStatus(id: number, status: string): Promise<Connection | undefined> {
+    const [connection] = await db
+      .select()
+      .from(connections)
+      .where(eq(connections.id, id));
+    
+    if (!connection) {
+      return undefined;
+    }
+    
+    const [updatedConnection] = await db
+      .update(connections)
+      .set({ status })
+      .where(eq(connections.id, id))
+      .returning();
+    
+    return updatedConnection;
+  }
+  
+  async deleteConnection(id: number): Promise<boolean> {
+    const [connection] = await db
+      .select()
+      .from(connections)
+      .where(eq(connections.id, id));
+    
+    if (!connection) {
+      return false;
+    }
+    
+    await db
+      .delete(connections)
+      .where(eq(connections.id, id));
+    
+    return true;
+  }
+  
+  // Transaction methods
+  async getUserTransactions(userId: number): Promise<Transaction[]> {
+    return await db.select().from(transactions)
+      .where(eq(transactions.userId, userId))
+      .orderBy(desc(transactions.createdAt));
+  }
+  
+  async createTransaction(transaction: InsertTransaction, userId: number): Promise<Transaction> {
+    const transactionWithUserId = { ...transaction, userId };
+    const [newTransaction] = await db
+      .insert(transactions)
+      .values(transactionWithUserId)
+      .returning();
+    return newTransaction;
+  }
+  
+  async getUserBalance(userId: number): Promise<number> {
+    const userTransactions = await this.getUserTransactions(userId);
+    const balance = userTransactions.reduce((total, tx) => total + tx.amount, 0);
+    return balance;
   }
 
   // Function to seed demo products if needed
@@ -171,6 +357,166 @@ export class DatabaseStorage implements IStorage {
       
       for (const product of demoProducts) {
         await this.createProduct(product);
+      }
+    }
+  }
+  
+  // Seed demo orders for a user
+  async seedDemoOrders(userId: number) {
+    const existingOrders = await this.getAllOrders(userId);
+    if (existingOrders.length === 0) {
+      const prods = await this.getAllProducts();
+      if (prods.length > 0) {
+        const demoOrders = [
+          {
+            orderNumber: "ORD-001-2025",
+            customerName: "John Doe",
+            customerEmail: "john.doe@example.com",
+            customerPhone: "+1234567890",
+            shippingAddress: "123 Main St, New York, NY 10001",
+            status: "delivered",
+            totalAmount: 125.99,
+            notes: "Delivery instructions: Leave at the door"
+          },
+          {
+            orderNumber: "ORD-002-2025",
+            customerName: "Jane Smith",
+            customerEmail: "jane.smith@example.com",
+            customerPhone: "+1987654321",
+            shippingAddress: "456 Market St, San Francisco, CA 94105",
+            status: "processing",
+            totalAmount: 199.50,
+            notes: ""
+          },
+          {
+            orderNumber: "ORD-003-2025",
+            customerName: "Robert Johnson",
+            customerEmail: "robert.johnson@example.com",
+            customerPhone: "+1122334455",
+            shippingAddress: "789 Broad St, Boston, MA 02110",
+            status: "pending",
+            totalAmount: 75.25,
+            notes: "Gift wrapped please"
+          }
+        ];
+        
+        for (const order of demoOrders) {
+          await this.createOrder(order as InsertOrder, userId);
+        }
+        
+        // Add order items for each order
+        const orders = await this.getAllOrders(userId);
+        if (orders.length > 0 && prods.length > 0) {
+          const orderItems = [
+            {
+              orderId: orders[0].id,
+              productId: prods[0].id,
+              quantity: 2,
+              price: prods[0].price,
+              subtotal: prods[0].price * 2
+            },
+            {
+              orderId: orders[0].id,
+              productId: prods[1].id,
+              quantity: 1,
+              price: prods[1].price,
+              subtotal: prods[1].price
+            },
+            {
+              orderId: orders[1].id,
+              productId: prods[2].id,
+              quantity: 1,
+              price: prods[2].price,
+              subtotal: prods[2].price
+            },
+            {
+              orderId: orders[2].id,
+              productId: prods[3].id,
+              quantity: 3,
+              price: prods[3].price,
+              subtotal: prods[3].price * 3
+            }
+          ];
+          
+          for (const item of orderItems) {
+            await this.addOrderItem(item);
+          }
+        }
+      }
+    }
+  }
+  
+  // Seed demo connections for a user
+  async seedDemoConnections(userId: number) {
+    const existingConnections = await this.getUserConnections(userId);
+    if (existingConnections.length === 0) {
+      const demoConnections = [
+        {
+          platform: "shopify",
+          name: "My Shopify Store",
+          apiKey: "shpat_1234567890",
+          apiSecret: "shpss_1234567890",
+          status: "active"
+        },
+        {
+          platform: "mercadolibre",
+          name: "MercadoLibre Shop",
+          apiKey: "APP_USR-1234567890",
+          apiSecret: "APP_USR-1234567890",
+          status: "active"
+        },
+        {
+          platform: "woocommerce",
+          name: "WooCommerce Store",
+          apiKey: "ck_1234567890",
+          apiSecret: "cs_1234567890",
+          status: "error"
+        }
+      ];
+      
+      for (const connection of demoConnections) {
+        await this.createConnection(connection as InsertConnection, userId);
+      }
+    }
+  }
+  
+  // Seed demo transactions for a user
+  async seedDemoTransactions(userId: number) {
+    const existingTransactions = await this.getUserTransactions(userId);
+    if (existingTransactions.length === 0) {
+      const demoTransactions = [
+        {
+          type: "deposit",
+          amount: 500.00,
+          status: "completed",
+          description: "Account Funding",
+          reference: "DEP12345"
+        },
+        {
+          type: "payment",
+          amount: -125.99,
+          status: "completed",
+          description: "Order ORD-001-2025",
+          reference: "PAY78965"
+        },
+        {
+          type: "withdrawal",
+          amount: -200.00,
+          status: "processing",
+          description: "Bank Transfer",
+          reference: "WIT54321"
+        },
+        {
+          type: "refund",
+          amount: 75.50,
+          status: "completed",
+          description: "Order ORD-003-2024 Refund",
+          reference: "REF98765"
+        }
+      ];
+      
+      for (const transaction of demoTransactions) {
+        await this.createTransaction(transaction as InsertTransaction, userId);
       }
     }
   }
