@@ -1,216 +1,241 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { Link } from "wouter";
 import SidebarNav from "@/components/sidebar-nav";
+import UserHeader from "@/components/user-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { Button } from "@/components/ui/button";
 import { 
   Package, 
   ShoppingCart, 
   CreditCard, 
-  TrendingUp, 
+  Wallet,
   Clock,
-  CheckCircle2 
+  CheckCircle2,
+  User,
+  Store,
+  FileSpreadsheet
 } from "lucide-react";
-
-// Sample data - this would typically come from API
-const recentOrders = [
-  { id: 1, orderNumber: "ORD001", customer: "John Doe", amount: 125.99, status: "delivered", date: "2025-04-19" },
-  { id: 2, orderNumber: "ORD002", customer: "Jane Smith", amount: 85.50, status: "processing", date: "2025-04-22" },
-  { id: 3, orderNumber: "ORD003", customer: "Robert Johnson", amount: 315.75, status: "pending", date: "2025-04-23" },
-  { id: 4, orderNumber: "ORD004", customer: "Lisa Brown", amount: 64.99, status: "delivered", date: "2025-04-18" },
-];
-
-const salesData = [
-  { name: "Jan", sales: 2400 },
-  { name: "Feb", sales: 1398 },
-  { name: "Mar", sales: 9800 },
-  { name: "Apr", sales: 3908 },
-  { name: "May", sales: 4800 },
-  { name: "Jun", sales: 3800 },
-];
-
-const productCategoriesData = [
-  { name: "Electronics", value: 400 },
-  { name: "Clothing", value: 300 },
-  { name: "Home", value: 300 },
-  { name: "Food", value: 200 },
-];
-
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 
 export default function HomePage() {
   const { user } = useAuth();
   const [activeItem, setActiveItem] = useState("dashboard");
+  const [hasCompletedSetup, setHasCompletedSetup] = useState(false);
 
   useEffect(() => {
     setActiveItem("dashboard");
+    
+    // En un proyecto real, verificaríamos si el usuario ha completado cada paso del onboarding
+    // y actualizaríamos el estado en consecuencia
+    // Por ahora, simplemente asumimos que no ha completado el setup
+    setHasCompletedSetup(false);
   }, []);
 
+  // Datos de onboarding
+  const onboardingSteps = [
+    {
+      id: "profile",
+      title: "Completá tu perfil",
+      description: "Antes de comenzar a usar Ecomdrop necesitamos que completes tu perfil.",
+      icon: <User className="h-10 w-10 text-pink-500" />,
+      buttonText: "Completar",
+      buttonLink: "/account",
+      completed: false
+    },
+    {
+      id: "stores",
+      title: "Conectá tus tiendas",
+      description: "Conectá tus tiendas de Shopify o Tiendanube con Ecomdrop para recibir pedidos.",
+      icon: <Store className="h-10 w-10 text-indigo-500" />,
+      buttonText: "Conectar",
+      buttonLink: "/connections",
+      completed: false
+    },
+    {
+      id: "wallet",
+      title: "Cargá tu billetera",
+      description: "Configurá tu cuenta bancaria para ingresar y retirar el dinero de tus ventas por Ecomdrop.",
+      icon: <Wallet className="h-10 w-10 text-purple-500" />,
+      buttonText: "Configurar",
+      buttonLink: "/wallet",
+      completed: false
+    },
+    {
+      id: "invoice",
+      title: "Completá tus datos de facturación",
+      description: "Para poder operar sobre tus pedidos, necesitas completar los datos de facturación.",
+      icon: <FileSpreadsheet className="h-10 w-10 text-pink-500" />,
+      buttonText: "Completar",
+      buttonLink: "/account",
+      completed: false
+    }
+  ];
+
+  // Vista de onboarding
+  if (!hasCompletedSetup) {
+    return (
+      <div className="flex min-h-screen bg-gray-50 flex-col">
+        <UserHeader username={user?.username} />
+        
+        <div className="flex flex-1">
+          <SidebarNav activeItem={activeItem} user={user} />
+          
+          <main className="flex-1 p-6 pl-[220px]">
+            <div className="mb-8">
+              <h1 className="text-2xl font-bold">¡Hola {user?.username}!</h1>
+              <p className="text-gray-500 mt-1">Antes de empezar necesitamos configurar unas cositas...</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {onboardingSteps.map((step) => (
+                <Card key={step.id} className="overflow-hidden">
+                  <CardContent className="p-6 flex flex-col items-center text-center">
+                    <div className="mb-4 mt-2">
+                      {step.icon}
+                    </div>
+                    <h3 className="font-medium text-lg mb-2">{step.title}</h3>
+                    <p className="text-gray-500 text-sm mb-6">{step.description}</p>
+                    <Link href={step.buttonLink}>
+                      <Button className="w-full bg-pink-500 hover:bg-pink-600">
+                        {step.buttonText}
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // Vista de dashboard normal (cuando el usuario ha completado el onboarding)
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <SidebarNav activeItem={activeItem} user={user} />
+    <div className="flex min-h-screen bg-gray-50 flex-col">
+      <UserHeader username={user?.username} />
       
-      <main className="flex-1 p-6 pl-[220px]">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="text-sm text-gray-500">Welcome back, {user?.username}</p>
-        </div>
+      <div className="flex flex-1">
+        <SidebarNav activeItem={activeItem} user={user} />
         
-        {/* Metrics Overview */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-          <Card>
-            <CardContent className="p-4 flex items-center">
-              <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mr-4">
-                <Package className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Total Products</p>
-                <h3 className="text-2xl font-bold">125</h3>
-              </div>
-            </CardContent>
-          </Card>
+        <main className="flex-1 p-6 pl-[220px]">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold">Dashboard</h1>
+          </div>
           
-          <Card>
-            <CardContent className="p-4 flex items-center">
-              <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mr-4">
-                <ShoppingCart className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Total Orders</p>
-                <h3 className="text-2xl font-bold">68</h3>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Metrics Overview */}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+            <Card>
+              <CardContent className="p-4 flex items-center">
+                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mr-4">
+                  <Package className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Total Productos</p>
+                  <h3 className="text-2xl font-bold">125</h3>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-4 flex items-center">
+                <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mr-4">
+                  <ShoppingCart className="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Total Pedidos</p>
+                  <h3 className="text-2xl font-bold">68</h3>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-4 flex items-center">
+                <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mr-4">
+                  <CreditCard className="w-6 h-6 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Ingresos</p>
+                  <h3 className="text-2xl font-bold">$12,450</h3>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-4 flex items-center">
+                <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mr-4">
+                  <Wallet className="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Saldo</p>
+                  <h3 className="text-2xl font-bold">$5,280</h3>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
           
-          <Card>
-            <CardContent className="p-4 flex items-center">
-              <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center mr-4">
-                <CreditCard className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Revenue</p>
-                <h3 className="text-2xl font-bold">$12,450</h3>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4 flex items-center">
-              <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mr-4">
-                <TrendingUp className="w-6 h-6 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Growth</p>
-                <h3 className="text-2xl font-bold">+24%</h3>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 gap-6 mb-6 lg:grid-cols-2">
+          {/* Recent Orders */}
           <Card>
             <CardHeader>
-              <CardTitle>Sales Overview</CardTitle>
-              <CardDescription>Monthly sales performance</CardDescription>
+              <CardTitle>Pedidos Recientes</CardTitle>
+              <CardDescription>Últimos pedidos recibidos</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={salesData}
-                    margin={{
-                      top: 5,
-                      right: 30,
-                      left: 20,
-                      bottom: 5,
-                    }}
-                  >
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="sales" fill="#4f46e5" barSize={30} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Product Categories</CardTitle>
-              <CardDescription>Distribution by category</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={productCategoriesData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {productCategoriesData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        
-        {/* Recent Orders */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Orders</CardTitle>
-            <CardDescription>Latest customer orders</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 font-medium">Order</th>
-                    <th className="text-left py-3 px-4 font-medium">Customer</th>
-                    <th className="text-left py-3 px-4 font-medium">Amount</th>
-                    <th className="text-left py-3 px-4 font-medium">Date</th>
-                    <th className="text-left py-3 px-4 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentOrders.map((order) => (
-                    <tr key={order.id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4">{order.orderNumber}</td>
-                      <td className="py-3 px-4">{order.customer}</td>
-                      <td className="py-3 px-4">${order.amount.toFixed(2)}</td>
-                      <td className="py-3 px-4">{order.date}</td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 px-4 font-medium">Pedido</th>
+                      <th className="text-left py-3 px-4 font-medium">Cliente</th>
+                      <th className="text-left py-3 px-4 font-medium">Monto</th>
+                      <th className="text-left py-3 px-4 font-medium">Fecha</th>
+                      <th className="text-left py-3 px-4 font-medium">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b hover:bg-gray-50">
+                      <td className="py-3 px-4">ORD-001</td>
+                      <td className="py-3 px-4">María López</td>
+                      <td className="py-3 px-4">$125.99</td>
+                      <td className="py-3 px-4">2025-04-23</td>
                       <td className="py-3 px-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                          ${order.status === 'delivered' ? 'bg-green-100 text-green-800' : 
-                            order.status === 'processing' ? 'bg-blue-100 text-blue-800' : 
-                              'bg-amber-100 text-amber-800'}`}>
-                          {order.status === 'delivered' ? <CheckCircle2 className="w-3 h-3 mr-1" /> : 
-                            order.status === 'processing' ? <Clock className="w-3 h-3 mr-1" /> : 
-                              <Clock className="w-3 h-3 mr-1" />}
-                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <CheckCircle2 className="w-3 h-3 mr-1" />
+                          Entregado
                         </span>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      </main>
+                    <tr className="border-b hover:bg-gray-50">
+                      <td className="py-3 px-4">ORD-002</td>
+                      <td className="py-3 px-4">Carlos Rodríguez</td>
+                      <td className="py-3 px-4">$89.50</td>
+                      <td className="py-3 px-4">2025-04-22</td>
+                      <td className="py-3 px-4">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <Clock className="w-3 h-3 mr-1" />
+                          Procesando
+                        </span>
+                      </td>
+                    </tr>
+                    <tr className="border-b hover:bg-gray-50">
+                      <td className="py-3 px-4">ORD-003</td>
+                      <td className="py-3 px-4">Ana Gómez</td>
+                      <td className="py-3 px-4">$315.75</td>
+                      <td className="py-3 px-4">2025-04-21</td>
+                      <td className="py-3 px-4">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                          <Clock className="w-3 h-3 mr-1" />
+                          Pendiente
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
     </div>
   );
 }
