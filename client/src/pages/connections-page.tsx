@@ -12,13 +12,13 @@ import {
   PlusCircle,
   Link2, 
   ShoppingCart, 
-  SiMercadolibre,
-  SiShopify, 
-  SiWoocommerce, 
-  SiTiktok,
   AlertCircle,
   Check,
-  XCircle
+  XCircle,
+  ShoppingBag,
+  Store,
+  BarChart,
+  Landmark
 } from "lucide-react";
 
 // Sample data - this would typically come from API
@@ -72,13 +72,13 @@ export default function ConnectionsPage() {
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
       case "shopify":
-        return <SiShopify className="h-8 w-8 text-[#7AB55C]" />;
+        return <ShoppingBag className="h-8 w-8 text-green-600" />;
       case "mercadolibre":
-        return <SiMercadolibre className="h-8 w-8 text-[#FFE600]" />;
+        return <Store className="h-8 w-8 text-yellow-500" />;
       case "woocommerce":
-        return <SiWoocommerce className="h-8 w-8 text-[#7F54B3]" />;
+        return <Landmark className="h-8 w-8 text-purple-600" />;
       case "tiktok":
-        return <SiTiktok className="h-8 w-8 text-black" />;
+        return <BarChart className="h-8 w-8 text-black" />;
       default:
         return <Link2 className="h-8 w-8 text-gray-500" />;
     }
