@@ -4,7 +4,17 @@ import { User as UserType } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { EcomdropLogo } from "@/lib/logos";
-import { LayoutDashboard, Package, ShoppingCart, Store, BarChart2, Settings, User, LogOut } from "lucide-react";
+import { 
+  LayoutDashboard, 
+  Package, 
+  ShoppingCart, 
+  Link2, 
+  Wallet, 
+  Users, 
+  UserCog,
+  User, 
+  LogOut 
+} from "lucide-react";
 
 interface SidebarNavProps {
   className?: string;
@@ -47,22 +57,28 @@ export default function SidebarNav({
       key: "orders"
     },
     {
-      title: "Channels",
-      href: "/channels",
-      icon: <Store className="h-5 w-5" />,
-      key: "channels"
+      title: "Connections",
+      href: "/connections",
+      icon: <Link2 className="h-5 w-5" />,
+      key: "connections"
     },
     {
-      title: "Analytics",
-      href: "/analytics",
-      icon: <BarChart2 className="h-5 w-5" />,
-      key: "analytics"
+      title: "Wallet",
+      href: "/wallet",
+      icon: <Wallet className="h-5 w-5" />,
+      key: "wallet"
     },
     {
-      title: "Settings",
-      href: "/settings",
-      icon: <Settings className="h-5 w-5" />,
-      key: "settings"
+      title: "Team",
+      href: "/team",
+      icon: <Users className="h-5 w-5" />,
+      key: "team"
+    },
+    {
+      title: "My Account",
+      href: "/account",
+      icon: <UserCog className="h-5 w-5" />,
+      key: "account"
     }
   ];
 
