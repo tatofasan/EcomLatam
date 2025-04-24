@@ -14,7 +14,9 @@ import {
   CheckCircle2,
   User,
   Store,
-  FileSpreadsheet
+  FileSpreadsheet,
+  CreditCard as BilleteraIcon,
+  ClipboardList
 } from "lucide-react";
 
 export default function HomePage() {
@@ -36,8 +38,8 @@ export default function HomePage() {
     {
       id: "profile",
       title: "Completá tu perfil",
-      description: "Antes de comenzar a usar Ecomdrop necesitamos que completes tu perfil.",
-      icon: <User className="h-10 w-10 text-pink-500" />,
+      description: "Antes de comenzar a vender con Ecomdrop, necesitamos que completes tu perfil.",
+      icon: <User className="h-16 w-16 p-4 rounded-full bg-pink-100 text-pink-500" />,
       buttonText: "Completar",
       buttonLink: "/account",
       completed: false
@@ -45,8 +47,8 @@ export default function HomePage() {
     {
       id: "stores",
       title: "Conectá tus tiendas",
-      description: "Conectá tus tiendas de Shopify o Tiendanube con Ecomdrop para recibir pedidos.",
-      icon: <Store className="h-10 w-10 text-indigo-500" />,
+      description: "Conectá tus tiendas de Shopify y/o Tiendanube con Ecomdrop para recibir pedidos.",
+      icon: <Store className="h-16 w-16 p-4 rounded-full bg-indigo-100 text-indigo-500" />,
       buttonText: "Conectar",
       buttonLink: "/connections",
       completed: false
@@ -55,7 +57,7 @@ export default function HomePage() {
       id: "wallet",
       title: "Cargá tu billetera",
       description: "Configurá tu cuenta bancaria para ingresar y retirar el dinero de tus ventas por Ecomdrop.",
-      icon: <Wallet className="h-10 w-10 text-purple-500" />,
+      icon: <BilleteraIcon className="h-16 w-16 p-4 rounded-full bg-purple-100 text-purple-500" />,
       buttonText: "Configurar",
       buttonLink: "/wallet",
       completed: false
@@ -64,7 +66,7 @@ export default function HomePage() {
       id: "invoice",
       title: "Completá tus datos de facturación",
       description: "Para poder operar sobre tus pedidos, necesitas completar los datos de facturación.",
-      icon: <FileSpreadsheet className="h-10 w-10 text-pink-500" />,
+      icon: <ClipboardList className="h-16 w-16 p-4 rounded-full bg-pink-100 text-pink-500" />,
       buttonText: "Completar",
       buttonLink: "/account",
       completed: false
@@ -82,21 +84,21 @@ export default function HomePage() {
           
           <main className="flex-1 p-6 pl-[220px]">
             <div className="mb-8">
-              <h1 className="text-2xl font-bold">¡Hola {user?.username}!</h1>
-              <p className="text-gray-500 mt-1">Antes de empezar necesitamos configurar unas cositas...</p>
+              <h1 className="text-2xl font-bold">¡Hola {user?.username || 'ignacio'} fasan!</h1>
+              <p className="text-gray-600 mt-1">Antes de empezar necesitamos configurar unas cositas...</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {onboardingSteps.map((step) => (
-                <Card key={step.id} className="overflow-hidden">
+                <Card key={step.id} className="overflow-hidden border border-gray-200 shadow-sm">
                   <CardContent className="p-6 flex flex-col items-center text-center">
-                    <div className="mb-4 mt-2">
+                    <div className="mb-4 mt-2 flex-shrink-0">
                       {step.icon}
                     </div>
                     <h3 className="font-medium text-lg mb-2">{step.title}</h3>
-                    <p className="text-gray-500 text-sm mb-6">{step.description}</p>
-                    <Link href={step.buttonLink}>
-                      <Button className="w-full bg-pink-500 hover:bg-pink-600">
+                    <p className="text-gray-500 text-sm mb-6 flex-grow">{step.description}</p>
+                    <Link href={step.buttonLink} className="w-full">
+                      <Button className="w-full bg-pink-500 hover:bg-pink-600 text-white font-medium py-2">
                         {step.buttonText}
                       </Button>
                     </Link>
