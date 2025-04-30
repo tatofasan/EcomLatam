@@ -42,30 +42,6 @@ export default function ProductsPage() {
 
       {/* Main Content */}
       <main className="flex-1 ml-[200px] bg-secondary min-h-screen overflow-auto">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold">Products</h1>
-            
-            <div className="flex items-center space-x-4">
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  type="text" 
-                  placeholder="Search products..." 
-                  className="pl-10"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              
-              <Button className="flex items-center">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Product
-              </Button>
-            </div>
-          </div>
-        </header>
         
         {/* Products Content */}
         <div className="p-6">
