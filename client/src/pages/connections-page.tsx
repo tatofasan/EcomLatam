@@ -222,21 +222,21 @@ export default function ConnectionsPage() {
     switch (status) {
       case "active":
         return (
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1">
+          <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200 flex items-center gap-1 font-medium">
             <Check className="h-3 w-3" />
-            Active
+            Activa
           </Badge>
         );
       case "inactive":
         return (
-          <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200 flex items-center gap-1">
+          <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 flex items-center gap-1 font-medium">
             <AlertCircle className="h-3 w-3" />
-            Inactive
+            Inactiva
           </Badge>
         );
       case "error":
         return (
-          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 flex items-center gap-1">
+          <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 flex items-center gap-1 font-medium">
             <XCircle className="h-3 w-3" />
             Error
           </Badge>
@@ -487,16 +487,16 @@ export default function ConnectionsPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex items-center gap-2">
-                      <ShoppingCart className="w-5 h-5 text-gray-500" />
+                      <ShoppingCart className="w-5 h-5 text-primary/70" />
                       <div>
-                        <p className="text-sm text-gray-500">Pedidos</p>
+                        <p className="text-sm text-muted-foreground">Pedidos</p>
                         <p className="font-medium">{connection.orders}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Link2 className="w-5 h-5 text-gray-500" />
+                      <Link2 className="w-5 h-5 text-primary/70" />
                       <div>
-                        <p className="text-sm text-gray-500">Productos</p>
+                        <p className="text-sm text-muted-foreground">Productos</p>
                         <p className="font-medium">{connection.products}</p>
                       </div>
                     </div>
@@ -510,11 +510,12 @@ export default function ConnectionsPage() {
                       const newStatus = connection.status === "active" ? "inactive" : "active";
                       updateConnectionStatus(connection.id, newStatus);
                     }}
+                    className="hover:bg-primary/10 hover:text-primary border-border"
                   >
                     {connection.status === "active" ? "Desactivar" : "Activar"}
                   </Button>
                   <Button 
-                    variant="outline" 
+                    variant={connection.status === "active" ? "default" : "outline"}
                     size="sm" 
                     className={connection.status !== "active" ? "opacity-50 cursor-not-allowed" : ""}
                     disabled={connection.status !== "active"}

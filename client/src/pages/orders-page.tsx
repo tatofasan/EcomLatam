@@ -183,37 +183,37 @@ export default function OrdersPage() {
     switch (status) {
       case "delivered":
         return (
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1">
+          <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200 flex items-center gap-1 font-medium">
             <CheckCircle2 className="h-3 w-3" />
-            Delivered
+            Entregado
           </Badge>
         );
       case "processing":
         return (
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1">
+          <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 flex items-center gap-1 font-medium">
             <Clock className="h-3 w-3" />
-            Processing
+            En proceso
           </Badge>
         );
       case "pending":
         return (
-          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-1">
+          <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 flex items-center gap-1 font-medium">
             <AlertCircle className="h-3 w-3" />
-            Pending
+            Pendiente
           </Badge>
         );
       case "shipped":
         return (
-          <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 flex items-center gap-1">
+          <Badge variant="outline" className="bg-indigo-50 text-indigo-600 border-indigo-200 flex items-center gap-1 font-medium">
             <TruckIcon className="h-3 w-3" />
-            Shipped
+            Enviado
           </Badge>
         );
       case "cancelled":
         return (
-          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 flex items-center gap-1">
+          <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 flex items-center gap-1 font-medium">
             <XCircle className="h-3 w-3" />
-            Cancelled
+            Cancelado
           </Badge>
         );
       default:
