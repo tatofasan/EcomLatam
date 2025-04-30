@@ -1,33 +1,55 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { LayoutGrid, List } from "lucide-react";
+import { Product } from "@/types";
 
 interface ProductFilterProps {
   viewMode: "grid" | "list";
   setViewMode: (mode: "grid" | "list") => void;
+  onCategoryChange: (category: string) => void;
+  onStatusChange: (status: string) => void;
+  onSortChange: (sort: string) => void;
+  categoryFilter: string;
+  statusFilter: string;
+  sortOption: string;
 }
 
-export default function ProductFilter({ viewMode, setViewMode }: ProductFilterProps) {
+export default function ProductFilter({ 
+  viewMode, 
+  setViewMode,
+  onCategoryChange,
+  onStatusChange,
+  onSortChange,
+  categoryFilter,
+  statusFilter,
+  sortOption
+}: ProductFilterProps) {
   return (
     <div className="bg-white p-4 rounded-md shadow-sm mb-6">
       <div className="flex flex-wrap items-center gap-4">
         <div className="w-48">
-          <Select defaultValue="all">
+          <Select 
+            value={categoryFilter} 
+            onValueChange={onCategoryChange}
+          >
             <SelectTrigger>
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
-              <SelectItem value="electronics">Electronics</SelectItem>
-              <SelectItem value="clothing">Clothing</SelectItem>
-              <SelectItem value="home">Home & Kitchen</SelectItem>
-              <SelectItem value="beauty">Beauty & Personal Care</SelectItem>
+              <SelectItem value="Electronics">Electronics</SelectItem>
+              <SelectItem value="Footwear">Footwear</SelectItem>
+              <SelectItem value="Home">Home & Kitchen</SelectItem>
+              <SelectItem value="Beauty">Beauty & Personal Care</SelectItem>
             </SelectContent>
           </Select>
         </div>
         
         <div className="w-48">
-          <Select defaultValue="all">
+          <Select 
+            value={statusFilter} 
+            onValueChange={onStatusChange}
+          >
             <SelectTrigger>
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
@@ -42,7 +64,10 @@ export default function ProductFilter({ viewMode, setViewMode }: ProductFilterPr
         </div>
         
         <div className="w-48">
-          <Select defaultValue="newest">
+          <Select 
+            value={sortOption} 
+            onValueChange={onSortChange}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Sort By" />
             </SelectTrigger>

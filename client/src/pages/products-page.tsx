@@ -18,6 +18,9 @@ export default function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sortOption, setSortOption] = useState("newest");
   const { user } = useAuth();
   
   const handleProductClick = (product: Product) => {
@@ -26,7 +29,7 @@ export default function ProductsPage() {
   };
 
   // Fetch products
-  const { data: products, isLoading } = useQuery<Product[]>({
+  const { data: allProducts, isLoading } = useQuery<Product[]>({
     queryKey: ["/api/products"],
     queryFn: async () => {
       const res = await fetch("/api/products");
@@ -34,6 +37,53 @@ export default function ProductsPage() {
       return res.json();
     },
   });
+  
+  // Filter and sort products
+  let filteredProducts: Product[] = [];
+  
+  if (allProducts) {
+    filteredProducts = [...allProducts];
+    
+    // Apply category filter
+    if (categoryFilter !== "all") {
+      filteredProducts = filteredProducts.filter(product => product.category === categoryFilter);
+    }
+    
+    // Apply status filter
+    if (statusFilter !== "all") {
+      filteredProducts = filteredProducts.filter(product => product.status === statusFilter);
+    }
+    
+    // Apply search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filteredProducts = filteredProducts.filter(product => 
+        product.name.toLowerCase().includes(query) || 
+        product.description.toLowerCase().includes(query) ||
+        product.sku.toLowerCase().includes(query)
+      );
+    }
+    
+    // Apply sorting
+    switch(sortOption) {
+      case "price_high":
+        filteredProducts.sort((a, b) => b.price - a.price);
+        break;
+      case "price_low":
+        filteredProducts.sort((a, b) => a.price - b.price);
+        break;
+      case "name_asc":
+        filteredProducts.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case "name_desc":
+        filteredProducts.sort((a, b) => b.name.localeCompare(a.name));
+        break;
+      case "newest":
+      default:
+        // Assuming newest is default
+        break;
+    }
+  }
 
   return (
     <div className="flex h-screen">
@@ -46,7 +96,16 @@ export default function ProductsPage() {
         {/* Products Content */}
         <div className="p-6">
           {/* Filter Bar */}
-          <ProductFilter viewMode={viewMode} setViewMode={setViewMode} />
+          <ProductFilter 
+            viewMode={viewMode} 
+            setViewMode={setViewMode}
+            categoryFilter={categoryFilter}
+            statusFilter={statusFilter}
+            sortOption={sortOption}
+            onCategoryChange={setCategoryFilter}
+            onStatusChange={setStatusFilter}
+            onSortChange={setSortOption}
+          />
           
           {isLoading ? (
             <div className="flex justify-center items-center h-64">
