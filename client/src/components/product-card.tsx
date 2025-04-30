@@ -1,23 +1,14 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-interface Product {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  stock: number;
-  status: "active" | "inactive" | "draft" | "low";
-  sku: string;
-  imageUrl: string;
-}
+import { Product } from "@shared/schema";
 
 interface ProductCardProps {
   product: Product;
   viewMode: "grid" | "list";
+  onClick: (product: Product) => void;
 }
 
-export default function ProductCard({ product, viewMode }: ProductCardProps) {
+export default function ProductCard({ product, viewMode, onClick }: ProductCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
@@ -50,7 +41,10 @@ export default function ProductCard({ product, viewMode }: ProductCardProps) {
 
   if (viewMode === "list") {
     return (
-      <Card className="flex overflow-hidden hover:shadow-md transition-shadow">
+      <Card 
+        className="flex overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+        onClick={() => onClick(product)}
+      >
         <div className="w-24 h-24 bg-gray-200 shrink-0">
           <img 
             src={product.imageUrl} 
@@ -77,7 +71,10 @@ export default function ProductCard({ product, viewMode }: ProductCardProps) {
   }
 
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow">
+    <Card 
+      className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+      onClick={() => onClick(product)}
+    >
       <div className="aspect-w-3 aspect-h-2 bg-gray-200">
         <img 
           src={product.imageUrl} 

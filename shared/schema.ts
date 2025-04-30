@@ -34,10 +34,16 @@ export const products = pgTable("products", {
   status: text("status").notNull().default("draft"), // active, inactive, draft, low
   sku: text("sku").notNull().unique(),
   imageUrl: text("image_url").notNull(),
+  additionalImages: text("additional_images").array(),
+  weight: doublePrecision("weight"),
+  dimensions: text("dimensions"),
+  category: text("category"),
+  specifications: jsonb("specifications"),
+  reference: text("reference"),
+  provider: text("provider"),
   userId: integer("user_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-  category: text("category"),
 });
 
 export const productSchema = createInsertSchema(products, {

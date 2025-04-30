@@ -7,25 +7,22 @@ import { Loader2, Search, Plus } from "lucide-react";
 import SidebarNav from "@/components/sidebar-nav";
 import ProductFilter from "@/components/product-filter";
 import ProductCard from "@/components/product-card";
+import ProductDetailDialog from "@/components/product-detail-dialog";
 import Pagination from "@/components/pagination";
-
-// Product type definition
-interface Product {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  stock: number;
-  status: "active" | "inactive" | "draft" | "low";
-  sku: string;
-  imageUrl: string;
-}
+import { Product } from "@shared/schema";
 
 export default function ProductsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const { user } = useAuth();
+  
+  const handleProductClick = (product: Product) => {
+    setSelectedProduct(product);
+    setDetailDialogOpen(true);
+  };
 
   // Fetch products
   const { data: products, isLoading } = useQuery<Product[]>({
