@@ -27,8 +27,9 @@ interface OrderStatsByDay {
   revenue: number;
 }
 
-// Define an expanded Order type that ensures properties we need
-interface OrderWithDate extends Order {
+// Define the order type used for statistics processing
+interface OrderForStats {
+  id: number;
   createdAt: string;
   status: string;
   totalAmount: number;
@@ -39,7 +40,7 @@ export default function OrderStatisticsPage() {
   const [statistics, setStatistics] = useState<OrderStatsByDay[]>([]);
 
   // Fetch orders
-  const { data: orders, isLoading } = useQuery<OrderWithDate[]>({
+  const { data: orders, isLoading } = useQuery<OrderForStats[]>({
     queryKey: ["/api/orders"],
     queryFn: async () => {
       const res = await fetch("/api/orders");
@@ -53,7 +54,7 @@ export default function OrderStatisticsPage() {
     if (!orders) return;
 
     // Group orders by date
-    const ordersByDate = orders.reduce((acc: Record<string, OrderWithDate[]>, order) => {
+    const ordersByDate = orders.reduce((acc: Record<string, OrderForStats[]>, order) => {
       const date = new Date(order.createdAt).toISOString().split('T')[0];
       
       if (!acc[date]) {
@@ -66,10 +67,10 @@ export default function OrderStatisticsPage() {
 
     // Calculate statistics for each day
     const stats = Object.entries(ordersByDate).map(([date, dayOrders]) => {
-      const pending = dayOrders.filter(order => order.status === 'pending').length;
-      const processing = dayOrders.filter(order => order.status === 'processing').length;
-      const delivered = dayOrders.filter(order => order.status === 'delivered').length;
-      const cancelled = dayOrders.filter(order => order.status === 'cancelled').length;
+      const pending = dayOrders.filter((order: OrderForStats) => order.status === 'pending').length;
+      const processing = dayOrders.filter((order: OrderForStats) => order.status === 'processing').length;
+      const delivered = dayOrders.filter((order: OrderForStats) => order.status === 'delivered').length;
+      const cancelled = dayOrders.filter((order: OrderForStats) => order.status === 'cancelled').length;
       const total = dayOrders.length;
       
       // Calculate delivered percentage
@@ -77,8 +78,8 @@ export default function OrderStatisticsPage() {
       
       // Calculate revenue from delivered orders
       const revenue = dayOrders
-        .filter(order => order.status === 'delivered')
-        .reduce((sum: number, order) => sum + order.totalAmount, 0);
+        .filter((order: OrderForStats) => order.status === 'delivered')
+        .reduce((sum: number, order: OrderForStats) => sum + order.totalAmount, 0);
       
       return {
         date,
