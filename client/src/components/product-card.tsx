@@ -1,18 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-// Definición local del tipo de producto
-interface Product {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  stock: number;
-  status: string;
-  sku: string;
-  imageUrl: string;
-  category?: string;
-}
+import { Product } from "@/types";
 
 interface ProductCardProps {
   product: Product;
