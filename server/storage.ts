@@ -306,7 +306,18 @@ export class DatabaseStorage implements IStorage {
           stock: 45,
           status: "active",
           sku: "HD-100",
-          imageUrl: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&h=350&fit=crop"
+          imageUrl: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&h=350&fit=crop",
+          reference: "WH-101",
+          category: "Electronics",
+          additionalImages: ["https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=500&h=350&fit=crop", 
+                            "https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=500&h=350&fit=crop"],
+          weight: 0.3,
+          dimensions: "18 x 15 x 8 cm",
+          specifications: JSON.stringify({
+            "Connectivity": "Bluetooth 5.0",
+            "Battery": "24 hours",
+            "Colors": ["Black", "White", "Blue"]
+          })
         },
         {
           name: "Running Shoes",
@@ -315,7 +326,9 @@ export class DatabaseStorage implements IStorage {
           stock: 28,
           status: "active",
           sku: "SH-200",
-          imageUrl: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&h=350&fit=crop"
+          imageUrl: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&h=350&fit=crop",
+          reference: "RS-202",
+          category: "Footwear"
         },
         {
           name: "Smart Watch",
@@ -324,7 +337,16 @@ export class DatabaseStorage implements IStorage {
           stock: 15,
           status: "active",
           sku: "SW-300",
-          imageUrl: "https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=500&h=350&fit=crop"
+          imageUrl: "https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=500&h=350&fit=crop",
+          reference: "SW-303",
+          category: "Electronics",
+          weight: 0.05,
+          dimensions: "4 x 4 x 1 cm",
+          specifications: JSON.stringify({
+            "Display": "AMOLED",
+            "Waterproof": true,
+            "Sensors": ["Heart Rate", "GPS", "Accelerometer"]
+          })
         },
         {
           name: "Mechanical Keyboard",
@@ -333,7 +355,10 @@ export class DatabaseStorage implements IStorage {
           stock: 5,
           status: "low",
           sku: "KB-400",
-          imageUrl: "https://images.unsplash.com/photo-1585155770447-2f66e2a397b5?w=500&h=350&fit=crop"
+          imageUrl: "https://images.unsplash.com/photo-1585155770447-2f66e2a397b5?w=500&h=350&fit=crop",
+          reference: "MK-404",
+          category: "Electronics",
+          additionalImages: ["https://images.unsplash.com/photo-1595044778792-9c7c8096f843?w=500&h=350&fit=crop"]
         },
         {
           name: "Polaroid Camera",
@@ -342,7 +367,11 @@ export class DatabaseStorage implements IStorage {
           stock: 32,
           status: "active",
           sku: "CM-500",
-          imageUrl: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=500&h=350&fit=crop"
+          imageUrl: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=500&h=350&fit=crop",
+          reference: "PC-505",
+          category: "Electronics",
+          weight: 0.5,
+          dimensions: "15 x 10 x 8 cm"
         },
         {
           name: "Designer Sneakers",
@@ -351,7 +380,9 @@ export class DatabaseStorage implements IStorage {
           stock: 0,
           status: "draft",
           sku: "SN-600",
-          imageUrl: "https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=500&h=350&fit=crop"
+          imageUrl: "https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=500&h=350&fit=crop",
+          reference: "DS-606",
+          category: "Footwear"
         }
       ];
       
