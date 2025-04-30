@@ -80,7 +80,12 @@ export default function ProductsPage() {
               {/* Products Grid */}
               <div className={`grid grid-cols-1 ${viewMode === 'grid' ? 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'sm:grid-cols-1'} gap-6 mt-6`}>
                 {products.map((product) => (
-                  <ProductCard key={product.id} product={product} viewMode={viewMode} />
+                  <ProductCard 
+                    key={product.id} 
+                    product={product} 
+                    viewMode={viewMode}
+                    onClick={handleProductClick}
+                  />
                 ))}
               </div>
             
@@ -103,6 +108,13 @@ export default function ProductsPage() {
           )}
         </div>
       </main>
+
+      {/* Product Detail Dialog */}
+      <ProductDetailDialog 
+        product={selectedProduct}
+        isOpen={detailDialogOpen}
+        onClose={() => setDetailDialogOpen(false)}
+      />
     </div>
   );
 }
