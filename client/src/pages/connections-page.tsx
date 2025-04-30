@@ -373,12 +373,12 @@ export default function ConnectionsPage() {
             ))}
           </div>
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 my-4">
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 my-4">
             <div className="flex gap-2 items-start">
-              <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
+              <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
               <div>
-                <h3 className="font-medium text-red-800">Error cargando las conexiones</h3>
-                <p className="text-red-700 text-sm">{error}</p>
+                <h3 className="font-medium text-destructive">Error cargando las conexiones</h3>
+                <p className="text-destructive/80 text-sm">{error}</p>
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -391,10 +391,10 @@ export default function ConnectionsPage() {
             </div>
           </div>
         ) : connections.length === 0 ? (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 my-4 text-center">
-            <Link2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-800 mb-2">No hay conexiones activas</h3>
-            <p className="text-gray-600 mb-4">Conecta tus tiendas para sincronizar productos y pedidos.</p>
+          <div className="bg-accent border border-border rounded-lg p-8 my-4 text-center">
+            <Link2 className="h-12 w-12 text-primary/60 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">No hay conexiones activas</h3>
+            <p className="text-muted-foreground mb-4">Conecta tus tiendas para sincronizar productos y pedidos.</p>
             <Dialog>
               <DialogTrigger asChild>
                 <Button>Añadir conexión</Button>

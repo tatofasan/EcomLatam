@@ -293,12 +293,12 @@ export default function OrdersPage() {
                 ))}
               </div>
             ) : error ? (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 my-4">
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 my-4">
                 <div className="flex gap-2 items-start">
-                  <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
+                  <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
                   <div>
-                    <h3 className="font-medium text-red-800">Error cargando los pedidos</h3>
-                    <p className="text-red-700 text-sm">{error}</p>
+                    <h3 className="font-medium text-destructive">Error cargando los pedidos</h3>
+                    <p className="text-destructive/80 text-sm">{error}</p>
                     <Button 
                       variant="outline" 
                       size="sm" 
@@ -311,44 +311,45 @@ export default function OrdersPage() {
                 </div>
               </div>
             ) : filteredOrders.length === 0 ? (
-              <div className="text-center py-8">
-                <ShoppingCart className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                <h3 className="text-lg font-medium text-gray-800 mb-2">No hay pedidos</h3>
-                <p className="text-gray-600">No se encontraron pedidos con los filtros actuales.</p>
+              <div className="text-center py-8 bg-accent/50 border border-border rounded-lg">
+                <ShoppingCart className="h-12 w-12 text-primary/60 mx-auto mb-3" />
+                <h3 className="text-lg font-medium text-foreground mb-2">No hay pedidos</h3>
+                <p className="text-muted-foreground">No se encontraron pedidos con los filtros actuales.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-4 font-medium">Pedido</th>
-                      <th className="text-left py-3 px-4 font-medium">Cliente</th>
-                      <th className="text-left py-3 px-4 font-medium">Fecha</th>
-                      <th className="text-left py-3 px-4 font-medium">Total</th>
-                      <th className="text-left py-3 px-4 font-medium">Estado</th>
-                      <th className="text-right py-3 px-4 font-medium">Acciones</th>
+                    <tr className="border-b border-border bg-accent/50">
+                      <th className="text-left py-3 px-4 font-medium text-primary">Pedido</th>
+                      <th className="text-left py-3 px-4 font-medium text-primary">Cliente</th>
+                      <th className="text-left py-3 px-4 font-medium text-primary">Fecha</th>
+                      <th className="text-left py-3 px-4 font-medium text-primary">Total</th>
+                      <th className="text-left py-3 px-4 font-medium text-primary">Estado</th>
+                      <th className="text-right py-3 px-4 font-medium text-primary">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredOrders.map((order) => (
-                      <tr key={order.id} className="border-b hover:bg-gray-50">
+                      <tr key={order.id} className="border-b border-border hover:bg-accent/20">
                         <td className="py-4 px-4 font-medium">{order.orderNumber}</td>
                         <td className="py-4 px-4">
                           <div>
                             <p>{order.customerName}</p>
-                            <p className="text-gray-500 text-xs">{order.customerEmail}</p>
+                            <p className="text-muted-foreground text-xs">{order.customerEmail}</p>
                           </div>
                         </td>
                         <td className="py-4 px-4">{new Date(order.createdAt).toLocaleDateString()}</td>
-                        <td className="py-4 px-4">${order.totalAmount.toFixed(2)}</td>
+                        <td className="py-4 px-4 font-medium text-primary">${order.totalAmount.toFixed(2)}</td>
                         <td className="py-4 px-4">
                           {getStatusBadge(order.status)}
                         </td>
                         <td className="py-4 px-4 text-right">
                           <Button 
-                            variant="ghost" 
+                            variant="outline" 
                             size="sm"
                             onClick={() => openOrderDetails(order)}
+                            className="hover:bg-primary/10 hover:text-primary"
                           >
                             <FileText className="h-4 w-4 mr-1" />
                             Ver
@@ -387,21 +388,21 @@ export default function OrdersPage() {
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <h4 className="text-sm font-medium text-gray-500 mb-2">Información del Cliente</h4>
-                      <div className="border rounded-md p-3 bg-gray-50">
+                      <h4 className="text-sm font-medium text-primary mb-2">Información del Cliente</h4>
+                      <div className="border rounded-md p-3 bg-accent">
                         <p className="font-medium">{selectedOrder.customerName}</p>
-                        <p className="text-sm text-gray-500">{selectedOrder.customerEmail}</p>
+                        <p className="text-sm text-muted-foreground">{selectedOrder.customerEmail}</p>
                         {selectedOrder.customerPhone && (
-                          <p className="text-sm text-gray-500">{selectedOrder.customerPhone}</p>
+                          <p className="text-sm text-muted-foreground">{selectedOrder.customerPhone}</p>
                         )}
                       </div>
                     </div>
                     <div>
-                      <h4 className="text-sm font-medium text-gray-500 mb-2">Estado del Pedido</h4>
-                      <div className="border rounded-md p-3 bg-gray-50">
+                      <h4 className="text-sm font-medium text-primary mb-2">Estado del Pedido</h4>
+                      <div className="border rounded-md p-3 bg-accent">
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-gray-500" />
+                            <Calendar className="h-4 w-4 text-primary" />
                             <span className="text-sm">{new Date(selectedOrder.createdAt).toLocaleDateString()}</span>
                           </div>
                           {getStatusBadge(selectedOrder.status)}
@@ -411,29 +412,29 @@ export default function OrdersPage() {
                   </div>
                   
                   <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-2">Información de Envío</h4>
-                    <div className="border rounded-md p-3 bg-gray-50 mb-2">
+                    <h4 className="text-sm font-medium text-primary mb-2">Información de Envío</h4>
+                    <div className="border rounded-md p-3 bg-accent mb-2">
                       <p className="text-sm">{selectedOrder.shippingAddress}</p>
                     </div>
                     {selectedOrder.notes && (
                       <div className="flex items-center text-sm">
-                        <FileText className="h-4 w-4 text-gray-500 mr-1" />
-                        <span className="text-gray-500 mr-2">Notas:</span>
+                        <FileText className="h-4 w-4 text-primary mr-1" />
+                        <span className="text-muted-foreground mr-2">Notas:</span>
                         <span className="font-medium">{selectedOrder.notes}</span>
                       </div>
                     )}
                   </div>
                   
                   <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-2">Items del Pedido</h4>
+                    <h4 className="text-sm font-medium text-primary mb-2">Items del Pedido</h4>
                     <div className="border rounded-md overflow-hidden">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="bg-gray-50 border-b">
-                            <th className="text-left py-2 px-3">Producto</th>
-                            <th className="text-center py-2 px-3">Cantidad</th>
-                            <th className="text-center py-2 px-3">Precio</th>
-                            <th className="text-right py-2 px-3">Subtotal</th>
+                          <tr className="bg-accent border-b">
+                            <th className="text-left py-2 px-3 font-medium">Producto</th>
+                            <th className="text-center py-2 px-3 font-medium">Cantidad</th>
+                            <th className="text-center py-2 px-3 font-medium">Precio</th>
+                            <th className="text-right py-2 px-3 font-medium">Subtotal</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -447,9 +448,9 @@ export default function OrdersPage() {
                           ))}
                         </tbody>
                         <tfoot>
-                          <tr className="border-t bg-gray-50">
+                          <tr className="border-t bg-accent">
                             <td colSpan={3} className="py-3 px-3 text-right font-medium">Total:</td>
-                            <td className="py-3 px-3 text-right font-medium">${selectedOrder.totalAmount.toFixed(2)}</td>
+                            <td className="py-3 px-3 text-right font-medium text-primary">${selectedOrder.totalAmount.toFixed(2)}</td>
                           </tr>
                         </tfoot>
                       </table>
