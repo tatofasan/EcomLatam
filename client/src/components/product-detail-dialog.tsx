@@ -143,58 +143,58 @@ export default function ProductDetailDialog({ product, isOpen, onClose }: Produc
             
             <Tabs defaultValue="details">
               <TabsList className="w-full">
-                <TabsTrigger value="details" className="flex-1">Detalles</TabsTrigger>
-                <TabsTrigger value="specs" className="flex-1">Especificaciones</TabsTrigger>
+                <TabsTrigger value="details" className="flex-1">Details</TabsTrigger>
+                <TabsTrigger value="specs" className="flex-1">Specifications</TabsTrigger>
               </TabsList>
               
               <TabsContent value="details" className="space-y-4 pt-4">
                 <div>
-                  <h3 className="text-sm font-medium text-primary mb-2">Descripción</h3>
+                  <h3 className="text-sm font-medium text-primary mb-2">Description</h3>
                   <p className="text-muted-foreground">{product.description}</p>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <h3 className="text-sm font-medium text-primary mb-1">Categoría</h3>
-                    <p className="text-muted-foreground">{product.category || "No especificada"}</p>
+                    <h3 className="text-sm font-medium text-primary mb-1">Category</h3>
+                    <p className="text-muted-foreground">{product.category || "Not specified"}</p>
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-primary mb-1">Stock</h3>
-                    <p className="text-muted-foreground">{product.stock} unidades</p>
+                    <p className="text-muted-foreground">{product.stock} units</p>
                   </div>
                 </div>
                 
-                {/* Información adicional - Esta sección se ampliará en el futuro */}
+                {/* Additional information section */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <h3 className="text-sm font-medium text-primary mb-1">Peso</h3>
+                    <h3 className="text-sm font-medium text-primary mb-1">Weight</h3>
                     <p className="text-muted-foreground">0.5 kg</p>
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-primary mb-1">Dimensiones</h3>
+                    <h3 className="text-sm font-medium text-primary mb-1">Dimensions</h3>
                     <p className="text-muted-foreground">20 x 15 x 5 cm</p>
                   </div>
                 </div>
                 
                 <div>
-                  <h3 className="text-sm font-medium text-primary mb-1">Proveedor</h3>
-                  <p className="text-muted-foreground">Proveedor principal</p>
+                  <h3 className="text-sm font-medium text-primary mb-1">Supplier</h3>
+                  <p className="text-muted-foreground">Main Supplier</p>
                 </div>
               </TabsContent>
               
               <TabsContent value="specs" className="space-y-4 pt-4">
-                {/* Especificaciones de demostración */}
+                {/* Demo specifications */}
                 <div className="space-y-3">
                   <div>
                     <h3 className="text-sm font-medium text-primary mb-1">Material</h3>
-                    <p className="text-muted-foreground">Plástico ABS</p>
+                    <p className="text-muted-foreground">ABS Plastic</p>
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-primary mb-1">Batería</h3>
+                    <h3 className="text-sm font-medium text-primary mb-1">Battery</h3>
                     <p className="text-muted-foreground">300 mAh</p>
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-primary mb-1">Conectividad</h3>
+                    <h3 className="text-sm font-medium text-primary mb-1">Connectivity</h3>
                     <p className="text-muted-foreground">Bluetooth 5.0</p>
                   </div>
                 </div>
@@ -206,11 +206,11 @@ export default function ProductDetailDialog({ product, isOpen, onClose }: Produc
         <DialogFooter className="mt-6 gap-2">
           <Button variant="outline" onClick={onClose}>
             <X className="h-4 w-4 mr-2" />
-            Cerrar
+            Close
           </Button>
           <Button>
             <ShoppingCart className="h-4 w-4 mr-2" />
-            Añadir al carrito
+            Add to My Shop
           </Button>
         </DialogFooter>
       </DialogContent>
