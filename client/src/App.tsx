@@ -6,6 +6,7 @@ import AuthPage from "@/pages/auth-page";
 import HomePage from "@/pages/home-page";
 import ProductsPage from "@/pages/products-page";
 import OrdersPage from "@/pages/orders-page";
+import OrderStatisticsPage from "@/pages/order-statistics-page";
 import ConnectionsPage from "@/pages/connections-page";
 import WalletPage from "@/pages/wallet-page";
 import TeamPage from "@/pages/team-page";
@@ -19,6 +20,7 @@ function Router() {
       <ProtectedRoute path="/" component={HomePage} />
       <ProtectedRoute path="/products" component={ProductsPage} />
       <ProtectedRoute path="/orders" component={OrdersPage} />
+      <ProtectedRoute path="/orders/statistics" component={OrderStatisticsPage} />
       <ProtectedRoute path="/connections" component={ConnectionsPage} />
       <ProtectedRoute path="/wallet" component={WalletPage} />
       <ProtectedRoute path="/team" component={TeamPage} />
