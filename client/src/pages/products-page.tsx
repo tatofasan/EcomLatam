@@ -95,6 +95,20 @@ export default function ProductsPage() {
         
         {/* Products Content */}
         <div className="p-6">
+          {/* Search Bar */}
+          <div className="bg-white p-4 rounded-md shadow-sm mb-4">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search products by name, description or SKU..."
+                className="pl-8"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+          
           {/* Filter Bar */}
           <ProductFilter 
             viewMode={viewMode} 
@@ -111,11 +125,11 @@ export default function ProductsPage() {
             <div className="flex justify-center items-center h-64">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : products && products.length > 0 ? (
+          ) : filteredProducts && filteredProducts.length > 0 ? (
             <>
               {/* Products Grid */}
               <div className={`grid grid-cols-1 ${viewMode === 'grid' ? 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'sm:grid-cols-1'} gap-6 mt-6`}>
-                {products.map((product) => (
+                {filteredProducts.map((product) => (
                   <ProductCard 
                     key={product.id} 
                     product={product} 
@@ -130,7 +144,7 @@ export default function ProductsPage() {
                 currentPage={currentPage}
                 totalPages={3}
                 onPageChange={setCurrentPage}
-                totalItems={products.length}
+                totalItems={filteredProducts.length}
                 itemsPerPage={12}
               />
             </>
