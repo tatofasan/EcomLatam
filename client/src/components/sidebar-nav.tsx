@@ -87,8 +87,8 @@ export default function SidebarNav({
   };
 
   return (
-    <aside className={cn("w-[200px] bg-white border-r border-gray-200 flex flex-col h-screen fixed", className)}>
-      <div className="p-4 border-b border-gray-200">
+    <aside className={cn("w-[200px] bg-accent border-r border-border flex flex-col h-screen fixed", className)}>
+      <div className="p-4 border-b border-border bg-primary/10">
         <EcomdropLogo className="h-8" />
       </div>
       
@@ -105,8 +105,8 @@ export default function SidebarNav({
                 className={cn(
                   "flex items-center px-3 py-2 text-sm rounded-md group",
                   activeItem === item.key 
-                    ? "bg-secondary text-primary" 
-                    : "hover:bg-secondary"
+                    ? "bg-primary/10 text-primary font-medium" 
+                    : "hover:bg-primary/5 text-foreground/80 hover:text-primary"
                 )}
               >
                 {React.cloneElement(item.icon as React.ReactElement, { 
@@ -114,13 +114,10 @@ export default function SidebarNav({
                     "w-5 h-5",
                     activeItem === item.key 
                       ? "text-primary"
-                      : "text-gray-500 group-hover:text-primary"
+                      : "text-foreground/60 group-hover:text-primary"
                   )
                 })}
-                <span className={cn(
-                  "ml-3",
-                  activeItem === item.key && "font-medium"
-                )}>
+                <span className="ml-3">
                   {item.title}
                 </span>
               </a>
@@ -129,19 +126,19 @@ export default function SidebarNav({
         </ul>
       </nav>
       
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-4 border-t border-border bg-primary/5">
         <div className="flex items-center">
-          <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-            <User className="h-4 w-4 text-gray-500" />
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+            <User className="h-4 w-4 text-primary" />
           </div>
           <div className="ml-3">
-            <p className="text-sm font-medium">{user?.username}</p>
+            <p className="text-sm font-medium text-foreground">{user?.username}</p>
             <button 
-              className="text-xs text-gray-500 flex items-center gap-1 hover:text-primary"
+              className="text-xs text-foreground/70 flex items-center gap-1 hover:text-primary"
               onClick={handleLogout}
             >
               <LogOut className="h-3 w-3" />
-              Logout
+              Cerrar sesión
             </button>
           </div>
         </div>

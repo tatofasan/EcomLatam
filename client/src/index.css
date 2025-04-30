@@ -4,75 +4,83 @@
 
 :root {
   --background: 0 0% 100%;
-  --foreground: 20 14.3% 4.1%;
-  --muted: 60 4.8% 95.9%;
-  --muted-foreground: 25 5.3% 44.7%;
+  --foreground: 210 20% 20%;
+  --muted: 210 20% 95%;
+  --muted-foreground: 210 20% 40%;
   --popover: 0 0% 100%;
-  --popover-foreground: 20 14.3% 4.1%;
+  --popover-foreground: 210 20% 20%;
   --card: 0 0% 100%;
-  --card-foreground: 20 14.3% 4.1%;
-  --border: 20 5.9% 90%;
-  --input: 20 5.9% 90%;
-  --primary: 328 100% 50%;  /* Ecomdrop pink */
+  --card-foreground: 210 20% 20%;
+  --border: 210 20% 90%;
+  --input: 210 20% 90%;
+  --primary: 195 80% 50%;  /* Celeste */
   --primary-foreground: 0 0% 100%;
-  --secondary: 60 4.8% 95.9%;
-  --secondary-foreground: 24 9.8% 10%;
-  --accent: 60 4.8% 95.9%;
-  --accent-foreground: 24 9.8% 10%;
+  --secondary: 210 20% 98%;
+  --secondary-foreground: 210 20% 20%;
+  --accent: 195 80% 95%;
+  --accent-foreground: 195 80% 20%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 60 9.1% 97.8%;
-  --ring: 328 100% 50%;  /* Ecomdrop pink */
+  --ring: 195 80% 50%;
   --radius: 0.5rem;
 
+  /* Alternativa naranja claro */
+  --alt-primary: 30 100% 70%;
+  --alt-accent: 30 100% 95%;
+
   /* Sidebar specific colors */
-  --sidebar-background: 0 0% 100%;
-  --sidebar-foreground: 20 14.3% 4.1%;
-  --sidebar-primary: 328 100% 50%;
+  --sidebar-background: 210 20% 98%;
+  --sidebar-foreground: 210 20% 20%;
+  --sidebar-primary: 195 80% 50%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 0 0% 96.1%;
-  --sidebar-accent-foreground: 24 9.8% 10%;
-  --sidebar-border: 20 5.9% 90%;
-  --sidebar-ring: 328 100% 50%;
+  --sidebar-accent: 195 80% 95%;
+  --sidebar-accent-foreground: 210 20% 20%;
+  --sidebar-border: 210 20% 90%;
+  --sidebar-ring: 195 80% 50%;
 
   /* Chart colors */
-  --chart-1: 328 100% 50%;
-  --chart-2: 209 100% 50%;
-  --chart-3: 43 96% 56%;
-  --chart-4: 130 43% 53%;
-  --chart-5: 262 83% 58%;
+  --chart-1: 195 80% 50%;
+  --chart-2: 210 80% 60%;
+  --chart-3: 30 100% 70%;
+  --chart-4: 150 50% 60%;
+  --chart-5: 230 60% 70%;
 }
 
 .dark {
-  --background: 240 10% 3.9%;
-  --foreground: 0 0% 98%;
-  --muted: 240 3.7% 15.9%;
-  --muted-foreground: 240 5% 64.9%;
-  --popover: 240 10% 3.9%;
-  --popover-foreground: 0 0% 98%;
-  --card: 240 10% 3.9%;
-  --card-foreground: 0 0% 98%;
-  --border: 240 3.7% 15.9%;
-  --input: 240 3.7% 15.9%;
-  --primary: 328 100% 50%;  /* Ecomdrop pink */
+  --background: 210 40% 8%;
+  --foreground: 210 20% 98%;
+  --muted: 210 40% 15%;
+  --muted-foreground: 210 20% 70%;
+  --popover: 210 40% 8%;
+  --popover-foreground: 210 20% 98%;
+  --card: 210 40% 8%;
+  --card-foreground: 210 20% 98%;
+  --border: 210 40% 15%;
+  --input: 210 40% 15%;
+  --primary: 195 80% 45%;  /* Celeste oscuro */
   --primary-foreground: 0 0% 100%;
-  --secondary: 240 3.7% 15.9%;
-  --secondary-foreground: 0 0% 98%;
-  --accent: 240 3.7% 15.9%;
-  --accent-foreground: 0 0% 98%;
+  --secondary: 210 40% 15%;
+  --secondary-foreground: 210 20% 98%;
+  --accent: 195 80% 25%;
+  --accent-foreground: 210 20% 98%;
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
-  --ring: 328 100% 50%;  /* Ecomdrop pink */
+  --ring: 195 80% 45%;
   --radius: 0.5rem;
 
+  /* Alternativa naranja oscuro */
+  --alt-primary: 30 90% 50%;
+  --alt-accent: 30 90% 20%;
+
   /* Sidebar specific colors */
-  --sidebar-background: 240 10% 3.9%;
-  --sidebar-foreground: 0 0% 98%;
-  --sidebar-primary: 328 100% 50%;
+  --sidebar-background: 210 40% 8%;
+  --sidebar-foreground: 210 20% 98%;
+  --sidebar-primary: 195 80% 45%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 3.7% 15.9%;
-  --sidebar-accent-foreground: 0 0% 98%;
-  --sidebar-border: 240 3.7% 15.9%;
-  --sidebar-ring: 328 100% 50%;
+  --sidebar-accent: 210 40% 15%;
+  --sidebar-accent-foreground: 210 20% 98%;
+  --sidebar-border: 210 40% 15%;
+  --sidebar-ring: 195 80% 45%;
 }
 
 @layer base {
@@ -87,11 +95,12 @@
 
 .login-page {
   @apply min-h-screen;
-  background-image: linear-gradient(to right, hsl(var(--secondary)) 50%, white 50%);
+  background-image: linear-gradient(to right, hsl(var(--accent)) 50%, white 50%);
 }
 
 @media (max-width: 768px) {
   .login-page {
     background-image: none;
+    background-color: hsl(var(--background));
   }
 }

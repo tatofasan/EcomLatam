@@ -247,12 +247,15 @@ export default function ConnectionsPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-background">
       <SidebarNav activeItem={activeItem} user={user} />
       
       <main className="flex-1 p-6 pl-[220px]">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Conexiones</h1>
+          <div>
+            <h1 className="text-2xl font-bold text-primary">Conexiones</h1>
+            <p className="text-muted-foreground mt-1">Gestiona las conexiones con tus plataformas de e-commerce</p>
+          </div>
           <Dialog>
             <DialogTrigger asChild>
               <Button className="flex items-center gap-2">

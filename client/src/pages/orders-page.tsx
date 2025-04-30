@@ -227,14 +227,14 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-background">
       <SidebarNav activeItem={activeItem} user={user} />
       
       <main className="flex-1 p-6 pl-[220px]">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold">Pedidos</h1>
-            <p className="text-gray-500 mt-1">Gestiona y realiza seguimiento de los pedidos</p>
+            <h1 className="text-2xl font-bold text-primary">Pedidos</h1>
+            <p className="text-muted-foreground mt-1">Gestiona y realiza seguimiento de los pedidos</p>
           </div>
           <Button variant="outline" className="flex items-center gap-2">
             <Download className="h-4 w-4" />
