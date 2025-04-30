@@ -9,7 +9,19 @@ import ProductFilter from "@/components/product-filter";
 import ProductCard from "@/components/product-card";
 import ProductDetailDialog from "@/components/product-detail-dialog";
 import Pagination from "@/components/pagination";
-import { Product } from "@shared/schema";
+
+// Definimos el tipo de producto para uso local
+interface Product {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  stock: number;
+  status: string;
+  sku: string;
+  imageUrl: string;
+  category?: string;
+}
 
 export default function ProductsPage() {
   const [currentPage, setCurrentPage] = useState(1);

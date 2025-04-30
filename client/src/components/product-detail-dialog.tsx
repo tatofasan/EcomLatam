@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Product } from "@shared/schema";
 import { 
   Dialog, 
   DialogContent, 
@@ -18,6 +17,19 @@ import {
   X 
 } from "lucide-react";
 
+// Definición local del tipo de producto
+interface Product {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  stock: number;
+  status: string;
+  sku: string;
+  imageUrl: string;
+  category?: string;
+}
+
 interface ProductDetailDialogProps {
   product: Product | null;
   isOpen: boolean;
@@ -29,10 +41,12 @@ export default function ProductDetailDialog({ product, isOpen, onClose }: Produc
   
   if (!product) return null;
   
-  // Prepare the images array - main image + additional images if they exist
+  // Para esta versión inicial, usamos solo la imagen principal
+  // y algunas imágenes de demostración hasta que tengamos additionalImages en la BD
   const images = [
     product.imageUrl,
-    ...(product.additionalImages || [])
+    "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=500&h=350&fit=crop",
+    "https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=500&h=350&fit=crop"
   ];
 
   const nextImage = () => {
@@ -64,7 +78,7 @@ export default function ProductDetailDialog({ product, isOpen, onClose }: Produc
         <DialogHeader>
           <DialogTitle className="text-primary text-xl">{product.name}</DialogTitle>
           <DialogDescription>
-            SKU: {product.sku} {product.reference ? `• Ref: ${product.reference}` : ""}
+            SKU: {product.sku}
           </DialogDescription>
         </DialogHeader>
 
@@ -161,44 +175,40 @@ export default function ProductDetailDialog({ product, isOpen, onClose }: Produc
                   </div>
                 </div>
                 
-                {(product.weight || product.dimensions) && (
-                  <div className="grid grid-cols-2 gap-4">
-                    {product.weight && (
-                      <div>
-                        <h3 className="text-sm font-medium text-primary mb-1">Peso</h3>
-                        <p className="text-muted-foreground">{product.weight} kg</p>
-                      </div>
-                    )}
-                    {product.dimensions && (
-                      <div>
-                        <h3 className="text-sm font-medium text-primary mb-1">Dimensiones</h3>
-                        <p className="text-muted-foreground">{product.dimensions}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-                
-                {product.provider && (
+                {/* Información adicional - Esta sección se ampliará en el futuro */}
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <h3 className="text-sm font-medium text-primary mb-1">Proveedor</h3>
-                    <p className="text-muted-foreground">{product.provider}</p>
+                    <h3 className="text-sm font-medium text-primary mb-1">Peso</h3>
+                    <p className="text-muted-foreground">0.5 kg</p>
                   </div>
-                )}
+                  <div>
+                    <h3 className="text-sm font-medium text-primary mb-1">Dimensiones</h3>
+                    <p className="text-muted-foreground">20 x 15 x 5 cm</p>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-sm font-medium text-primary mb-1">Proveedor</h3>
+                  <p className="text-muted-foreground">Proveedor principal</p>
+                </div>
               </TabsContent>
               
               <TabsContent value="specs" className="space-y-4 pt-4">
-                {product.specifications ? (
-                  <div className="space-y-3">
-                    {Object.entries(product.specifications).map(([key, value]) => (
-                      <div key={key}>
-                        <h3 className="text-sm font-medium text-primary mb-1">{key}</h3>
-                        <p className="text-muted-foreground">{value}</p>
-                      </div>
-                    ))}
+                {/* Especificaciones de demostración */}
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-sm font-medium text-primary mb-1">Material</h3>
+                    <p className="text-muted-foreground">Plástico ABS</p>
                   </div>
-                ) : (
-                  <p className="text-center py-4 text-muted-foreground">No hay especificaciones disponibles</p>
-                )}
+                  <div>
+                    <h3 className="text-sm font-medium text-primary mb-1">Batería</h3>
+                    <p className="text-muted-foreground">300 mAh</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-primary mb-1">Conectividad</h3>
+                    <p className="text-muted-foreground">Bluetooth 5.0</p>
+                  </div>
+                </div>
               </TabsContent>
             </Tabs>
           </div>
