@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { 
   Loader2, 
   CalendarRange,
@@ -57,6 +58,8 @@ interface OrderForStats {
 
 export default function OrderStatisticsPage() {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
   const [statistics, setStatistics] = useState<OrderStatsByDay[]>([]);
   
   // Filtros
@@ -174,13 +177,24 @@ export default function OrderStatisticsPage() {
     setStatistics(stats);
   }, [orders, selectedProductId, dateRange, useActivityDate]);
 
+  // Escuchar cambios del sidebar desde SidebarNav
+  useEffect(() => {
+    function handleSidebarChange(e: CustomEvent) {
+      setIsSidebarOpen(e.detail.isOpen);
+    }
+    window.addEventListener('sidebarToggle' as any, handleSidebarChange);
+    return () => {
+      window.removeEventListener('sidebarToggle' as any, handleSidebarChange);
+    };
+  }, []);
+
   return (
     <div className="flex h-screen">
       {/* Sidebar */}
       <SidebarNav activeItem="orders-statistics" user={user} />
 
       {/* Main Content */}
-      <main className="flex-1 md:ml-[200px] bg-secondary min-h-screen overflow-auto">
+      <main className={`flex-1 transition-all duration-300 bg-secondary min-h-screen overflow-auto ${isSidebarOpen ? 'md:ml-[200px]' : 'ml-0'}`}>
         <div className="p-3 md:p-6">
           <h1 className="text-xl md:text-2xl font-bold mb-4">Order Statistics</h1>
           

@@ -1,10 +1,9 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { User as UserType } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useSidebar } from "@/hooks/use-sidebar";
 import { EcomdropLogo } from "@/lib/logos";
 import { 
   LayoutDashboard, 
@@ -48,13 +47,20 @@ export default function SidebarNav({
   const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const isMobile = useIsMobile();
-  const { isSidebarOpen, toggleSidebar, closeSidebar } = useSidebar();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
+  
+  // Ajustar el estado del sidebar cuando cambia el tamaño de la ventana
+  useEffect(() => {
+    if (!isMobile) {
+      setIsSidebarOpen(true);
+    }
+  }, [isMobile]);
   
   // Cerrar el sidebar automáticamente en móviles después de hacer clic en un enlace
   const handleNavigation = (href: string) => {
     setLocation(href);
     if (isMobile) {
-      closeSidebar();
+      setIsSidebarOpen(false);
     }
   };
 
