@@ -212,14 +212,14 @@ export default function OrderStatisticsPage() {
                     <div>
                       <Label htmlFor="product-filter" className="mb-1 block">Product</Label>
                       <Select
-                        value={selectedProductId?.toString() || ""}
-                        onValueChange={(value) => setSelectedProductId(value ? Number(value) : null)}
+                        value={selectedProductId?.toString() || "all"}
+                        onValueChange={(value) => setSelectedProductId(value === "all" ? null : Number(value))}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="All Products" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All Products</SelectItem>
+                          <SelectItem value="all">All Products</SelectItem>
                           {products?.map((product) => (
                             <SelectItem key={product.id} value={product.id.toString()}>
                               {product.name}
