@@ -396,7 +396,7 @@ export class DatabaseStorage implements IStorage {
   async seedDemoOrders(userId: number) {
     try {
       // Limpiar órdenes existentes y sus items primero
-      await db.delete(orderItems).where(eq(orderItems.orderId, sql`ANY(SELECT id FROM orders WHERE "userId" = ${userId})`));
+      await db.delete(orderItems).where(eq(orderItems.orderId, sql`ANY(SELECT id FROM orders WHERE "user_id" = ${userId})`));
       await db.delete(orders).where(eq(orders.userId, userId));
       
       const prods = await this.getAllProducts();
