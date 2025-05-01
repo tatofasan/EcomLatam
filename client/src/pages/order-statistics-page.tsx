@@ -180,9 +180,9 @@ export default function OrderStatisticsPage() {
       <SidebarNav activeItem="orders-statistics" user={user} />
 
       {/* Main Content */}
-      <main className="flex-1 ml-[200px] bg-secondary min-h-screen overflow-auto">
-        <div className="p-6">
-          <h1 className="text-2xl font-bold mb-4">Order Statistics</h1>
+      <main className="flex-1 md:ml-[200px] bg-secondary min-h-screen overflow-auto">
+        <div className="p-3 md:p-6">
+          <h1 className="text-xl md:text-2xl font-bold mb-4">Order Statistics</h1>
           
           {isLoading ? (
             <div className="flex justify-center items-center h-64">
@@ -190,16 +190,16 @@ export default function OrderStatisticsPage() {
             </div>
           ) : (
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-2 md:space-y-0">
                 <CardTitle>Daily Order Summary</CardTitle>
                 <div className="flex items-center space-x-2">
-                  <Label htmlFor="date-type" className="text-sm">Creation Date</Label>
+                  <Label htmlFor="date-type" className="text-xs md:text-sm">Creation Date</Label>
                   <Switch 
                     id="date-type"
                     checked={useActivityDate} 
                     onCheckedChange={setUseActivityDate}
                   />
-                  <Label htmlFor="date-type" className="text-sm">Activity Date</Label>
+                  <Label htmlFor="date-type" className="text-xs md:text-sm">Activity Date</Label>
                 </div>
               </CardHeader>
               <CardContent>
@@ -303,41 +303,43 @@ export default function OrderStatisticsPage() {
                     </Button>
                   </div>
                 </div>
-                <Table>
-                  <TableCaption>A summary of orders by day</TableCaption>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Pending</TableHead>
-                      <TableHead>Processing</TableHead>
-                      <TableHead>Delivered</TableHead>
-                      <TableHead>Cancelled</TableHead>
-                      <TableHead>Total Orders</TableHead>
-                      <TableHead>Delivery %</TableHead>
-                      <TableHead className="text-right">Revenue</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {statistics.length > 0 ? (
-                      statistics.map((stat) => (
-                        <TableRow key={stat.date}>
-                          <TableCell className="font-medium">{stat.date}</TableCell>
-                          <TableCell>{stat.pending}</TableCell>
-                          <TableCell>{stat.processing}</TableCell>
-                          <TableCell>{stat.delivered}</TableCell>
-                          <TableCell>{stat.cancelled}</TableCell>
-                          <TableCell>{stat.total}</TableCell>
-                          <TableCell>{stat.deliveredPercentage.toFixed(2)}%</TableCell>
-                          <TableCell className="text-right">${stat.revenue.toFixed(2)}</TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableCaption>A summary of orders by day</TableCaption>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center">No order data available</TableCell>
+                        <TableHead className="whitespace-nowrap">Date</TableHead>
+                        <TableHead className="whitespace-nowrap">Pending</TableHead>
+                        <TableHead className="whitespace-nowrap">Processing</TableHead>
+                        <TableHead className="whitespace-nowrap">Delivered</TableHead>
+                        <TableHead className="whitespace-nowrap">Cancelled</TableHead>
+                        <TableHead className="whitespace-nowrap">Total Orders</TableHead>
+                        <TableHead className="whitespace-nowrap">Delivery %</TableHead>
+                        <TableHead className="whitespace-nowrap text-right">Revenue</TableHead>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {statistics.length > 0 ? (
+                        statistics.map((stat) => (
+                          <TableRow key={stat.date}>
+                            <TableCell className="font-medium whitespace-nowrap">{stat.date}</TableCell>
+                            <TableCell>{stat.pending}</TableCell>
+                            <TableCell>{stat.processing}</TableCell>
+                            <TableCell>{stat.delivered}</TableCell>
+                            <TableCell>{stat.cancelled}</TableCell>
+                            <TableCell>{stat.total}</TableCell>
+                            <TableCell>{stat.deliveredPercentage.toFixed(2)}%</TableCell>
+                            <TableCell className="text-right">${stat.revenue.toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center">No order data available</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           )}
