@@ -7,7 +7,7 @@ import {
   transactions, type Transaction, type InsertTransaction
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, asc } from "drizzle-orm";
+import { eq, desc, and, asc, sql } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -394,13 +394,18 @@ export class DatabaseStorage implements IStorage {
   
   // Seed demo orders for a user
   async seedDemoOrders(userId: number) {
-    const existingOrders = await this.getAllOrders(userId);
-    if (existingOrders.length === 0) {
+    try {
+      // Limpiar órdenes existentes y sus items primero
+      await db.delete(orderItems).where(eq(orderItems.orderId, sql`ANY(SELECT id FROM orders WHERE "userId" = ${userId})`));
+      await db.delete(orders).where(eq(orders.userId, userId));
+      
       const prods = await this.getAllProducts();
       if (prods.length > 0) {
+        // Create demo orders with unique order numbers (incluye timestamp para evitar duplicados)
+        const timestamp = Date.now().toString().slice(-4);
         const demoOrders = [
           {
-            orderNumber: "ORD-001-2025",
+            orderNumber: `ORD-001-${timestamp}`,
             customerName: "John Doe",
             customerEmail: "john.doe@example.com",
             customerPhone: "+1234567890",
@@ -410,7 +415,7 @@ export class DatabaseStorage implements IStorage {
             notes: "Delivery instructions: Leave at the door"
           },
           {
-            orderNumber: "ORD-002-2025",
+            orderNumber: `ORD-002-${timestamp}`,
             customerName: "Jane Smith",
             customerEmail: "jane.smith@example.com",
             customerPhone: "+1987654321",
@@ -420,7 +425,7 @@ export class DatabaseStorage implements IStorage {
             notes: ""
           },
           {
-            orderNumber: "ORD-003-2025",
+            orderNumber: `ORD-003-${timestamp}`,
             customerName: "Robert Johnson",
             customerEmail: "robert.johnson@example.com",
             customerPhone: "+1122334455",
@@ -428,6 +433,36 @@ export class DatabaseStorage implements IStorage {
             status: "pending",
             totalAmount: 75.25,
             notes: "Gift wrapped please"
+          },
+          {
+            orderNumber: `ORD-004-${timestamp}`,
+            customerName: "Diana Prince",
+            customerEmail: "diana@example.com",
+            customerPhone: "456-789-0123",
+            shippingAddress: "101 Elm St, Miami, FL",
+            status: "cancelled",
+            totalAmount: 129.95,
+            notes: "Cancelled by customer"
+          },
+          {
+            orderNumber: `ORD-005-${timestamp}`,
+            customerName: "Eduardo García",
+            customerEmail: "eduardo@example.com",
+            customerPhone: "567-890-1234",
+            shippingAddress: "202 Maple Ave, Austin, TX",
+            status: "delivered",
+            totalAmount: 199.99,
+            notes: ""
+          },
+          {
+            orderNumber: `ORD-006-${timestamp}`,
+            customerName: "Fatima Khan",
+            customerEmail: "fatima@example.com",
+            customerPhone: "678-901-2345",
+            shippingAddress: "303 Cedar Blvd, Seattle, WA",
+            status: "processing",
+            totalAmount: 79.95,
+            notes: "Express shipping"
           }
         ];
         
@@ -474,6 +509,9 @@ export class DatabaseStorage implements IStorage {
           }
         }
       }
+    } catch (error) {
+      console.error("Error seeding demo orders:", error);
+      throw error;
     }
   }
   
