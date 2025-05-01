@@ -246,43 +246,48 @@ export default function OrderStatisticsPage() {
           ) : (
             <>
               {/* Información y botón para regenerar datos */}
-              <div className="mb-4">
-                <Alert className="mb-4">
-                  <Database className="h-4 w-4" />
-                  <AlertTitle>Statistics Visualization</AlertTitle>
-                  <AlertDescription>
-                    This page shows order statistics over time. If you need to regenerate test data for better visualization, use the button below.
-                  </AlertDescription>
-                </Alert>
-                
-                <div className="flex justify-end">
-                  <Button 
-                    variant="outline" 
-                    className="flex items-center gap-1"
-                    onClick={() => regenerateDataMutation.mutate()}
-                    disabled={regenerateDataMutation.isPending}
-                  >
-                    {regenerateDataMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4 mr-1" />
-                    )}
-                    Regenerate Test Data
-                  </Button>
+              <div className="mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center mb-4">
+                  <Alert>
+                    <Database className="h-4 w-4" />
+                    <AlertTitle>Statistics Visualization</AlertTitle>
+                    <AlertDescription className="text-xs md:text-sm">
+                      This page shows order statistics over time. Generate test data for better visualization.
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <div className="flex justify-center md:justify-end">
+                    <Button 
+                      variant="outline" 
+                      className="flex items-center gap-1 w-full md:w-auto"
+                      onClick={() => regenerateDataMutation.mutate()}
+                      disabled={regenerateDataMutation.isPending}
+                    >
+                      {regenerateDataMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4 mr-1" />
+                      )}
+                      Regenerate Test Data
+                    </Button>
+                  </div>
                 </div>
               </div>
               
               <Card>
                 <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-2 md:space-y-0">
-                  <CardTitle>Daily Order Summary</CardTitle>
-                  <div className="flex items-center space-x-2">
-                    <Label htmlFor="date-type" className="text-xs md:text-sm">Creation Date</Label>
+                  <div className="flex flex-col space-y-1">
+                    <CardTitle>Daily Order Summary</CardTitle>
+                    <CardDescription className="hidden md:block">View and analyze order data by day</CardDescription>
+                  </div>
+                  <div className="flex items-center space-x-2 bg-muted/30 p-1.5 rounded-md">
+                    <Label htmlFor="date-type" className="text-xs md:text-sm truncate">Creation Date</Label>
                     <Switch 
                       id="date-type"
                       checked={useActivityDate} 
                       onCheckedChange={setUseActivityDate}
                     />
-                    <Label htmlFor="date-type" className="text-xs md:text-sm">Activity Date</Label>
+                    <Label htmlFor="date-type" className="text-xs md:text-sm truncate">Activity Date</Label>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -386,7 +391,8 @@ export default function OrderStatisticsPage() {
                       </Button>
                     </div>
                   </div>
-                  <div className="overflow-x-auto">
+                  {/* Visualización de tabla para pantallas medianas y grandes */}
+                  <div className="hidden md:block overflow-x-auto">
                     <Table>
                       <TableCaption>A summary of orders by day</TableCaption>
                       <TableHeader>
@@ -422,6 +428,58 @@ export default function OrderStatisticsPage() {
                         )}
                       </TableBody>
                     </Table>
+                  </div>
+                  
+                  {/* Visualización de tarjetas para dispositivos móviles */}
+                  <div className="md:hidden space-y-4">
+                    <h3 className="text-center text-muted-foreground mb-2">Order Summary by Day</h3>
+                    
+                    {statistics.length > 0 ? (
+                      statistics.map((stat) => (
+                        <div key={stat.date} className="bg-card border rounded-lg p-4 shadow-sm">
+                          <div className="flex justify-between items-center border-b pb-2 mb-2">
+                            <h4 className="font-semibold">{stat.date}</h4>
+                            <span className="bg-primary/10 text-primary px-2 py-1 rounded-md text-xs">
+                              Total: {stat.total}
+                            </span>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-2 mb-3">
+                            <div className="flex flex-col">
+                              <span className="text-xs text-muted-foreground">Pending</span>
+                              <span className="font-medium">{stat.pending}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-xs text-muted-foreground">Processing</span>
+                              <span className="font-medium">{stat.processing}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-xs text-muted-foreground">Delivered</span>
+                              <span className="font-medium">{stat.delivered}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-xs text-muted-foreground">Cancelled</span>
+                              <span className="font-medium">{stat.cancelled}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex justify-between items-center border-t pt-2">
+                            <div>
+                              <span className="text-xs text-muted-foreground block">Delivery Rate</span>
+                              <span className="font-medium">{stat.deliveredPercentage.toFixed(2)}%</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-xs text-muted-foreground block">Revenue</span>
+                              <span className="font-medium">${stat.revenue.toFixed(2)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No order data available
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
