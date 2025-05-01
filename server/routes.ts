@@ -44,6 +44,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to seed demo data" });
     }
   });
+  
+  // Seed only orders for visualization
+  app.post("/api/seed/orders", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const userId = req.user.id;
+      
+      // Seed only orders for statistics
+      await storage.seedDemoOrders(userId);
+      
+      res.status(200).json({ message: "Order data seeded successfully" });
+    } catch (error) {
+      console.error("Error seeding order data:", error);
+      res.status(500).json({ message: "Failed to seed order data" });
+    }
+  });
 
   // API Routes
   // Get all products

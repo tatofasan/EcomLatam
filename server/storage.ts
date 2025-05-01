@@ -401,111 +401,150 @@ export class DatabaseStorage implements IStorage {
       
       const prods = await this.getAllProducts();
       if (prods.length > 0) {
-        // Create demo orders with unique order numbers (incluye timestamp para evitar duplicados)
+        // Crear órdenes de demo con fechas distribuidas para las estadísticas
         const timestamp = Date.now().toString().slice(-4);
-        const demoOrders = [
+        const today = new Date();
+        const demoOrders = [];
+        
+        // Datos de clientes para muestra
+        const customerData = [
           {
-            orderNumber: `ORD-001-${timestamp}`,
-            customerName: "John Doe",
-            customerEmail: "john.doe@example.com",
-            customerPhone: "+1234567890",
-            shippingAddress: "123 Main St, New York, NY 10001",
-            status: "delivered",
-            totalAmount: 125.99,
-            notes: "Delivery instructions: Leave at the door"
+            name: "John Doe",
+            email: "john.doe@example.com",
+            phone: "+1234567890",
+            address: "123 Main St, New York, NY 10001"
           },
           {
-            orderNumber: `ORD-002-${timestamp}`,
-            customerName: "Jane Smith",
-            customerEmail: "jane.smith@example.com",
-            customerPhone: "+1987654321",
-            shippingAddress: "456 Market St, San Francisco, CA 94105",
-            status: "processing",
-            totalAmount: 199.50,
-            notes: ""
+            name: "Jane Smith",
+            email: "jane.smith@example.com",
+            phone: "+1987654321",
+            address: "456 Market St, San Francisco, CA 94105"
           },
           {
-            orderNumber: `ORD-003-${timestamp}`,
-            customerName: "Robert Johnson",
-            customerEmail: "robert.johnson@example.com",
-            customerPhone: "+1122334455",
-            shippingAddress: "789 Broad St, Boston, MA 02110",
-            status: "pending",
-            totalAmount: 75.25,
-            notes: "Gift wrapped please"
+            name: "Robert Johnson",
+            email: "robert.johnson@example.com",
+            phone: "+1122334455",
+            address: "789 Broad St, Boston, MA 02110"
           },
           {
-            orderNumber: `ORD-004-${timestamp}`,
-            customerName: "Diana Prince",
-            customerEmail: "diana@example.com",
-            customerPhone: "456-789-0123",
-            shippingAddress: "101 Elm St, Miami, FL",
-            status: "cancelled",
-            totalAmount: 129.95,
-            notes: "Cancelled by customer"
+            name: "Diana Prince",
+            email: "diana@example.com",
+            phone: "456-789-0123",
+            address: "101 Elm St, Miami, FL"
           },
           {
-            orderNumber: `ORD-005-${timestamp}`,
-            customerName: "Eduardo García",
-            customerEmail: "eduardo@example.com",
-            customerPhone: "567-890-1234",
-            shippingAddress: "202 Maple Ave, Austin, TX",
-            status: "delivered",
-            totalAmount: 199.99,
-            notes: ""
-          },
-          {
-            orderNumber: `ORD-006-${timestamp}`,
-            customerName: "Fatima Khan",
-            customerEmail: "fatima@example.com",
-            customerPhone: "678-901-2345",
-            shippingAddress: "303 Cedar Blvd, Seattle, WA",
-            status: "processing",
-            totalAmount: 79.95,
-            notes: "Express shipping"
+            name: "Eduardo García",
+            email: "eduardo@example.com",
+            phone: "567-890-1234",
+            address: "202 Maple Ave, Austin, TX"
           }
         ];
         
-        for (const order of demoOrders) {
-          await this.createOrder(order as InsertOrder, userId);
+        // Notas para las órdenes
+        const orderNotes = [
+          "Delivery instructions: Leave at the door",
+          "Gift wrapped please",
+          "Express shipping",
+          "Cancelled by customer",
+          ""
+        ];
+        
+        // Crear órdenes para los últimos 7 días
+        for (let i = 0; i < 7; i++) {
+          const orderDate = new Date();
+          orderDate.setDate(today.getDate() - i);
+          
+          // Generar entre 3-6 órdenes por día
+          const numOrdersPerDay = 3 + Math.floor(Math.random() * 4);
+          
+          for (let j = 0; j < numOrdersPerDay; j++) {
+            // Escoger estado aleatorio (más órdenes entregadas y en proceso que pendientes o canceladas)
+            const statuses = ["pending", "processing", "delivered", "cancelled"];
+            const weights = [20, 30, 40, 10]; // probabilidades en porcentaje
+            
+            let randomNum = Math.random() * 100;
+            let selectedStatus = statuses[0];
+            let accumulatedWeight = 0;
+            
+            for (let k = 0; k < weights.length; k++) {
+              accumulatedWeight += weights[k];
+              if (randomNum <= accumulatedWeight) {
+                selectedStatus = statuses[k];
+                break;
+              }
+            }
+            
+            // Elegir cliente aleatorio
+            const customer = customerData[Math.floor(Math.random() * customerData.length)];
+            
+            // Generar número de orden único
+            const orderNumber = `ORD-${orderDate.getDate().toString().padStart(2, '0')}${(orderDate.getMonth()+1).toString().padStart(2, '0')}-${timestamp}-${j}`;
+            
+            // Generar monto total aleatorio entre 50 y 250
+            const totalAmount = parseFloat((50 + Math.random() * 200).toFixed(2));
+            
+            // Crear objeto de orden
+            const newOrder = {
+              orderNumber,
+              customerName: customer.name,
+              customerEmail: customer.email,
+              customerPhone: customer.phone,
+              shippingAddress: customer.address,
+              status: selectedStatus,
+              totalAmount,
+              notes: orderNotes[Math.floor(Math.random() * orderNotes.length)]
+            };
+            
+            demoOrders.push(newOrder);
+          }
         }
         
-        // Add order items for each order
-        const orders = await this.getAllOrders(userId);
-        if (orders.length > 0 && prods.length > 0) {
-          const orderItems = [
-            {
-              orderId: orders[0].id,
-              productId: prods[0].id,
-              quantity: 2,
-              price: prods[0].price,
-              subtotal: prods[0].price * 2
-            },
-            {
-              orderId: orders[0].id,
-              productId: prods[1].id,
-              quantity: 1,
-              price: prods[1].price,
-              subtotal: prods[1].price
-            },
-            {
-              orderId: orders[1].id,
-              productId: prods[2].id,
-              quantity: 1,
-              price: prods[2].price,
-              subtotal: prods[2].price
-            },
-            {
-              orderId: orders[2].id,
-              productId: prods[3].id,
-              quantity: 3,
-              price: prods[3].price,
-              subtotal: prods[3].price * 3
-            }
-          ];
+        // Insertamos órdenes directamente en la base de datos para poder especificar fechas personalizadas
+        for (const order of demoOrders) {
+          // Usamos el objeto "orders" directamente para evitar problemas con userId vs user_id
+          // Crear fecha para esta orden (hace i días)
+          const orderDate = new Date();
+          orderDate.setDate(orderDate.getDate() - parseInt(order.orderNumber.split('-')[1].substring(0, 2)) % 7);
           
-          for (const item of orderItems) {
-            await this.addOrderItem(item);
+          const [newOrder] = await db
+            .insert(orders)
+            .values({
+              orderNumber: order.orderNumber,
+              userId: userId,
+              customerName: order.customerName,
+              customerEmail: order.customerEmail,
+              customerPhone: order.customerPhone,
+              shippingAddress: order.shippingAddress,
+              status: order.status,
+              totalAmount: order.totalAmount,
+              notes: order.notes,
+              createdAt: orderDate,
+              updatedAt: orderDate
+            })
+            .returning();
+            
+          // Agregar items a cada orden (entre 1 y 3 productos aleatorios)
+          const numProducts = 1 + Math.floor(Math.random() * 3);
+          
+          // Seleccionar productos aleatorios sin repetir
+          const selectedProductIndexes = new Set<number>();
+          while (selectedProductIndexes.size < numProducts && selectedProductIndexes.size < prods.length) {
+            selectedProductIndexes.add(Math.floor(Math.random() * prods.length));
+          }
+          
+          // Convertir Set a Array para iterar
+          const productIndexes = Array.from(selectedProductIndexes);
+          for (const prodIndex of productIndexes) {
+            const product = prods[prodIndex];
+            const quantity = 1 + Math.floor(Math.random() * 3); // 1-3 unidades
+            
+            await this.addOrderItem({
+              orderId: newOrder.id,
+              productId: product.id,
+              quantity,
+              price: product.price,
+              subtotal: product.price * quantity
+            });
           }
         }
       }
