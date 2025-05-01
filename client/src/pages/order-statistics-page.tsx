@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Loader2, 
   CalendarRange,
-  Package2
+  Package2,
+  RefreshCw,
+  Database
 } from "lucide-react";
 import SidebarNav from "@/components/sidebar-nav";
 import {
@@ -17,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Order, Product } from "@/types";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +29,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
 
 // Define the statistics data type
@@ -59,6 +63,8 @@ interface OrderForStats {
 export default function OrderStatisticsPage() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
   const [statistics, setStatistics] = useState<OrderStatsByDay[]>([]);
   
@@ -71,6 +77,41 @@ export default function OrderStatisticsPage() {
   }>({
     from: undefined,
     to: undefined
+  });
+
+  // Mutación para regenerar los datos de estadísticas
+  const regenerateDataMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/seed/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Error regenerating data');
+      }
+      
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Data regenerated successfully",
+        description: "New order statistics data has been created",
+        variant: "default",
+      });
+      // Refrescar los datos
+      queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error regenerating data",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   });
 
   // Fetch orders
@@ -198,164 +239,193 @@ export default function OrderStatisticsPage() {
         <div className="p-3 md:p-6">
           <h1 className="text-xl md:text-2xl font-bold mb-4">Order Statistics</h1>
           
-          {isLoading ? (
+          {isLoading || regenerateDataMutation.isPending ? (
             <div className="flex justify-center items-center h-64">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
-            <Card>
-              <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-2 md:space-y-0">
-                <CardTitle>Daily Order Summary</CardTitle>
-                <div className="flex items-center space-x-2">
-                  <Label htmlFor="date-type" className="text-xs md:text-sm">Creation Date</Label>
-                  <Switch 
-                    id="date-type"
-                    checked={useActivityDate} 
-                    onCheckedChange={setUseActivityDate}
-                  />
-                  <Label htmlFor="date-type" className="text-xs md:text-sm">Activity Date</Label>
+            <>
+              {/* Información y botón para regenerar datos */}
+              <div className="mb-4">
+                <Alert className="mb-4">
+                  <Database className="h-4 w-4" />
+                  <AlertTitle>Statistics Visualization</AlertTitle>
+                  <AlertDescription>
+                    This page shows order statistics over time. If you need to regenerate test data for better visualization, use the button below.
+                  </AlertDescription>
+                </Alert>
+                
+                <div className="flex justify-end">
+                  <Button 
+                    variant="outline" 
+                    className="flex items-center gap-1"
+                    onClick={() => regenerateDataMutation.mutate()}
+                    disabled={regenerateDataMutation.isPending}
+                  >
+                    {regenerateDataMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-1" />
+                    )}
+                    Regenerate Test Data
+                  </Button>
                 </div>
-              </CardHeader>
-              <CardContent>
-                {/* Filters Section */}
-                <div className="bg-muted/40 p-4 rounded-md mb-6 space-y-4">
-                  <h2 className="text-lg font-medium mb-2">Filters</h2>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Product Filter */}
-                    <div>
-                      <Label htmlFor="product-filter" className="mb-1 block">Product</Label>
-                      <Select
-                        value={selectedProductId?.toString() || "all"}
-                        onValueChange={(value) => setSelectedProductId(value === "all" ? null : Number(value))}
+              </div>
+              
+              <Card>
+                <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-2 md:space-y-0">
+                  <CardTitle>Daily Order Summary</CardTitle>
+                  <div className="flex items-center space-x-2">
+                    <Label htmlFor="date-type" className="text-xs md:text-sm">Creation Date</Label>
+                    <Switch 
+                      id="date-type"
+                      checked={useActivityDate} 
+                      onCheckedChange={setUseActivityDate}
+                    />
+                    <Label htmlFor="date-type" className="text-xs md:text-sm">Activity Date</Label>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {/* Filters Section */}
+                  <div className="bg-muted/40 p-4 rounded-md mb-6 space-y-4">
+                    <h2 className="text-lg font-medium mb-2">Filters</h2>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Product Filter */}
+                      <div>
+                        <Label htmlFor="product-filter" className="mb-1 block">Product</Label>
+                        <Select
+                          value={selectedProductId?.toString() || "all"}
+                          onValueChange={(value) => setSelectedProductId(value === "all" ? null : Number(value))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="All Products" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Products</SelectItem>
+                            {products?.map((product) => (
+                              <SelectItem key={product.id} value={product.id.toString()}>
+                                {product.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      {/* Date Range - From */}
+                      <div>
+                        <Label htmlFor="date-from" className="mb-1 block">Date From</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              id="date-from"
+                              variant="outline"
+                              className="w-full justify-start text-left font-normal"
+                            >
+                              <CalendarRange className="mr-2 h-4 w-4" />
+                              {dateRange.from ? (
+                                format(dateRange.from, "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <Calendar
+                              mode="single"
+                              selected={dateRange.from}
+                              onSelect={(date) => setDateRange(prev => ({ ...prev, from: date }))}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      
+                      {/* Date Range - To */}
+                      <div>
+                        <Label htmlFor="date-to" className="mb-1 block">Date To</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              id="date-to"
+                              variant="outline"
+                              className="w-full justify-start text-left font-normal"
+                            >
+                              <CalendarRange className="mr-2 h-4 w-4" />
+                              {dateRange.to ? (
+                                format(dateRange.to, "PPP")
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <Calendar
+                              mode="single"
+                              selected={dateRange.to}
+                              onSelect={(date) => setDateRange(prev => ({ ...prev, to: date }))}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    </div>
+                    
+                    {/* Reset Filters */}
+                    <div className="flex justify-end">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setSelectedProductId(null);
+                          setDateRange({ from: undefined, to: undefined });
+                          setUseActivityDate(false);
+                        }}
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder="All Products" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Products</SelectItem>
-                          {products?.map((product) => (
-                            <SelectItem key={product.id} value={product.id.toString()}>
-                              {product.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    {/* Date Range - From */}
-                    <div>
-                      <Label htmlFor="date-from" className="mb-1 block">Date From</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            id="date-from"
-                            variant="outline"
-                            className="w-full justify-start text-left font-normal"
-                          >
-                            <CalendarRange className="mr-2 h-4 w-4" />
-                            {dateRange.from ? (
-                              format(dateRange.from, "PPP")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={dateRange.from}
-                            onSelect={(date) => setDateRange(prev => ({ ...prev, from: date }))}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    
-                    {/* Date Range - To */}
-                    <div>
-                      <Label htmlFor="date-to" className="mb-1 block">Date To</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            id="date-to"
-                            variant="outline"
-                            className="w-full justify-start text-left font-normal"
-                          >
-                            <CalendarRange className="mr-2 h-4 w-4" />
-                            {dateRange.to ? (
-                              format(dateRange.to, "PPP")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={dateRange.to}
-                            onSelect={(date) => setDateRange(prev => ({ ...prev, to: date }))}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                        Reset Filters
+                      </Button>
                     </div>
                   </div>
-                  
-                  {/* Reset Filters */}
-                  <div className="flex justify-end">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => {
-                        setSelectedProductId(null);
-                        setDateRange({ from: undefined, to: undefined });
-                        setUseActivityDate(false);
-                      }}
-                    >
-                      Reset Filters
-                    </Button>
-                  </div>
-                </div>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableCaption>A summary of orders by day</TableCaption>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="whitespace-nowrap">Date</TableHead>
-                        <TableHead className="whitespace-nowrap">Pending</TableHead>
-                        <TableHead className="whitespace-nowrap">Processing</TableHead>
-                        <TableHead className="whitespace-nowrap">Delivered</TableHead>
-                        <TableHead className="whitespace-nowrap">Cancelled</TableHead>
-                        <TableHead className="whitespace-nowrap">Total Orders</TableHead>
-                        <TableHead className="whitespace-nowrap">Delivery %</TableHead>
-                        <TableHead className="whitespace-nowrap text-right">Revenue</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {statistics.length > 0 ? (
-                        statistics.map((stat) => (
-                          <TableRow key={stat.date}>
-                            <TableCell className="font-medium whitespace-nowrap">{stat.date}</TableCell>
-                            <TableCell>{stat.pending}</TableCell>
-                            <TableCell>{stat.processing}</TableCell>
-                            <TableCell>{stat.delivered}</TableCell>
-                            <TableCell>{stat.cancelled}</TableCell>
-                            <TableCell>{stat.total}</TableCell>
-                            <TableCell>{stat.deliveredPercentage.toFixed(2)}%</TableCell>
-                            <TableCell className="text-right">${stat.revenue.toFixed(2)}</TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableCaption>A summary of orders by day</TableCaption>
+                      <TableHeader>
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center">No order data available</TableCell>
+                          <TableHead className="whitespace-nowrap">Date</TableHead>
+                          <TableHead className="whitespace-nowrap">Pending</TableHead>
+                          <TableHead className="whitespace-nowrap">Processing</TableHead>
+                          <TableHead className="whitespace-nowrap">Delivered</TableHead>
+                          <TableHead className="whitespace-nowrap">Cancelled</TableHead>
+                          <TableHead className="whitespace-nowrap">Total Orders</TableHead>
+                          <TableHead className="whitespace-nowrap">Delivery %</TableHead>
+                          <TableHead className="whitespace-nowrap text-right">Revenue</TableHead>
                         </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
+                      </TableHeader>
+                      <TableBody>
+                        {statistics.length > 0 ? (
+                          statistics.map((stat) => (
+                            <TableRow key={stat.date}>
+                              <TableCell className="font-medium whitespace-nowrap">{stat.date}</TableCell>
+                              <TableCell>{stat.pending}</TableCell>
+                              <TableCell>{stat.processing}</TableCell>
+                              <TableCell>{stat.delivered}</TableCell>
+                              <TableCell>{stat.cancelled}</TableCell>
+                              <TableCell>{stat.total}</TableCell>
+                              <TableCell>{stat.deliveredPercentage.toFixed(2)}%</TableCell>
+                              <TableCell className="text-right">${stat.revenue.toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={8} className="text-center">No order data available</TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
           )}
         </div>
       </main>
