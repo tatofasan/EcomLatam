@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ImageUpload } from "@/components/ui/image-upload";
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -157,34 +158,47 @@ export default function ProductDetailDialog({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
           {/* Left column - Images */}
           <div className="space-y-4">
-            <div className="relative bg-accent border border-border rounded-lg overflow-hidden h-[300px]">
-              <img 
-                src={images[currentImageIndex]} 
-                alt={productData.name}
-                className="w-full h-full object-contain p-4"
+{mode === "view" ? (
+              <div className="relative bg-accent border border-border rounded-lg overflow-hidden h-[300px]">
+                <img 
+                  src={images[currentImageIndex]} 
+                  alt={productData.name}
+                  className="w-full h-full object-contain p-4"
+                />
+                
+                {images.length > 1 && (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="absolute left-2 top-1/2 transform -translate-y-1/2"
+                      onClick={prevImage}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                      onClick={nextImage}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            ) : (
+              <ImageUpload 
+                className="h-[300px]"
+                currentImage={formData.imageUrl}
+                onImageChange={(image) => {
+                  setFormData({
+                    ...formData,
+                    imageUrl: image
+                  });
+                }}
               />
-              
-              {images.length > 1 && mode === "view" && (
-                <>
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    className="absolute left-2 top-1/2 transform -translate-y-1/2"
-                    onClick={prevImage}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2"
-                    onClick={nextImage}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </>
-              )}
-            </div>
+            )}
             
             {images.length > 1 && mode === "view" && (
               <div className="flex gap-2 overflow-x-auto py-2">
@@ -234,16 +248,7 @@ export default function ProductDetailDialog({
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="imageUrl">Image URL</Label>
-                  <Input 
-                    id="imageUrl"
-                    name="imageUrl"
-                    value={formData.imageUrl || ""}
-                    onChange={handleInputChange}
-                    placeholder="Enter image URL"
-                  />
-                </div>
+
 
                 <div>
                   <Label htmlFor="category">Category</Label>
