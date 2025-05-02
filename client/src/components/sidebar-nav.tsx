@@ -67,6 +67,12 @@ export default function SidebarNav({
       detail: { isOpen: isSidebarOpen } 
     });
     window.dispatchEvent(event);
+    
+    // Also update CSS variable for content margin
+    document.documentElement.style.setProperty(
+      '--sidebar-width', 
+      isSidebarOpen ? '200px' : '0px'
+    );
   }, [isSidebarOpen]);
   
   // Cerrar el sidebar automáticamente en móviles después de hacer clic en un enlace

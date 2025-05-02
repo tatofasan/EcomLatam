@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,19 @@ export default function ProductsPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortOption, setSortOption] = useState("newest");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { user } = useAuth();
+  
+  // Listen for sidebar state changes
+  useEffect(() => {
+    function handleSidebarChange(e: any) {
+      setIsSidebarOpen(e.detail.isOpen);
+    }
+    window.addEventListener('sidebarStateChange', handleSidebarChange);
+    return () => {
+      window.removeEventListener('sidebarStateChange', handleSidebarChange);
+    };
+  }, []);
   
   const handleProductClick = (product: Product) => {
     setSelectedProduct(product);
@@ -91,7 +103,7 @@ export default function ProductsPage() {
       <SidebarNav activeItem="products" user={user} />
 
       {/* Main Content */}
-      <main className="flex-1 ml-[200px] bg-secondary min-h-screen overflow-auto">
+      <main className={`flex-1 transition-all duration-300 bg-secondary min-h-screen overflow-auto ${isSidebarOpen ? 'md:ml-[200px]' : ''}`}>
         
         {/* Products Content */}
         <div className="p-6">
