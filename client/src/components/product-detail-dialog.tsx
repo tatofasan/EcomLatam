@@ -42,6 +42,25 @@ export default function ProductDetailDialog({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [formData, setFormData] = useState<Partial<Product>>({});
   
+  // Inicializar los datos del formulario cuando cambia el producto o el modo
+  useEffect(() => {
+    if (mode === "create") {
+      setFormData({
+        name: "",
+        description: "",
+        price: 0,
+        stock: 0,
+        status: "draft",
+        sku: `SKU-${Math.floor(Math.random() * 10000)}`,
+        imageUrl: "https://placehold.co/600x400?text=Product+Image",
+        category: "",
+      });
+    } else if (product) {
+      setFormData({ ...product });
+    }
+  }, [product, mode]);
+  
+  // Evitamos renderizar si no hay datos de producto cuando se necesitan
   if (!product && mode !== "create") return null;
   
   // Inicializar datos del producto para edición/creación
@@ -88,24 +107,6 @@ export default function ProductDetailDialog({
         return status;
     }
   };
-
-  // Inicializar los datos del formulario cuando cambia el producto o el modo
-  useEffect(() => {
-    if (mode === "create") {
-      setFormData({
-        name: "",
-        description: "",
-        price: 0,
-        stock: 0,
-        status: "draft",
-        sku: `SKU-${Math.floor(Math.random() * 10000)}`,
-        imageUrl: "https://placehold.co/600x400?text=Product+Image",
-        category: "",
-      });
-    } else if (product) {
-      setFormData({ ...product });
-    }
-  }, [product, mode]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
