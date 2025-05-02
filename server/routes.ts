@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage, DatabaseStorage } from "./storage";
 import { setupAuth } from "./auth";
@@ -7,7 +7,10 @@ import {
   insertOrderSchema, 
   insertOrderItemSchema, 
   insertConnectionSchema,
-  insertTransactionSchema
+  insertTransactionSchema,
+  products,
+  orders,
+  orderItems
 } from "@shared/schema";
 import { db } from "./db";
 
@@ -16,7 +19,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
   // Middleware to ensure authentication for protected routes
-  const requireAuth = (req, res, next) => {
+  const requireAuth = (req: Request, res: Response, next: Function) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -56,6 +59,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Seed only orders for statistics
       await storage.seedDemoOrders(userId);
+      
+      // Crear un pedido específico de ayer con actualización hoy
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      const today = new Date();
+      
+      // Generar un número de orden único
+      const orderNumber = `ORD-AYER-${Date.now().toString().slice(-4)}`;
+      
+      // Crear un pedido de ayer con actividad hoy
+      const [specialOrder] = await db
+        .insert(orders)
+        .values({
+          orderNumber,
+          userId: userId,
+          customerName: "Test Customer",
+          customerEmail: "test@example.com",
+          customerPhone: "123-456-7890",
+          shippingAddress: "Test Address, Test City",
+          status: "delivered", // Estado que no es 'pending' para que sea claro que hubo un cambio
+          totalAmount: 199.99,
+          notes: "Pedido de prueba (ayer-hoy)",
+          createdAt: yesterday,
+          updatedAt: today
+        })
+        .returning();
+      
+      // Agregar un item al pedido
+      const [product] = await db.select().from(products).limit(1);
+      if (product) {
+        await db.insert(orderItems).values({
+          orderId: specialOrder.id,
+          productId: product.id,
+          quantity: 1,
+          price: product.price,
+          subtotal: product.price
+        });
+      }
       
       res.status(200).json({ message: "Order data seeded successfully" });
     } catch (error) {
