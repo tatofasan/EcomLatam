@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import SidebarNav from "@/components/sidebar-nav";
+import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -247,10 +247,8 @@ export default function ConnectionsPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <SidebarNav activeItem={activeItem} user={user} />
-      
-      <main className="flex-1 p-6 pl-[220px]">
+    <DashboardLayout activeItem="connections">
+      <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold text-primary">Conexiones</h1>
@@ -527,7 +525,7 @@ export default function ConnectionsPage() {
             ))}
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }
