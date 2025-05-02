@@ -8,9 +8,10 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, User, Lock } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, User, Lock, Mail, UserCog } from "lucide-react";
 import { EcomdropLogo } from "@/lib/logos";
 
 const loginSchema = z.object({
@@ -54,6 +55,9 @@ export default function AuthPage() {
       username: "",
       password: "",
       confirm_password: "",
+      fullName: "",
+      email: "",
+      role: "user", // Default role is 'user'
     },
   });
 
@@ -211,6 +215,69 @@ export default function AuthPage() {
                             />
                           </FormControl>
                         </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={registerForm.control}
+                    name="fullName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="relative">
+                          <UserCog className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
+                          <FormControl>
+                            <Input
+                              placeholder="Full Name"
+                              className="pl-10"
+                              {...field}
+                            />
+                          </FormControl>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={registerForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
+                          <FormControl>
+                            <Input
+                              type="email"
+                              placeholder="Email"
+                              className="pl-10"
+                              {...field}
+                            />
+                          </FormControl>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={registerForm.control}
+                    name="role"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>User Type</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select user type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="user">Client</SelectItem>
+                            <SelectItem value="admin">Administrator</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}

@@ -1,11 +1,16 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Edit, Eye } from "lucide-react";
 import { Product } from "@/types";
+import { User } from "@shared/schema";
 
 interface ProductCardProps {
   product: Product;
   viewMode: "grid" | "list";
   onClick: (product: Product) => void;
+  onEdit?: (product: Product, e: React.MouseEvent) => void;
+  isAdmin?: boolean;
 }
 
 export default function ProductCard({ product, viewMode, onClick }: ProductCardProps) {
