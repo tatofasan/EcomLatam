@@ -68,6 +68,17 @@ export default function OrderStatisticsPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
   const [statistics, setStatistics] = useState<OrderStatsByDay[]>([]);
   
+  // Listen for sidebar state changes
+  useEffect(() => {
+    function handleSidebarChange(e: any) {
+      setIsSidebarOpen(e.detail.isOpen);
+    }
+    window.addEventListener('sidebarStateChange', handleSidebarChange);
+    return () => {
+      window.removeEventListener('sidebarStateChange', handleSidebarChange);
+    };
+  }, []);
+  
   // Filtros
   const [useActivityDate, setUseActivityDate] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
@@ -218,16 +229,7 @@ export default function OrderStatisticsPage() {
     setStatistics(stats);
   }, [orders, selectedProductId, dateRange, useActivityDate]);
 
-  // Escuchar cambios del sidebar desde SidebarNav
-  useEffect(() => {
-    function handleSidebarChange(e: CustomEvent) {
-      setIsSidebarOpen(e.detail.isOpen);
-    }
-    window.addEventListener('sidebarToggle' as any, handleSidebarChange);
-    return () => {
-      window.removeEventListener('sidebarToggle' as any, handleSidebarChange);
-    };
-  }, []);
+
 
   return (
     <div className="flex h-screen">

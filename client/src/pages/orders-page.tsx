@@ -65,6 +65,18 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  
+  // Listen for sidebar state changes
+  useEffect(() => {
+    function handleSidebarChange(e: any) {
+      setIsSidebarOpen(e.detail.isOpen);
+    }
+    window.addEventListener('sidebarStateChange', handleSidebarChange);
+    return () => {
+      window.removeEventListener('sidebarStateChange', handleSidebarChange);
+    };
+  }, []);
 
   // Function to load order details
   const fetchOrderDetails = async (orderId: number) => {
@@ -230,7 +242,7 @@ export default function OrdersPage() {
     <div className="flex min-h-screen bg-background">
       <SidebarNav activeItem={activeItem} user={user} />
       
-      <main className="flex-1 p-6 pl-[220px]">
+      <main className={`flex-1 p-6 transition-all duration-300 ${isSidebarOpen ? 'md:ml-[200px]' : ''}`}>
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold text-primary">Pedidos</h1>
