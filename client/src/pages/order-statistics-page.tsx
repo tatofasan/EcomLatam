@@ -235,7 +235,7 @@ export default function OrderStatisticsPage() {
       <SidebarNav activeItem="orders-statistics" user={user} />
 
       {/* Main Content */}
-      <main className={`flex-1 transition-all duration-300 bg-secondary min-h-screen overflow-auto ${isSidebarOpen ? 'md:ml-[200px]' : 'ml-0'}`}>
+      <main className={`flex-1 transition-all duration-300 bg-secondary min-h-screen overflow-auto ${isSidebarOpen ? 'md:ml-[200px]' : ''}`}>
         <div className="p-3 md:p-6">
           <h1 className="text-xl md:text-2xl font-bold mb-4">Order Statistics</h1>
           

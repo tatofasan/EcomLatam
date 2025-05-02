@@ -60,6 +60,15 @@ export default function SidebarNav({
     }
   }, [isMobile]);
   
+  // Dispatch global event when sidebar state changes
+  useEffect(() => {
+    // Dispatch event so other components can listen
+    const event = new CustomEvent("sidebarStateChange", { 
+      detail: { isOpen: isSidebarOpen } 
+    });
+    window.dispatchEvent(event);
+  }, [isSidebarOpen]);
+  
   // Cerrar el sidebar automáticamente en móviles después de hacer clic en un enlace
   const handleNavigation = (href: string, subMenuParent?: string) => {
     setLocation(href);
