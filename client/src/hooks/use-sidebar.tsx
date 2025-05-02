@@ -1,5 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 type SidebarContextType = {
   isSidebarOpen: boolean;
@@ -11,27 +10,56 @@ type SidebarContextType = {
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
 export function SidebarProvider({ children }: { children: ReactNode }) {
-  const isMobile = useIsMobile();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  // Adjust sidebar state when window size changes
+  const toggleSidebar = () => {
+    const newState = !isSidebarOpen;
+    setIsSidebarOpen(newState);
+    // Dispatch custom event for legacy components
+    window.dispatchEvent(new CustomEvent('sidebarStateChange', { 
+      detail: { isOpen: newState } 
+    }));
+  };
+
+  const openSidebar = () => {
+    if (!isSidebarOpen) {
+      setIsSidebarOpen(true);
+      window.dispatchEvent(new CustomEvent('sidebarStateChange', { 
+        detail: { isOpen: true } 
+      }));
+    }
+  };
+
+  const closeSidebar = () => {
+    if (isSidebarOpen) {
+      setIsSidebarOpen(false);
+      window.dispatchEvent(new CustomEvent('sidebarStateChange', { 
+        detail: { isOpen: false } 
+      }));
+    }
+  };
+
+  // Handle screen resize
   useEffect(() => {
-    setIsSidebarOpen(!isMobile);
-  }, [isMobile]);
+    const handleResize = () => {
+      if (window.innerWidth < 768 && isSidebarOpen) {
+        setIsSidebarOpen(false);
+      } else if (window.innerWidth >= 768 && !isSidebarOpen) {
+        setIsSidebarOpen(true);
+      }
+    };
 
-  const toggleSidebar = () => setIsSidebarOpen(prev => !prev);
-  const openSidebar = () => setIsSidebarOpen(true);
-  const closeSidebar = () => setIsSidebarOpen(false);
+    window.addEventListener('resize', handleResize);
+    // Initial check
+    handleResize();
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isSidebarOpen]);
 
   return (
-    <SidebarContext.Provider 
-      value={{ 
-        isSidebarOpen, 
-        toggleSidebar,
-        openSidebar,
-        closeSidebar
-      }}
-    >
+    <SidebarContext.Provider value={{ isSidebarOpen, toggleSidebar, openSidebar, closeSidebar }}>
       {children}
     </SidebarContext.Provider>
   );
@@ -39,8 +67,10 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
 
 export function useSidebar() {
   const context = useContext(SidebarContext);
+  
   if (context === undefined) {
     throw new Error('useSidebar must be used within a SidebarProvider');
   }
+  
   return context;
 }

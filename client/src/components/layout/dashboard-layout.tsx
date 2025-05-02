@@ -1,5 +1,6 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useSidebar } from "@/hooks/use-sidebar";
 import SidebarNav from "@/components/sidebar-nav";
 
 interface DashboardLayoutProps {
@@ -9,19 +10,8 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ children, activeItem }: DashboardLayoutProps) {
   const { user } = useAuth();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const { isSidebarOpen } = useSidebar();
   
-  // Listen for sidebar state changes
-  useEffect(() => {
-    function handleSidebarChange(e: any) {
-      setIsSidebarOpen(e.detail.isOpen);
-    }
-    window.addEventListener('sidebarStateChange', handleSidebarChange);
-    return () => {
-      window.removeEventListener('sidebarStateChange', handleSidebarChange);
-    };
-  }, []);
-
   return (
     <div className="flex h-screen">
       {/* Sidebar */}

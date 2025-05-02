@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
+import DashboardLayout from "@/components/layout/dashboard-layout";
 import { 
   Loader2, 
   CalendarRange,
@@ -10,7 +10,6 @@ import {
   RefreshCw,
   Database
 } from "lucide-react";
-import SidebarNav from "@/components/sidebar-nav";
 import {
   Table,
   TableBody,
@@ -25,14 +24,13 @@ import { Order, Product } from "@/types";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Calendar } from "@/components/ui/calendar";
+import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 
-// Define the statistics data type
 interface OrderStatsByDay {
   date: string;
   pending: number;
@@ -44,7 +42,6 @@ interface OrderStatsByDay {
   revenue: number;
 }
 
-// Define the order type used for statistics processing
 interface OrderForStats {
   id: number;
   createdAt: string;
@@ -61,23 +58,10 @@ interface OrderForStats {
 }
 
 export default function OrderStatisticsPage() {
-  const { user } = useAuth();
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
   const [statistics, setStatistics] = useState<OrderStatsByDay[]>([]);
-  
-  // Listen for sidebar state changes
-  useEffect(() => {
-    function handleSidebarChange(e: any) {
-      setIsSidebarOpen(e.detail.isOpen);
-    }
-    window.addEventListener('sidebarStateChange', handleSidebarChange);
-    return () => {
-      window.removeEventListener('sidebarStateChange', handleSidebarChange);
-    };
-  }, []);
   
   // Filtros
   const [useActivityDate, setUseActivityDate] = useState(false);
@@ -229,266 +213,253 @@ export default function OrderStatisticsPage() {
     setStatistics(stats);
   }, [orders, selectedProductId, dateRange, useActivityDate]);
 
-
-
   return (
-    <div className="flex h-screen">
-      {/* Sidebar */}
-      <SidebarNav activeItem="orders-statistics" user={user} />
-
-      {/* Main Content */}
-      <main className={`flex-1 transition-all duration-300 bg-secondary min-h-screen overflow-auto ${isSidebarOpen ? 'md:ml-[200px]' : ''}`}>
-        <div className="p-3 md:p-6">
-          <h1 className="text-xl md:text-2xl font-bold mb-4">Order Statistics</h1>
-          
-          {isLoading || regenerateDataMutation.isPending ? (
-            <div className="flex justify-center items-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    <DashboardLayout activeItem="orders-statistics">
+      <div className="p-3 md:p-6">
+        <h1 className="text-xl md:text-2xl font-bold mb-4">Order Statistics</h1>
+        
+        {isLoading || regenerateDataMutation.isPending ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <>
+            {/* Información y botón para regenerar datos */}
+            <div className="mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center mb-4">
+                <Alert>
+                  <Database className="h-4 w-4" />
+                  <AlertTitle>Statistics Visualization</AlertTitle>
+                  <AlertDescription className="text-xs md:text-sm">
+                    This page shows order statistics over time. Generate test data for better visualization.
+                  </AlertDescription>
+                </Alert>
+                
+                <div className="flex justify-center md:justify-end">
+                  <Button 
+                    variant="outline" 
+                    className="flex items-center gap-1 w-full md:w-auto"
+                    onClick={() => regenerateDataMutation.mutate()}
+                    disabled={regenerateDataMutation.isPending}
+                  >
+                    {regenerateDataMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-1" />
+                    )}
+                    Regenerate Test Data
+                  </Button>
+                </div>
+              </div>
             </div>
-          ) : (
-            <>
-              {/* Información y botón para regenerar datos */}
-              <div className="mb-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center mb-4">
-                  <Alert>
-                    <Database className="h-4 w-4" />
-                    <AlertTitle>Statistics Visualization</AlertTitle>
-                    <AlertDescription className="text-xs md:text-sm">
-                      This page shows order statistics over time. Generate test data for better visualization.
-                    </AlertDescription>
-                  </Alert>
+            
+            <Card>
+              <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-2 md:space-y-0">
+                <div className="flex flex-col space-y-1">
+                  <CardTitle>Daily Order Summary</CardTitle>
+                  <CardDescription className="hidden md:block">View and analyze order data by day</CardDescription>
+                </div>
+                <div className="flex items-center space-x-2 bg-muted/30 p-1.5 rounded-md">
+                  <Label htmlFor="date-type" className="text-xs md:text-sm truncate">Creation Date</Label>
+                  <Switch 
+                    id="date-type"
+                    checked={useActivityDate} 
+                    onCheckedChange={setUseActivityDate}
+                  />
+                  <Label htmlFor="date-type" className="text-xs md:text-sm truncate">Activity Date</Label>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {/* Filters Section */}
+                <div className="bg-muted/40 p-4 rounded-md mb-6 space-y-4">
+                  <h2 className="text-lg font-medium mb-2">Filters</h2>
                   
-                  <div className="flex justify-center md:justify-end">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Product Filter */}
+                    <div>
+                      <Label htmlFor="product-filter" className="mb-1 block">Product</Label>
+                      <Select
+                        value={selectedProductId?.toString() || "all"}
+                        onValueChange={(value) => setSelectedProductId(value === "all" ? null : Number(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="All Products" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Products</SelectItem>
+                          {products?.map((product) => (
+                            <SelectItem key={product.id} value={product.id.toString()}>
+                              {product.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {/* Date Range - From */}
+                    <div>
+                      <Label htmlFor="date-from" className="mb-1 block">Date From</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            id="date-from"
+                            variant="outline"
+                            className="w-full justify-start text-left font-normal"
+                          >
+                            <CalendarRange className="mr-2 h-4 w-4" />
+                            {dateRange.from ? (
+                              format(dateRange.from, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={dateRange.from}
+                            onSelect={(date) => setDateRange(prev => ({ ...prev, from: date }))}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    
+                    {/* Date Range - To */}
+                    <div>
+                      <Label htmlFor="date-to" className="mb-1 block">Date To</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            id="date-to"
+                            variant="outline"
+                            className="w-full justify-start text-left font-normal"
+                          >
+                            <CalendarRange className="mr-2 h-4 w-4" />
+                            {dateRange.to ? (
+                              format(dateRange.to, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={dateRange.to}
+                            onSelect={(date) => setDateRange(prev => ({ ...prev, to: date }))}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </div>
+                  
+                  {/* Reset Filters */}
+                  <div className="flex justify-end">
                     <Button 
                       variant="outline" 
-                      className="flex items-center gap-1 w-full md:w-auto"
-                      onClick={() => regenerateDataMutation.mutate()}
-                      disabled={regenerateDataMutation.isPending}
+                      size="sm"
+                      onClick={() => {
+                        setSelectedProductId(null);
+                        setDateRange({ from: undefined, to: undefined });
+                        setUseActivityDate(false);
+                      }}
                     >
-                      {regenerateDataMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                      ) : (
-                        <RefreshCw className="h-4 w-4 mr-1" />
-                      )}
-                      Regenerate Test Data
+                      Reset Filters
                     </Button>
                   </div>
                 </div>
-              </div>
-              
-              <Card>
-                <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-2 md:space-y-0">
-                  <div className="flex flex-col space-y-1">
-                    <CardTitle>Daily Order Summary</CardTitle>
-                    <CardDescription className="hidden md:block">View and analyze order data by day</CardDescription>
-                  </div>
-                  <div className="flex items-center space-x-2 bg-muted/30 p-1.5 rounded-md">
-                    <Label htmlFor="date-type" className="text-xs md:text-sm truncate">Creation Date</Label>
-                    <Switch 
-                      id="date-type"
-                      checked={useActivityDate} 
-                      onCheckedChange={setUseActivityDate}
-                    />
-                    <Label htmlFor="date-type" className="text-xs md:text-sm truncate">Activity Date</Label>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {/* Filters Section */}
-                  <div className="bg-muted/40 p-4 rounded-md mb-6 space-y-4">
-                    <h2 className="text-lg font-medium mb-2">Filters</h2>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Product Filter */}
-                      <div>
-                        <Label htmlFor="product-filter" className="mb-1 block">Product</Label>
-                        <Select
-                          value={selectedProductId?.toString() || "all"}
-                          onValueChange={(value) => setSelectedProductId(value === "all" ? null : Number(value))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="All Products" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Products</SelectItem>
-                            {products?.map((product) => (
-                              <SelectItem key={product.id} value={product.id.toString()}>
-                                {product.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      {/* Date Range - From */}
-                      <div>
-                        <Label htmlFor="date-from" className="mb-1 block">Date From</Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              id="date-from"
-                              variant="outline"
-                              className="w-full justify-start text-left font-normal"
-                            >
-                              <CalendarRange className="mr-2 h-4 w-4" />
-                              {dateRange.from ? (
-                                format(dateRange.from, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar
-                              mode="single"
-                              selected={dateRange.from}
-                              onSelect={(date) => setDateRange(prev => ({ ...prev, from: date }))}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      
-                      {/* Date Range - To */}
-                      <div>
-                        <Label htmlFor="date-to" className="mb-1 block">Date To</Label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              id="date-to"
-                              variant="outline"
-                              className="w-full justify-start text-left font-normal"
-                            >
-                              <CalendarRange className="mr-2 h-4 w-4" />
-                              {dateRange.to ? (
-                                format(dateRange.to, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar
-                              mode="single"
-                              selected={dateRange.to}
-                              onSelect={(date) => setDateRange(prev => ({ ...prev, to: date }))}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                    </div>
-                    
-                    {/* Reset Filters */}
-                    <div className="flex justify-end">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          setSelectedProductId(null);
-                          setDateRange({ from: undefined, to: undefined });
-                          setUseActivityDate(false);
-                        }}
-                      >
-                        Reset Filters
-                      </Button>
-                    </div>
-                  </div>
-                  {/* Visualización de tabla para pantallas medianas y grandes */}
-                  <div className="hidden md:block overflow-x-auto">
-                    <Table>
-                      <TableCaption>A summary of orders by day</TableCaption>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="whitespace-nowrap">Date</TableHead>
-                          <TableHead className="whitespace-nowrap">Pending</TableHead>
-                          <TableHead className="whitespace-nowrap">Processing</TableHead>
-                          <TableHead className="whitespace-nowrap">Delivered</TableHead>
-                          <TableHead className="whitespace-nowrap">Cancelled</TableHead>
-                          <TableHead className="whitespace-nowrap">Total Orders</TableHead>
-                          <TableHead className="whitespace-nowrap">Delivery %</TableHead>
-                          <TableHead className="whitespace-nowrap text-right">Revenue</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {statistics.length > 0 ? (
-                          statistics.map((stat) => (
-                            <TableRow key={stat.date}>
-                              <TableCell className="font-medium whitespace-nowrap">{stat.date}</TableCell>
-                              <TableCell>{stat.pending}</TableCell>
-                              <TableCell>{stat.processing}</TableCell>
-                              <TableCell>{stat.delivered}</TableCell>
-                              <TableCell>{stat.cancelled}</TableCell>
-                              <TableCell>{stat.total}</TableCell>
-                              <TableCell>{stat.deliveredPercentage.toFixed(2)}%</TableCell>
-                              <TableCell className="text-right">${stat.revenue.toFixed(2)}</TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={8} className="text-center">No order data available</TableCell>
+                {/* Visualización de tabla para pantallas medianas y grandes */}
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableCaption>A summary of orders by day</TableCaption>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="whitespace-nowrap">Date</TableHead>
+                        <TableHead className="whitespace-nowrap">Pending</TableHead>
+                        <TableHead className="whitespace-nowrap">Processing</TableHead>
+                        <TableHead className="whitespace-nowrap">Delivered</TableHead>
+                        <TableHead className="whitespace-nowrap">Cancelled</TableHead>
+                        <TableHead className="whitespace-nowrap">Total Orders</TableHead>
+                        <TableHead className="whitespace-nowrap">Delivery %</TableHead>
+                        <TableHead className="whitespace-nowrap text-right">Revenue</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {statistics.length > 0 ? (
+                        statistics.map((stat) => (
+                          <TableRow key={stat.date}>
+                            <TableCell className="font-medium whitespace-nowrap">{stat.date}</TableCell>
+                            <TableCell>{stat.pending}</TableCell>
+                            <TableCell>{stat.processing}</TableCell>
+                            <TableCell>{stat.delivered}</TableCell>
+                            <TableCell>{stat.cancelled}</TableCell>
+                            <TableCell>{stat.total}</TableCell>
+                            <TableCell>{stat.deliveredPercentage.toFixed(2)}%</TableCell>
+                            <TableCell className="text-right">${stat.revenue.toFixed(2)}</TableCell>
                           </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center">No order data available</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+                
+                {/* Visualización de tarjetas para dispositivos móviles */}
+                <div className="md:hidden space-y-4">
+                  <h3 className="text-center text-muted-foreground mb-2">Order Summary by Day</h3>
                   
-                  {/* Visualización de tarjetas para dispositivos móviles */}
-                  <div className="md:hidden space-y-4">
-                    <h3 className="text-center text-muted-foreground mb-2">Order Summary by Day</h3>
-                    
-                    {statistics.length > 0 ? (
-                      statistics.map((stat) => (
-                        <div key={stat.date} className="bg-card border rounded-lg p-4 shadow-sm">
-                          <div className="flex justify-between items-center border-b pb-2 mb-2">
-                            <h4 className="font-semibold">{stat.date}</h4>
-                            <span className="bg-primary/10 text-primary px-2 py-1 rounded-md text-xs">
-                              Total: {stat.total}
-                            </span>
+                  {statistics.length > 0 ? (
+                    statistics.map((stat) => (
+                      <div key={stat.date} className="bg-card border rounded-lg p-4 shadow-sm">
+                        <div className="flex justify-between items-center border-b pb-2 mb-2">
+                          <h4 className="font-semibold">{stat.date}</h4>
+                          <span className="bg-primary/10 text-primary px-2 py-1 rounded-md text-xs">
+                            Total: {stat.total}
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                          <div className="flex flex-col">
+                            <span className="text-xs text-muted-foreground">Pending</span>
+                            <span className="font-medium">{stat.pending}</span>
                           </div>
-                          
-                          <div className="grid grid-cols-2 gap-2 mb-3">
-                            <div className="flex flex-col">
-                              <span className="text-xs text-muted-foreground">Pending</span>
-                              <span className="font-medium">{stat.pending}</span>
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-xs text-muted-foreground">Processing</span>
-                              <span className="font-medium">{stat.processing}</span>
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-xs text-muted-foreground">Delivered</span>
-                              <span className="font-medium">{stat.delivered}</span>
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-xs text-muted-foreground">Cancelled</span>
-                              <span className="font-medium">{stat.cancelled}</span>
-                            </div>
+                          <div className="flex flex-col">
+                            <span className="text-xs text-muted-foreground">Processing</span>
+                            <span className="font-medium">{stat.processing}</span>
                           </div>
-                          
-                          <div className="flex justify-between items-center border-t pt-2">
-                            <div>
-                              <span className="text-xs text-muted-foreground block">Delivery Rate</span>
-                              <span className="font-medium">{stat.deliveredPercentage.toFixed(2)}%</span>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-xs text-muted-foreground block">Revenue</span>
-                              <span className="font-medium">${stat.revenue.toFixed(2)}</span>
-                            </div>
+                          <div className="flex flex-col">
+                            <span className="text-xs text-muted-foreground">Delivered</span>
+                            <span className="font-medium">{stat.delivered}</span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-xs text-muted-foreground">Cancelled</span>
+                            <span className="font-medium">{stat.cancelled}</span>
                           </div>
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        No order data available
+                        
+                        <div className="flex justify-between items-center pt-2 border-t">
+                          <span className="text-xs text-muted-foreground">Delivery: <span className="font-medium">{stat.deliveredPercentage.toFixed(2)}%</span></span>
+                          <span className="text-xs text-green-600 font-medium">${stat.revenue.toFixed(2)}</span>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </>
-          )}
-        </div>
-      </main>
-    </div>
+                    ))
+                  ) : (
+                    <div className="bg-muted/20 border rounded-lg p-4 text-center">
+                      <Package2 className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-muted-foreground">No order data available</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
+      </div>
+    </DashboardLayout>
   );
 }

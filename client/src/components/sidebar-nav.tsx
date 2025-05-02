@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { User as UserType } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useSidebar } from "@/hooks/use-sidebar";
 import { EcomdropLogo } from "@/lib/logos";
 import { 
   LayoutDashboard, 
@@ -47,33 +48,11 @@ export default function SidebarNav({
   const { logoutMutation } = useAuth();
   const [, setLocation] = useLocation();
   const isMobile = useIsMobile();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
+  const { isSidebarOpen, toggleSidebar, openSidebar, closeSidebar } = useSidebar();
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
     // Expanded by default if the active item is a subitem
     orders: activeItem?.startsWith('orders-') || false
   });
-  
-  // Ajustar el estado del sidebar cuando cambia el tamaño de la ventana
-  useEffect(() => {
-    if (!isMobile) {
-      setIsSidebarOpen(true);
-    }
-  }, [isMobile]);
-  
-  // Dispatch global event when sidebar state changes
-  useEffect(() => {
-    // Dispatch event so other components can listen
-    const event = new CustomEvent("sidebarStateChange", { 
-      detail: { isOpen: isSidebarOpen } 
-    });
-    window.dispatchEvent(event);
-    
-    // Also update CSS variable for content margin
-    document.documentElement.style.setProperty(
-      '--sidebar-width', 
-      isSidebarOpen ? '200px' : '0px'
-    );
-  }, [isSidebarOpen]);
   
   // Cerrar el sidebar automáticamente en móviles después de hacer clic en un enlace
   const handleNavigation = (href: string, subMenuParent?: string) => {
@@ -88,7 +67,7 @@ export default function SidebarNav({
     }
     
     if (isMobile) {
-      setIsSidebarOpen(false);
+      closeSidebar();
     }
   };
   
@@ -167,7 +146,7 @@ export default function SidebarNav({
     <>
       {/* Mobile menu toggle button */}
       <button 
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        onClick={toggleSidebar}
         className="md:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-primary text-white shadow-md"
       >
         {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
@@ -177,7 +156,7 @@ export default function SidebarNav({
       {isMobile && isSidebarOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40"
-          onClick={() => setIsSidebarOpen(false)}
+          onClick={closeSidebar}
         />
       )}
       
@@ -192,7 +171,7 @@ export default function SidebarNav({
         <div className="p-4 border-b border-border bg-primary/10 flex justify-between items-center">
           <EcomdropLogo className="h-8" />
           <button 
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            onClick={toggleSidebar}
             className="hidden md:flex text-foreground/60 hover:text-primary"
           >
             <Menu size={20} />
@@ -313,7 +292,7 @@ export default function SidebarNav({
       {/* Fixed toggle button for desktop */}
       {!isSidebarOpen && (
         <button 
-          onClick={() => setIsSidebarOpen(true)}
+          onClick={openSidebar}
           className="hidden md:block fixed top-4 left-4 z-30 p-2 rounded-md bg-primary text-white shadow-md"
         >
           <Menu size={20} />

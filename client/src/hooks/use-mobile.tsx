@@ -1,19 +1,26 @@
-import * as React from "react"
+import { useState, useEffect } from 'react';
 
-const MOBILE_BREAKPOINT = 768
-
+// Named export para un hook personalizado
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+  const [isMobile, setIsMobile] = useState(false);
 
-  React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
-    const onChange = () => {
-      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    }
-    mql.addEventListener("change", onChange)
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
-    return () => mql.removeEventListener("change", onChange)
-  }, [])
+  useEffect(() => {
+    // Función para verificar si la pantalla es de móvil (menos de 768px)
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
 
-  return !!isMobile
+    // Verificar al montar
+    checkIfMobile();
+
+    // Agregar event listener para cambios de tamaño
+    window.addEventListener('resize', checkIfMobile);
+
+    // Limpiar el event listener al desmontar
+    return () => {
+      window.removeEventListener('resize', checkIfMobile);
+    };
+  }, []);
+
+  return isMobile;
 }
