@@ -1,14 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Search, Plus } from "lucide-react";
-import SidebarNav from "@/components/sidebar-nav";
 import ProductFilter from "@/components/product-filter";
 import ProductCard from "@/components/product-card";
 import ProductDetailDialog from "@/components/product-detail-dialog";
 import Pagination from "@/components/pagination";
+import DashboardLayout from "@/components/layout/dashboard-layout";
 
 import { Product } from "@/types";
 
@@ -21,19 +20,6 @@ export default function ProductsPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortOption, setSortOption] = useState("newest");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const { user } = useAuth();
-  
-  // Listen for sidebar state changes
-  useEffect(() => {
-    function handleSidebarChange(e: any) {
-      setIsSidebarOpen(e.detail.isOpen);
-    }
-    window.addEventListener('sidebarStateChange', handleSidebarChange);
-    return () => {
-      window.removeEventListener('sidebarStateChange', handleSidebarChange);
-    };
-  }, []);
   
   const handleProductClick = (product: Product) => {
     setSelectedProduct(product);
@@ -98,78 +84,71 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="flex h-screen">
-      {/* Sidebar */}
-      <SidebarNav activeItem="products" user={user} />
-
-      {/* Main Content */}
-      <main className={`flex-1 transition-all duration-300 bg-secondary min-h-screen overflow-auto ${isSidebarOpen ? 'md:ml-[200px]' : ''}`}>
-        
-        {/* Products Content */}
-        <div className="p-6">
-          {/* Search Bar */}
-          <div className="bg-white p-4 rounded-md shadow-sm mb-4">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search products by name, description or SKU..."
-                className="pl-8"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+    <DashboardLayout activeItem="products">
+      {/* Products Content */}
+      <div className="p-6">
+        {/* Search Bar */}
+        <div className="bg-white p-4 rounded-md shadow-sm mb-4">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search products by name, description or SKU..."
+              className="pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-          
-          {/* Filter Bar */}
-          <ProductFilter 
-            viewMode={viewMode} 
-            setViewMode={setViewMode}
-            categoryFilter={categoryFilter}
-            statusFilter={statusFilter}
-            sortOption={sortOption}
-            onCategoryChange={setCategoryFilter}
-            onStatusChange={setStatusFilter}
-            onSortChange={setSortOption}
-          />
-          
-          {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : filteredProducts && filteredProducts.length > 0 ? (
-            <>
-              {/* Products Grid */}
-              <div className={`grid grid-cols-1 ${viewMode === 'grid' ? 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'sm:grid-cols-1'} gap-6 mt-6`}>
-                {filteredProducts.map((product) => (
-                  <ProductCard 
-                    key={product.id} 
-                    product={product} 
-                    viewMode={viewMode}
-                    onClick={handleProductClick}
-                  />
-                ))}
-              </div>
-            
-              {/* Pagination */}
-              <Pagination 
-                currentPage={currentPage}
-                totalPages={3}
-                onPageChange={setCurrentPage}
-                totalItems={filteredProducts.length}
-                itemsPerPage={12}
-              />
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-64">
-              <p className="text-lg text-gray-500">No products found</p>
-              <Button variant="outline" className="mt-4">
-                Add Your First Product
-              </Button>
-            </div>
-          )}
         </div>
-      </main>
+        
+        {/* Filter Bar */}
+        <ProductFilter 
+          viewMode={viewMode} 
+          setViewMode={setViewMode}
+          categoryFilter={categoryFilter}
+          statusFilter={statusFilter}
+          sortOption={sortOption}
+          onCategoryChange={setCategoryFilter}
+          onStatusChange={setStatusFilter}
+          onSortChange={setSortOption}
+        />
+        
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : filteredProducts && filteredProducts.length > 0 ? (
+          <>
+            {/* Products Grid */}
+            <div className={`grid grid-cols-1 ${viewMode === 'grid' ? 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'sm:grid-cols-1'} gap-6 mt-6`}>
+              {filteredProducts.map((product) => (
+                <ProductCard 
+                  key={product.id} 
+                  product={product} 
+                  viewMode={viewMode}
+                  onClick={handleProductClick}
+                />
+              ))}
+            </div>
+          
+            {/* Pagination */}
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={3}
+              onPageChange={setCurrentPage}
+              totalItems={filteredProducts.length}
+              itemsPerPage={12}
+            />
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-64">
+            <p className="text-lg text-gray-500">No products found</p>
+            <Button variant="outline" className="mt-4">
+              Add Your First Product
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* Product Detail Dialog */}
       <ProductDetailDialog 
@@ -177,6 +156,6 @@ export default function ProductsPage() {
         isOpen={detailDialogOpen}
         onClose={() => setDetailDialogOpen(false)}
       />
-    </div>
+    </DashboardLayout>
   );
 }

@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import SidebarNav from "@/components/sidebar-nav";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import DashboardLayout from "@/components/layout/dashboard-layout";
 import {
   ShoppingCart,
   Search,
@@ -22,7 +22,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 
 // Type definitions for data from the API
@@ -65,18 +65,6 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  
-  // Listen for sidebar state changes
-  useEffect(() => {
-    function handleSidebarChange(e: any) {
-      setIsSidebarOpen(e.detail.isOpen);
-    }
-    window.addEventListener('sidebarStateChange', handleSidebarChange);
-    return () => {
-      window.removeEventListener('sidebarStateChange', handleSidebarChange);
-    };
-  }, []);
 
   // Function to load order details
   const fetchOrderDetails = async (orderId: number) => {
@@ -239,10 +227,8 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <SidebarNav activeItem={activeItem} user={user} />
-      
-      <main className={`flex-1 p-6 transition-all duration-300 ${isSidebarOpen ? 'md:ml-[200px]' : ''}`}>
+    <DashboardLayout activeItem="orders-list">
+      <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold text-primary">Pedidos</h1>
@@ -491,7 +477,7 @@ export default function OrdersPage() {
             </DialogContent>
           </Dialog>
         )}
-      </main>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }
