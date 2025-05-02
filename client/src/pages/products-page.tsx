@@ -1,13 +1,16 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Search, Plus } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import ProductFilter from "@/components/product-filter";
 import ProductCard from "@/components/product-card";
 import ProductDetailDialog from "@/components/product-detail-dialog";
 import Pagination from "@/components/pagination";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import { useAuth } from "@/hooks/use-auth";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 import { Product } from "@/types";
 
@@ -17,13 +20,86 @@ export default function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"view" | "edit" | "create">("view");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortOption, setSortOption] = useState("newest");
   
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
+  const isAdmin = user?.role === "admin";
+  
   const handleProductClick = (product: Product) => {
     setSelectedProduct(product);
+    setDialogMode("view");
     setDetailDialogOpen(true);
+  };
+  
+  const handleEditClick = (product: Product, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedProduct(product);
+    setDialogMode("edit");
+    setDetailDialogOpen(true);
+  };
+  
+  const handleCreateClick = () => {
+    setSelectedProduct(null);
+    setDialogMode("create");
+    setDetailDialogOpen(true);
+  };
+
+  // Mutations para crear, actualizar y eliminar productos
+  const createProductMutation = useMutation({
+    mutationFn: async (product: Omit<Product, "id">) => {
+      const res = await apiRequest("POST", "/api/products", product);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({
+        title: "Product created",
+        description: "The product has been created successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to create product: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateProductMutation = useMutation({
+    mutationFn: async (product: Product) => {
+      const res = await apiRequest("PUT", `/api/products/${product.id}`, product);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      toast({
+        title: "Product updated",
+        description: "The product has been updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: `Failed to update product: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+  
+  const handleSaveProduct = (product: Product) => {
+    if (dialogMode === "create") {
+      // Omitir el ID que es un placeholder temporal para la creación
+      const { id, ...productData } = product;
+      createProductMutation.mutate(productData);
+    } else if (dialogMode === "edit") {
+      updateProductMutation.mutate(product);
+    }
   };
 
   // Fetch products
