@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Calendar } from "@/components/ui/calendar";
+import { DateRange } from "react-day-picker";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -66,13 +67,7 @@ export default function OrderStatisticsPage() {
   // Filtros
   const [useActivityDate, setUseActivityDate] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
-  const [dateRange, setDateRange] = useState<{
-    from: Date | undefined;
-    to: Date | undefined;
-  }>({
-    from: undefined,
-    to: undefined
-  });
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   // Mutación para regenerar los datos de estadísticas
   const regenerateDataMutation = useMutation({
@@ -155,15 +150,15 @@ export default function OrderStatisticsPage() {
     }
     
     // Apply date range filter if set
-    if (dateRange.from || dateRange.to) {
+    if (dateRange?.from || dateRange?.to) {
       filteredOrders = filteredOrders.filter(order => {
         const orderDate = new Date(useActivityDate && order.updatedAt ? order.updatedAt : order.createdAt);
         
-        if (dateRange.from && dateRange.to) {
+        if (dateRange?.from && dateRange?.to) {
           return orderDate >= dateRange.from && orderDate <= dateRange.to;
-        } else if (dateRange.from) {
+        } else if (dateRange?.from) {
           return orderDate >= dateRange.from;
-        } else if (dateRange.to) {
+        } else if (dateRange?.to) {
           return orderDate <= dateRange.to;
         }
         
@@ -307,57 +302,36 @@ export default function OrderStatisticsPage() {
                     </div>
                     
                     {/* Date Range - From */}
-                    <div>
-                      <Label htmlFor="date-from" className="mb-1 block">Date From</Label>
+                    {/* Unified Date Range Picker */}
+                    <div className="md:col-span-2">
+                      <Label htmlFor="date-range" className="mb-1 block">Date Range</Label>
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
-                            id="date-from"
+                            id="date-range"
                             variant="outline"
                             className="w-full justify-start text-left font-normal"
                           >
                             <CalendarRange className="mr-2 h-4 w-4" />
-                            {dateRange.from ? (
-                              format(dateRange.from, "PPP")
+                            {dateRange?.from ? (
+                              dateRange.to ? (
+                                <>
+                                  {format(dateRange.from, "PPP")} - {format(dateRange.to, "PPP")}
+                                </>
+                              ) : (
+                                format(dateRange.from, "PPP")
+                              )
                             ) : (
-                              <span>Pick a date</span>
+                              <span>Pick a date range</span>
                             )}
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
+                        <PopoverContent className="w-auto p-0" align="start">
                           <Calendar
-                            mode="single"
-                            selected={dateRange.from}
-                            onSelect={(date) => setDateRange(prev => ({ ...prev, from: date }))}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    
-                    {/* Date Range - To */}
-                    <div>
-                      <Label htmlFor="date-to" className="mb-1 block">Date To</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            id="date-to"
-                            variant="outline"
-                            className="w-full justify-start text-left font-normal"
-                          >
-                            <CalendarRange className="mr-2 h-4 w-4" />
-                            {dateRange.to ? (
-                              format(dateRange.to, "PPP")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={dateRange.to}
-                            onSelect={(date) => setDateRange(prev => ({ ...prev, to: date }))}
+                            mode="range"
+                            selected={dateRange}
+                            onSelect={setDateRange}
+                            numberOfMonths={2}
                             initialFocus
                           />
                         </PopoverContent>
@@ -372,7 +346,7 @@ export default function OrderStatisticsPage() {
                       size="sm"
                       onClick={() => {
                         setSelectedProductId(null);
-                        setDateRange({ from: undefined, to: undefined });
+                        setDateRange(undefined);
                         setUseActivityDate(false);
                       }}
                     >
