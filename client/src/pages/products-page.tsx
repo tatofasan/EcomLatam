@@ -177,17 +177,30 @@ export default function ProductsPage() {
           </div>
         </div>
         
-        {/* Filter Bar */}
-        <ProductFilter 
-          viewMode={viewMode} 
-          setViewMode={setViewMode}
-          categoryFilter={categoryFilter}
-          statusFilter={statusFilter}
-          sortOption={sortOption}
-          onCategoryChange={setCategoryFilter}
-          onStatusChange={setStatusFilter}
-          onSortChange={setSortOption}
-        />
+        {/* Filter Bar and Admin Actions */}
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+          <ProductFilter 
+            viewMode={viewMode} 
+            setViewMode={setViewMode}
+            categoryFilter={categoryFilter}
+            statusFilter={statusFilter}
+            sortOption={sortOption}
+            onCategoryChange={setCategoryFilter}
+            onStatusChange={setStatusFilter}
+            onSortChange={setSortOption}
+          />
+          
+          {/* Admin Add Product Button */}
+          {isAdmin && (
+            <Button 
+              onClick={handleCreateClick}
+              className="whitespace-nowrap"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Product
+            </Button>
+          )}
+        </div>
         
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
@@ -203,6 +216,8 @@ export default function ProductsPage() {
                   product={product} 
                   viewMode={viewMode}
                   onClick={handleProductClick}
+                  onEdit={handleEditClick}
+                  isAdmin={isAdmin}
                 />
               ))}
             </div>
@@ -231,6 +246,8 @@ export default function ProductsPage() {
         product={selectedProduct}
         isOpen={detailDialogOpen}
         onClose={() => setDetailDialogOpen(false)}
+        mode={dialogMode}
+        onSave={handleSaveProduct}
       />
     </DashboardLayout>
   );

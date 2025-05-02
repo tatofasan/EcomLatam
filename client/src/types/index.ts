@@ -18,6 +18,10 @@ export interface Product {
   sku: string;
   imageUrl: string;
   category?: string;
+  weight?: number;
+  dimensions?: string;
+  supplier?: string;
+  additionalImages?: string[];
 }
 
 export interface Order {
