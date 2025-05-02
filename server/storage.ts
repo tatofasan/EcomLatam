@@ -506,6 +506,18 @@ export class DatabaseStorage implements IStorage {
           const orderDate = new Date();
           orderDate.setDate(orderDate.getDate() - parseInt(order.orderNumber.split('-')[1].substring(0, 2)) % 7);
           
+          // Crear una fecha de actualización diferente para simular cambios de estado
+          // La fecha de actualización estará entre la fecha de creación y ahora
+          const updatedDate = new Date(orderDate);
+          
+          // Para órdenes que no están "pending", simular un cambio de estado posterior
+          if (order.status !== "pending") {
+            // Agregar entre 1 y 36 horas a la fecha de creación
+            updatedDate.setHours(
+              updatedDate.getHours() + Math.floor(1 + Math.random() * 36)
+            );
+          }
+          
           const [newOrder] = await db
             .insert(orders)
             .values({
@@ -519,7 +531,7 @@ export class DatabaseStorage implements IStorage {
               totalAmount: order.totalAmount,
               notes: order.notes,
               createdAt: orderDate,
-              updatedAt: orderDate
+              updatedAt: updatedDate
             })
             .returning();
             
