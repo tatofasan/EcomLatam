@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import SidebarNav from "@/components/sidebar-nav";
+import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,6 @@ import { useForm } from "react-hook-form";
 
 export default function AccountPage() {
   const { user } = useAuth();
-  const [activeItem, setActiveItem] = useState("account");
   
   const profileForm = useForm({
     defaultValues: {
@@ -46,10 +45,6 @@ export default function AccountPage() {
     }
   });
 
-  useEffect(() => {
-    setActiveItem("account");
-  }, []);
-
   const onProfileSubmit = (data: any) => {
     console.log("Profile data", data);
     // Here you would update the user profile
@@ -61,10 +56,8 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <SidebarNav activeItem={activeItem} user={user} />
-      
-      <main className="flex-1 p-6 pl-[220px]">
+    <DashboardLayout activeItem="account">
+      <div className="p-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold">My Account</h1>
           <p className="text-gray-500 mt-1">Manage your account settings and preferences</p>
@@ -365,7 +358,7 @@ export default function AccountPage() {
             </div>
           </TabsContent>
         </Tabs>
-      </main>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

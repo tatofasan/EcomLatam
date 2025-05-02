@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import SidebarNav from "@/components/sidebar-nav";
+import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { 
@@ -40,17 +39,10 @@ const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
 
 export default function HomePage() {
   const { user } = useAuth();
-  const [activeItem, setActiveItem] = useState("dashboard");
-
-  useEffect(() => {
-    setActiveItem("dashboard");
-  }, []);
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <SidebarNav activeItem={activeItem} user={user} />
-      
-      <main className="flex-1 p-6 pl-[220px]">
+    <DashboardLayout activeItem="dashboard">
+      <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <p className="text-sm text-gray-500">Welcome back, {user?.username}</p>
@@ -210,7 +202,7 @@ export default function HomePage() {
             </div>
           </CardContent>
         </Card>
-      </main>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
-import SidebarNav from "@/components/sidebar-nav";
+import { useState } from "react";
+import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,13 +47,6 @@ const teamMembers = [
 ];
 
 export default function TeamPage() {
-  const { user } = useAuth();
-  const [activeItem, setActiveItem] = useState("team");
-
-  useEffect(() => {
-    setActiveItem("team");
-  }, []);
-
   const getRoleBadge = (role: string) => {
     switch (role) {
       case "admin":
@@ -89,10 +81,8 @@ export default function TeamPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <SidebarNav activeItem={activeItem} user={user} />
-      
-      <main className="flex-1 p-6 pl-[220px]">
+    <DashboardLayout activeItem="team">
+      <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold">Team Management</h1>
@@ -223,7 +213,7 @@ export default function TeamPage() {
             </div>
           </CardContent>
         </Card>
-      </main>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }
