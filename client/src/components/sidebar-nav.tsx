@@ -48,6 +48,10 @@ export default function SidebarNav({
   const [, setLocation] = useLocation();
   const isMobile = useIsMobile();
   const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
+  const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
+    // Expanded by default if the active item is a subitem
+    orders: activeItem?.startsWith('orders-') || false
+  });
   
   // Ajustar el estado del sidebar cuando cambia el tamaño de la ventana
   useEffect(() => {
@@ -57,11 +61,30 @@ export default function SidebarNav({
   }, [isMobile]);
   
   // Cerrar el sidebar automáticamente en móviles después de hacer clic en un enlace
-  const handleNavigation = (href: string) => {
+  const handleNavigation = (href: string, subMenuParent?: string) => {
     setLocation(href);
+    
+    // Si se navega a un submenú, asegúrate de que su padre esté expandido
+    if (subMenuParent && !expandedMenus[subMenuParent]) {
+      setExpandedMenus(prev => ({
+        ...prev,
+        [subMenuParent]: true
+      }));
+    }
+    
     if (isMobile) {
       setIsSidebarOpen(false);
     }
+  };
+  
+  // Toggle menu expansion
+  const toggleMenuExpansion = (key: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setExpandedMenus(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
   };
 
   const navItems: NavItem[] = [
@@ -79,19 +102,19 @@ export default function SidebarNav({
     },
     {
       title: "Orders",
-      href: "/orders",
+      href: "/orders/statistics", // Por defecto va a statistics
       icon: <ShoppingCart className="h-5 w-5" />,
       key: "orders",
       subItems: [
         {
+          title: "Statistics", // Statistics primero
+          href: "/orders/statistics",
+          key: "orders-statistics"
+        },
+        {
           title: "Orders List",
           href: "/orders",
           key: "orders-list"
-        },
-        {
-          title: "Statistics",
-          href: "/orders/statistics",
-          key: "orders-statistics"
         }
       ]
     },
@@ -168,39 +191,70 @@ export default function SidebarNav({
                 <a 
                   href={item.href}
                   onClick={(e) => {
-                    e.preventDefault();
-                    handleNavigation(item.href);
+                    // Si tiene submenús, toggle expansion
+                    if (item.subItems && item.subItems.length > 0) {
+                      toggleMenuExpansion(item.key, e);
+                    } else {
+                      // Si no tiene submenús, navegar normalmente
+                      e.preventDefault();
+                      handleNavigation(item.href);
+                    }
                   }}
                   className={cn(
-                    "flex items-center px-3 py-2 text-sm rounded-md group",
+                    "flex items-center justify-between px-3 py-2 text-sm rounded-md group",
                     activeItem === item.key || activeItem?.startsWith(item.key + '-')
                       ? "bg-primary/10 text-primary font-medium" 
                       : "hover:bg-primary/5 text-foreground/80 hover:text-primary"
                   )}
                 >
-                  {React.cloneElement(item.icon as React.ReactElement, { 
-                    className: cn(
-                      "w-5 h-5",
-                      activeItem === item.key || activeItem?.startsWith(item.key + '-')
-                        ? "text-primary"
-                        : "text-foreground/60 group-hover:text-primary"
-                    )
-                  })}
-                  <span className="ml-3">
-                    {item.title}
-                  </span>
+                  <div className="flex items-center">
+                    {React.cloneElement(item.icon as React.ReactElement, { 
+                      className: cn(
+                        "w-5 h-5",
+                        activeItem === item.key || activeItem?.startsWith(item.key + '-')
+                          ? "text-primary"
+                          : "text-foreground/60 group-hover:text-primary"
+                      )
+                    })}
+                    <span className="ml-3">
+                      {item.title}
+                    </span>
+                  </div>
+                  
+                  {/* Mostrar indicador de expansión si tiene submenús */}
+                  {item.subItems && item.subItems.length > 0 && (
+                    <span className={cn(
+                      "transition-transform duration-200", 
+                      expandedMenus[item.key] ? "rotate-180" : ""
+                    )}>
+                      <svg 
+                        xmlns="http://www.w3.org/2000/svg" 
+                        width="12" 
+                        height="12" 
+                        viewBox="0 0 24 24" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        strokeWidth="2" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round"
+                        className="opacity-70"
+                      >
+                        <path d="m6 9 6 6 6-6"/>
+                      </svg>
+                    </span>
+                  )}
                 </a>
                 
-                {/* Render sub-items if they exist */}
-                {item.subItems && item.subItems.length > 0 && (
-                  <ul className="pl-5 mt-1 space-y-1">
+                {/* Render sub-items if they exist and menu is expanded */}
+                {item.subItems && item.subItems.length > 0 && expandedMenus[item.key] && (
+                  <ul className="pl-5 mt-1 space-y-1 overflow-hidden transition-all duration-300">
                     {item.subItems.map((subItem) => (
                       <li key={subItem.key}>
                         <a
                           href={subItem.href}
                           onClick={(e) => {
                             e.preventDefault();
-                            handleNavigation(subItem.href);
+                            handleNavigation(subItem.href, item.key);
                           }}
                           className={cn(
                             "flex items-center px-3 py-1.5 text-xs rounded-md",
