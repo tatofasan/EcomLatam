@@ -171,10 +171,14 @@ export default function SidebarNav({
         <div className="p-4 border-b border-border bg-primary/10 flex justify-between items-center">
           <EcomdropLogo className="h-8" />
           <button 
-            onClick={toggleSidebar}
+            onClick={() => {
+              toggleSidebar();
+              console.log("Toggling sidebar, new state:", !isSidebarOpen);
+            }}
             className="hidden md:flex text-foreground/60 hover:text-primary"
+            aria-label="Toggle sidebar"
           >
-            <Menu size={20} />
+            {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
         
