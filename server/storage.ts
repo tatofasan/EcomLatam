@@ -195,9 +195,16 @@ export class DatabaseStorage implements IStorage {
       return undefined;
     }
     
+    // Si el nuevo estado es "delivered", actualizamos también la fecha de entrega (updatedAt)
+    const updateData: { status: string; updatedAt?: Date } = { status };
+    
+    if (status === "delivered") {
+      updateData.updatedAt = new Date();
+    }
+    
     const [updatedOrder] = await db
       .update(orders)
-      .set({ status })
+      .set(updateData)
       .where(eq(orders.id, id))
       .returning();
     

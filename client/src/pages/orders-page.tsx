@@ -481,6 +481,7 @@ export default function OrdersPage() {
                       <th className="text-left py-3 px-4 font-medium text-primary">Pedido</th>
                       <th className="text-left py-3 px-4 font-medium text-primary">Cliente</th>
                       <th className="text-left py-3 px-4 font-medium text-primary">Fecha</th>
+                      <th className="text-left py-3 px-4 font-medium text-primary">Fecha Entrega</th>
                       <th className="text-left py-3 px-4 font-medium text-primary">Total</th>
                       <th className="text-left py-3 px-4 font-medium text-primary">Estado</th>
                       <th className="text-right py-3 px-4 font-medium text-primary">Acciones</th>
@@ -499,6 +500,9 @@ export default function OrdersPage() {
                             </div>
                           </td>
                           <td className="py-4 px-4">{new Date(order.createdAt).toLocaleDateString()}</td>
+                          <td className="py-4 px-4">
+                            {order.status === "delivered" ? new Date(order.updatedAt).toLocaleDateString() : ""}
+                          </td>
                           <td className="py-4 px-4 font-medium text-primary">${order.totalAmount.toFixed(2)}</td>
                           <td className="py-4 px-4">
                             {getStatusBadge(order.status)}
@@ -595,9 +599,17 @@ export default function OrdersPage() {
                       <h4 className="text-sm font-medium text-primary mb-2">Estado del Pedido</h4>
                       <div className="border rounded-md p-3 bg-accent">
                         <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-primary" />
-                            <span className="text-sm">{new Date(selectedOrder.createdAt).toLocaleDateString()}</span>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Calendar className="h-4 w-4 text-primary" />
+                              <span className="text-sm">Creado: {new Date(selectedOrder.createdAt).toLocaleDateString()}</span>
+                            </div>
+                            {selectedOrder.status === "delivered" && (
+                              <div className="flex items-center gap-2">
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                <span className="text-sm">Entregado: {new Date(selectedOrder.updatedAt).toLocaleDateString()}</span>
+                              </div>
+                            )}
                           </div>
                           {getStatusBadge(selectedOrder.status)}
                         </div>
