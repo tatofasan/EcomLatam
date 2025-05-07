@@ -9,7 +9,9 @@ import {
   CalendarRange,
   Package2,
   RefreshCw,
-  Database
+  Database,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react";
 import {
   Table,
@@ -33,7 +35,7 @@ import { DateRange } from "react-day-picker";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 
 interface OrderStatsByDay {
   date: string;
@@ -74,7 +76,14 @@ export default function OrderStatisticsPage() {
   // Filtros
   const [useActivityDate, setUseActivityDate] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: subDays(new Date(), 30),
+    to: new Date(),
+  });
+  
+  // Sorting states
+  const [sortField, setSortField] = useState<string>("date");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   
   // Helper functions to calculate totals for all statistics
   const calcTotalsByStatus = useMemo(() => {
@@ -241,11 +250,48 @@ export default function OrderStatisticsPage() {
       };
     });
 
-    // Sort by date descending (most recent first)
-    stats.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // Sort the statistics based on sort field and direction
+    const sortedStats = [...stats].sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortField) {
+        case "date":
+          comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+          break;
+        case "pending":
+        case "processing":
+        case "delivered":
+        case "cancelled":
+        case "total":
+          comparison = a[sortField] - b[sortField];
+          break;
+        case "deliveredPercentage":
+          comparison = a.deliveredPercentage - b.deliveredPercentage;
+          break;
+        case "revenue":
+          comparison = a.revenue - b.revenue;
+          break;
+        default:
+          comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+      }
+      
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
     
-    setStatistics(stats);
-  }, [orders, selectedProductId, dateRange, useActivityDate]);
+    setStatistics(sortedStats);
+  }, [orders, selectedProductId, dateRange, useActivityDate, sortField, sortDirection]);
+  
+  // Function to handle sort change
+  const handleSort = (field: string) => {
+    // If clicking the same field, toggle direction
+    if (field === sortField) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      // If clicking a new field, set it as the sort field and default to asc
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
 
   return (
     <DashboardLayout activeItem="orders-statistics">
