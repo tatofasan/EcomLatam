@@ -63,21 +63,20 @@ export default function WalletPage() {
   // Fetch wallet address
   const { data: walletAddressData } = useQuery({
     queryKey: ['/api/user/wallet-address'],
-    enabled: !!user,
-    onSuccess: (data: any) => {
-      if (data?.walletAddress) {
-        setWalletAddress(data.walletAddress);
-      }
-    }
+    enabled: !!user
   });
+  
+  // Update wallet address when data is loaded
+  useEffect(() => {
+    if (walletAddressData?.walletAddress) {
+      setWalletAddress(walletAddressData.walletAddress);
+    }
+  }, [walletAddressData]);
   
   // Create withdrawal mutation
   const withdrawMutation = useMutation({
     mutationFn: (data: { amount: number, walletAddress: string }) => {
-      return apiRequest('/api/wallet/withdraw', {
-        method: 'POST',
-        body: JSON.stringify(data)
-      } as any);
+      return apiRequest('POST', '/api/wallet/withdraw', data);
     },
     onSuccess: () => {
       toast({
@@ -102,10 +101,7 @@ export default function WalletPage() {
   // Update wallet address mutation
   const updateWalletAddressMutation = useMutation({
     mutationFn: (walletAddress: string) => {
-      return apiRequest('/api/user/wallet-address', {
-        method: 'PATCH',
-        body: JSON.stringify({ walletAddress })
-      } as any);
+      return apiRequest('PATCH', '/api/user/wallet-address', { walletAddress });
     },
     onSuccess: (data: any) => {
       toast({
