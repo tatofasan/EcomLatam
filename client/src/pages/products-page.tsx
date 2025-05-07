@@ -248,6 +248,7 @@ export default function ProductsPage() {
         onClose={() => setDetailDialogOpen(false)}
         mode={dialogMode}
         onSave={handleSaveProduct}
+        isAdmin={isAdmin}
       />
     </DashboardLayout>
   );

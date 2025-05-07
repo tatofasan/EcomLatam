@@ -34,6 +34,7 @@ interface ProductDetailDialogProps {
   onClose: () => void;
   mode?: "view" | "edit" | "create";
   onSave?: (product: Product) => void;
+  isAdmin?: boolean;
 }
 
 export default function ProductDetailDialog({ 
@@ -41,7 +42,8 @@ export default function ProductDetailDialog({
   isOpen, 
   onClose, 
   mode = "view", 
-  onSave 
+  onSave,
+  isAdmin = false
 }: ProductDetailDialogProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [formData, setFormData] = useState<Partial<Product>>({});
@@ -261,7 +263,7 @@ export default function ProductDetailDialog({
       <DialogContent className="sm:max-w-[80vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-primary text-xl">{titleText}</DialogTitle>
-          {mode === "view" && (
+          {mode === "view" && isAdmin && (
             <DialogDescription>
               SKU: {productData.sku}
             </DialogDescription>
@@ -480,10 +482,12 @@ export default function ProductDetailDialog({
                       </div>
                     </div>
                     
-                    <div>
-                      <h3 className="text-sm font-medium text-primary mb-1">Supplier</h3>
-                      <p className="text-muted-foreground">{productData.provider || 'Not specified'}</p>
-                    </div>
+                    {isAdmin && (
+                      <div>
+                        <h3 className="text-sm font-medium text-primary mb-1">Supplier</h3>
+                        <p className="text-muted-foreground">{productData.provider || 'Not specified'}</p>
+                      </div>
+                    )}
                   </TabsContent>
                   
                   <TabsContent value="specs" className="space-y-4 pt-4">
