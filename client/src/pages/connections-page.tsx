@@ -22,6 +22,7 @@ import {
   BarChart,
   Landmark
 } from "lucide-react";
+import { ShopifyIcon, WooCommerceIcon, MercadoLibreIcon, TikTokIcon, PlatformButton } from "@/lib/platform-icons";
 
 // Type definition for connection from the API
 interface ConnectionType {
@@ -59,6 +60,10 @@ export default function ConnectionsPage() {
     apiKey: "",
     apiSecret: "",
   });
+  
+  // State for the dialog
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [step, setStep] = useState<'platforms' | 'details' | 'authenticating'>('platforms');
 
   // Function to load connections
   const loadConnections = async () => {
@@ -95,18 +100,78 @@ export default function ConnectionsPage() {
     }
   };
 
+  // Function to handle platform selection
+  const handleSelectPlatform = (platform: string) => {
+    setFormData(prev => ({ ...prev, platform }));
+    if (platform === 'shopify') {
+      setStep('details');
+    } else {
+      toast({
+        title: "Próximamente",
+        description: `La integración con ${platform} estará disponible próximamente.`,
+      });
+    }
+  };
+
+  // Function to initiate OAuth flow with Shopify
+  const handleShopifyAuth = () => {
+    // In a real implementation, you would:
+    // 1. Call your backend to get a redirect URL for Shopify OAuth
+    // 2. Open that URL in a new window/tab
+    // 3. After user authorizes, they'll be redirected back to your app
+
+    // For this demo, we'll simulate the flow:
+    setStep('authenticating');
+    
+    // Store name is required
+    if (!formData.name.trim()) {
+      toast({
+        title: "Nombre requerido",
+        description: "Por favor, ingresa un nombre para tu tienda.",
+        variant: "destructive",
+      });
+      setStep('details');
+      return;
+    }
+    
+    // Simulate opening a new window for authorization
+    const shopifyAuthWindow = window.open(
+      `https://shopify.com/admin/oauth/authorize?dummy=1&store=${encodeURIComponent(formData.name)}`,
+      'shopify_auth',
+      'width=800,height=600'
+    );
+    
+    // After a "successful" authentication (simulated), create the connection
+    setTimeout(() => {
+      if (shopifyAuthWindow) {
+        shopifyAuthWindow.close();
+      }
+      
+      handleCreateConnection({
+        name: formData.name,
+        platform: 'shopify',
+        status: 'active',
+      });
+      
+      setIsDialogOpen(false);
+      setStep('platforms');
+    }, 3000);
+  };
+
   // Function to handle creating a new connection
-  const handleCreateConnection = async () => {
+  const handleCreateConnection = async (connectionData?: any) => {
     try {
+      const dataToSend = connectionData || {
+        ...formData,
+        status: "active"
+      };
+      
       const response = await fetch('/api/connections', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...formData,
-          status: "active"
-        }),
+        body: JSON.stringify(dataToSend),
       });
       
       if (!response.ok) {
@@ -125,14 +190,14 @@ export default function ConnectionsPage() {
       await loadConnections();
       
       toast({
-        title: "Connection created",
-        description: "Your new connection has been created successfully.",
+        title: "Conexión creada",
+        description: "Tu nueva conexión ha sido creada exitosamente.",
       });
     } catch (err) {
       console.error("Error creating connection:", err);
       toast({
         title: "Error",
-        description: "Failed to create connection. Please try again.",
+        description: "Falló la creación de la conexión. Por favor, intenta de nuevo.",
         variant: "destructive",
       });
     }
@@ -206,15 +271,15 @@ export default function ConnectionsPage() {
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
       case "shopify":
-        return <ShoppingBag className="h-8 w-8 text-green-600" />;
+        return <ShopifyIcon className="h-10 w-10" active={true} />;
       case "mercadolibre":
-        return <Store className="h-8 w-8 text-yellow-500" />;
+        return <MercadoLibreIcon className="h-10 w-10" active={true} />;
       case "woocommerce":
-        return <Landmark className="h-8 w-8 text-purple-600" />;
+        return <WooCommerceIcon className="h-10 w-10" active={true} />;
       case "tiktok":
-        return <BarChart className="h-8 w-8 text-black" />;
+        return <TikTokIcon className="h-10 w-10" active={true} />;
       default:
-        return <Link2 className="h-8 w-8 text-gray-500" />;
+        return <Link2 className="h-10 w-10 text-gray-500" />;
     }
   };
 
@@ -254,76 +319,112 @@ export default function ConnectionsPage() {
             <h1 className="text-2xl font-bold text-primary">Conexiones</h1>
             <p className="text-muted-foreground mt-1">Gestiona las conexiones con tus plataformas de e-commerce</p>
           </div>
-          <Dialog>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="flex items-center gap-2">
+              <Button 
+                className="flex items-center gap-2"
+                onClick={() => {
+                  setStep('platforms');
+                  setIsDialogOpen(true);
+                }}
+              >
                 <PlusCircle className="h-4 w-4" />
                 Add Connection
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
-                <DialogTitle>Add Connection</DialogTitle>
+                <DialogTitle>Conectar plataforma</DialogTitle>
                 <DialogDescription>
-                  Conecta tu plataforma de e-commerce para sincronizar productos y pedidos.
+                  {step === 'platforms' && "Selecciona la plataforma de e-commerce que deseas conectar."}
+                  {step === 'details' && "Ingresa los detalles de tu tienda Shopify para conectarla."}
+                  {step === 'authenticating' && "Autorizando la conexión con Shopify..."}
                 </DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">
-                    Nombre
-                  </Label>
-                  <Input 
-                    id="name" 
-                    placeholder="Mi Tienda" 
-                    className="col-span-3"
-                    value={formData.name}
-                    onChange={handleInputChange}
+              
+              {step === 'platforms' && (
+                <div className="grid grid-cols-2 gap-4 py-4">
+                  <PlatformButton 
+                    name="Shopify" 
+                    icon={<ShopifyIcon />} 
+                    active={true} 
+                    onClick={() => handleSelectPlatform('shopify')}
+                  />
+                  <PlatformButton 
+                    name="WooCommerce" 
+                    icon={<WooCommerceIcon />} 
+                    active={false} 
+                    onClick={() => handleSelectPlatform('woocommerce')}
+                  />
+                  <PlatformButton 
+                    name="MercadoLibre" 
+                    icon={<MercadoLibreIcon />} 
+                    active={false} 
+                    onClick={() => handleSelectPlatform('mercadolibre')}
+                  />
+                  <PlatformButton 
+                    name="TikTok Shop" 
+                    icon={<TikTokIcon />} 
+                    active={false} 
+                    onClick={() => handleSelectPlatform('tiktok')}
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="platform" className="text-right">
-                    Plataforma
-                  </Label>
-                  <Select onValueChange={handleSelectChange} value={formData.platform}>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Selecciona plataforma" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="shopify">Shopify</SelectItem>
-                      <SelectItem value="mercadolibre">MercadoLibre</SelectItem>
-                      <SelectItem value="woocommerce">WooCommerce</SelectItem>
-                      <SelectItem value="tiktok">TikTok Shop</SelectItem>
-                    </SelectContent>
-                  </Select>
+              )}
+              
+              {step === 'details' && (
+                <div className="grid gap-4 py-4">
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium">Información de tu tienda Shopify</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Conectar con Shopify permite importar productos y sincronizar pedidos automáticamente.
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="name" className="text-right">
+                      Nombre de la tienda
+                    </Label>
+                    <Input 
+                      id="name" 
+                      placeholder="mi-tienda" 
+                      className="col-span-3"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-2 mt-4">
+                    <div className="bg-blue-50 p-3 rounded-md text-sm border border-blue-100">
+                      <p className="text-blue-700">
+                        Se abrirá una ventana de Shopify para autorizar la conexión.
+                        Una vez autorizada, podrás gestionar tus productos y pedidos desde aquí.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="apiKey" className="text-right">
-                    API Key
-                  </Label>
-                  <Input 
-                    id="apiKey" 
-                    type="password" 
-                    className="col-span-3"
-                    value={formData.apiKey}
-                    onChange={handleInputChange}
-                  />
+              )}
+              
+              {step === 'authenticating' && (
+                <div className="flex items-center justify-center py-10">
+                  <div className="text-center">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+                    <p>Autorizando conexión con Shopify...</p>
+                    <p className="text-sm text-muted-foreground mt-2">Esto puede tomar unos segundos.</p>
+                  </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="apiSecret" className="text-right">
-                    API Secret
-                  </Label>
-                  <Input 
-                    id="apiSecret" 
-                    type="password" 
-                    className="col-span-3"
-                    value={formData.apiSecret}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
+              )}
+              
               <DialogFooter>
-                <Button onClick={handleCreateConnection}>Conectar</Button>
+                {step === 'platforms' && (
+                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+                )}
+                
+                {step === 'details' && (
+                  <>
+                    <Button variant="outline" onClick={() => setStep('platforms')}>Volver</Button>
+                    <Button onClick={handleShopifyAuth}>Conectar con Shopify</Button>
+                  </>
+                )}
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -393,76 +494,14 @@ export default function ConnectionsPage() {
             <Link2 className="h-12 w-12 text-primary/60 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-foreground mb-2">No active connections</h3>
             <p className="text-muted-foreground mb-4">Connect your stores to synchronize products and orders.</p>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button>Add Connection</Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>Add Connection</DialogTitle>
-                  <DialogDescription>
-                    Connect your e-commerce platform to synchronize products and orders.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">
-                      Name
-                    </Label>
-                    <Input 
-                      id="name" 
-                      placeholder="Mi Tienda" 
-                      className="col-span-3"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="platform" className="text-right">
-                      Platform
-                    </Label>
-                    <Select onValueChange={handleSelectChange} value={formData.platform}>
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Select platform" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="shopify">Shopify</SelectItem>
-                        <SelectItem value="mercadolibre">MercadoLibre</SelectItem>
-                        <SelectItem value="woocommerce">WooCommerce</SelectItem>
-                        <SelectItem value="tiktok">TikTok Shop</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="apiKey" className="text-right">
-                      API Key
-                    </Label>
-                    <Input 
-                      id="apiKey" 
-                      type="password" 
-                      className="col-span-3"
-                      value={formData.apiKey}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="apiSecret" className="text-right">
-                      API Secret
-                    </Label>
-                    <Input 
-                      id="apiSecret" 
-                      type="password" 
-                      className="col-span-3"
-                      value={formData.apiSecret}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button onClick={handleCreateConnection}>Connect</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <Button
+              onClick={() => {
+                setStep('platforms');
+                setIsDialogOpen(true);
+              }}
+            >
+              Add Connection
+            </Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
