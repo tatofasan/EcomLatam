@@ -166,10 +166,10 @@ export default function HomePage() {
                       >
                         <XAxis dataKey="name" />
                         <YAxis />
-                        <Tooltip formatter={(value) => `$${value}`} />
+                        <Tooltip formatter={(value) => value} />
                         <Legend />
-                        <Bar name="Ventas ($)" dataKey="sales" fill="#4f46e5" barSize={30} />
-                        <Bar name="Pedidos" dataKey="orders" fill="#0ea5e9" barSize={30} />
+                        <Bar name="Sales (qty)" dataKey="sales" fill="#4f46e5" barSize={30} />
+                        <Bar name="Orders (qty)" dataKey="orders" fill="#0ea5e9" barSize={30} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>

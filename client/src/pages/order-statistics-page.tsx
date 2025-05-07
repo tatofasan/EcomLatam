@@ -308,11 +308,11 @@ export default function OrderStatisticsPage() {
       <div className="p-3 md:p-6">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2 mb-4">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold">Estadísticas de Pedidos</h1>
+            <h1 className="text-xl md:text-2xl font-bold">Order Statistics</h1>
             <p className="text-sm text-muted-foreground">
               {isAdmin 
-                ? 'Vista de administrador (todos los pedidos)' 
-                : 'Estadísticas de tus pedidos'}
+                ? 'Admin view (all orders)' 
+                : 'Your order statistics'}
             </p>
           </div>
         </div>
@@ -444,7 +444,7 @@ export default function OrderStatisticsPage() {
                     </Button>
                   </div>
                 </div>
-                {/* Visualización de tabla para pantallas medianas y grandes */}
+                {/* Table display for medium and large screens */}
                 <div className="hidden md:block overflow-x-auto">
                   <Table>
                     <TableCaption>A summary of orders by day</TableCaption>
@@ -618,7 +618,7 @@ export default function OrderStatisticsPage() {
                   )}
                 </div>
                 
-                {/* Visualización de tarjetas para dispositivos móviles */}
+                {/* Card display for mobile devices */}
                 <div className="md:hidden space-y-4">
                   <h3 className="text-center text-muted-foreground mb-2">Order Summary by Day</h3>
                   
