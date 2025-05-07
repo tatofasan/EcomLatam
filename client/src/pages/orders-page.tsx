@@ -149,23 +149,7 @@ export default function OrdersPage() {
   // Load orders on mount
   useEffect(() => {
     setActiveItem("orders");
-    
-    // Seed demo data and then load orders
-    const seedDemoData = async () => {
-      try {
-        const response = await fetch('/api/seed', { method: 'POST' });
-        if (response.ok) {
-          console.log("Demo data seeded successfully");
-        }
-      } catch (err) {
-        console.error("Error seeding demo data:", err);
-      }
-      
-      // Load orders regardless of seeding success
-      loadOrders();
-    };
-    
-    seedDemoData();
+    loadOrders();
   }, []);
 
   const filteredOrders = orders.filter(order => {
