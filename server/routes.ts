@@ -450,16 +450,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
         orders: data.orders
       }));
       
-      // Get product categories distribution
+      // Get product categories distribution from order items
       const productCategories = {};
-      productsList.forEach(product => {
-        // Asegurarse de que los valores null, undefined, o cadenas vacías se conviertan a "Sin categoría"
-        const category = (product.category && product.category.trim()) ? product.category.trim() : 'Sin categoría';
-        if (!productCategories[category]) {
-          productCategories[category] = 0;
+      
+      // If there are no products created by this user, get products from their orders
+      if (productsList.length === 0 && ordersList.length > 0) {
+        console.log(`No products created by user ${userId}, fetching from order items instead.`);
+        
+        // Get all order IDs for this user
+        const orderIds = ordersList.map(order => order.id);
+        
+        // Get all order items for these orders
+        const allOrderItems = await db.select()
+          .from(orderItems)
+          .where(sql`order_id IN (${orderIds.join(',')})`);
+        
+        // Get unique product IDs from order items
+        const productIds = [...new Set(allOrderItems.map(item => item.productId))];
+        
+        if (productIds.length > 0) {
+          // Get products for these order items
+          const orderProducts = await db.select()
+            .from(products)
+            .where(sql`id IN (${productIds.join(',')})`);
+          
+          // Process products from orders to get categories
+          orderProducts.forEach(product => {
+            // Asegurarse de que los valores null, undefined, o cadenas vacías se conviertan a "Sin categoría"
+            const category = (product.category && product.category.trim()) ? product.category.trim() : 'Sin categoría';
+            if (!productCategories[category]) {
+              productCategories[category] = 0;
+            }
+            productCategories[category] += 1;
+          });
+        } else {
+          // Si no hay productos en los pedidos, crear una categoría por defecto
+          productCategories['Sin categoría'] = 1;
         }
-        productCategories[category] += 1;
-      });
+      } else {
+        // Process products created by the user
+        productsList.forEach(product => {
+          // Asegurarse de que los valores null, undefined, o cadenas vacías se conviertan a "Sin categoría"
+          const category = (product.category && product.category.trim()) ? product.category.trim() : 'Sin categoría';
+          if (!productCategories[category]) {
+            productCategories[category] = 0;
+          }
+          productCategories[category] += 1;
+        });
+      }
+      
+      // Si después de todo no hay categorías, asegurarse de que haya al menos una
+      if (Object.keys(productCategories).length === 0) {
+        productCategories['Sin categoría'] = 1;
+      }
       
       // Convertir a array para el gráfico
       const productCategoriesData = Object.entries(productCategories).map(([name, value]) => ({
