@@ -254,35 +254,35 @@ export default function OrdersPage() {
         return (
           <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200 flex items-center gap-1 font-medium">
             <CheckCircle2 className="h-3 w-3" />
-            Entregado
+            Delivered
           </Badge>
         );
       case "processing":
         return (
           <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 flex items-center gap-1 font-medium">
             <Clock className="h-3 w-3" />
-            En proceso
+            Processing
           </Badge>
         );
       case "pending":
         return (
           <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 flex items-center gap-1 font-medium">
             <AlertCircle className="h-3 w-3" />
-            Pendiente
+            Pending
           </Badge>
         );
       case "shipped":
         return (
           <Badge variant="outline" className="bg-indigo-50 text-indigo-600 border-indigo-200 flex items-center gap-1 font-medium">
             <TruckIcon className="h-3 w-3" />
-            Enviado
+            Shipped
           </Badge>
         );
       case "cancelled":
         return (
           <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 flex items-center gap-1 font-medium">
             <XCircle className="h-3 w-3" />
-            Cancelado
+            Cancelled
           </Badge>
         );
       default:
@@ -462,12 +462,12 @@ export default function OrdersPage() {
                 <SelectValue placeholder="Filtrar por estado" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos los pedidos</SelectItem>
-                <SelectItem value="pending">Pendientes</SelectItem>
-                <SelectItem value="processing">En proceso</SelectItem>
-                <SelectItem value="shipped">Enviados</SelectItem>
-                <SelectItem value="delivered">Entregados</SelectItem>
-                <SelectItem value="cancelled">Cancelados</SelectItem>
+                <SelectItem value="all">All Orders</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="processing">Processing</SelectItem>
+                <SelectItem value="shipped">Shipped</SelectItem>
+                <SelectItem value="delivered">Delivered</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
           </div>
