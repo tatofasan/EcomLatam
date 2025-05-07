@@ -204,8 +204,8 @@ export default function ProductDetailDialog({
     
     // Quitamos las validaciones de especificaciones y referencia (por pedido del usuario)
     
-    // Validación de proveedor
-    if (!formData.provider || formData.provider.trim() === "") {
+    // Validación de proveedor (solo para administradores)
+    if (isAdmin && (!formData.provider || formData.provider.trim() === "")) {
       errors.provider = "Proveedor es obligatorio";
     }
     
@@ -228,6 +228,10 @@ export default function ProductDetailDialog({
     try {
       const zip = new JSZip();
       const imgFolder = zip.folder("imagenes-producto");
+      
+      if (!imgFolder) {
+        throw new Error("No se pudo crear carpeta en el archivo ZIP");
+      }
       
       // Añadir imagen principal
       const mainImageName = `imagen-principal.${getImageExtension(productData.imageUrl)}`;
@@ -271,6 +275,8 @@ export default function ProductDetailDialog({
 
   // Función para convertir URL de imagen a blob y añadirla al ZIP
   const addImageToZip = async (url: string, folder: JSZip, fileName: string) => {
+    if (!folder) return;
+    
     try {
       const response = await fetch(url);
       const blob = await response.blob();
@@ -695,22 +701,24 @@ export default function ProductDetailDialog({
                 
                 {/* Campos specifications y reference removidos por petición del usuario */}
                 
-                <div className="space-y-1">
-                  <Label htmlFor="provider">Supplier/Provider *</Label>
-                  <Input 
-                    id="provider"
-                    name="provider"
-                    value={formData.provider || ""}
-                    onChange={handleInputChange}
-                    placeholder="Enter supplier/provider name"
-                    className={formErrors.provider ? "border-red-500" : ""}
-                  />
-                  {formErrors.provider && (
-                    <p className="text-red-500 text-xs flex items-center">
-                      <AlertCircle className="h-3 w-3 mr-1" /> {formErrors.provider}
-                    </p>
-                  )}
-                </div>
+                {isAdmin && (
+                  <div className="space-y-1">
+                    <Label htmlFor="provider">Supplier/Provider *</Label>
+                    <Input 
+                      id="provider"
+                      name="provider"
+                      value={formData.provider || ""}
+                      onChange={handleInputChange}
+                      placeholder="Enter supplier/provider name"
+                      className={formErrors.provider ? "border-red-500" : ""}
+                    />
+                    {formErrors.provider && (
+                      <p className="text-red-500 text-xs flex items-center">
+                        <AlertCircle className="h-3 w-3 mr-1" /> {formErrors.provider}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
