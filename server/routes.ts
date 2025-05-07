@@ -460,27 +460,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get all order IDs for this user
         const orderIds = ordersList.map(order => order.id);
         
-        // Get all order items for these orders - using proper parametrization
+        // Get all order items for these orders - using a different approach
         let allOrderItems = [];
-        if (orderIds.length > 0) {
-          // Using placeholders for each ID instead of joining them as a string
-          const placeholders = orderIds.map((_, index) => `$${index + 1}`).join(', ');
-          allOrderItems = await db.execute(
-            sql`SELECT * FROM order_items WHERE order_id IN (${sql.raw(placeholders)})`,
-            orderIds
-          );
+        
+        // Process orders in batches of 50 to avoid query size limitations
+        const BATCH_SIZE = 50;
+        for (let i = 0; i < orderIds.length; i += BATCH_SIZE) {
+          const batchOrderIds = orderIds.slice(i, i + BATCH_SIZE);
+          
+          // Using a simpler approach with IN operator for smaller batches
+          const batchResults = await db.select()
+            .from(orderItems)
+            .where(sql`order_id IN (${batchOrderIds.join(',')})`);
+            
+          allOrderItems = [...allOrderItems, ...batchResults];
         }
         
         // Get unique product IDs from order items
         const productIds = [...new Set(allOrderItems.map(item => item.productId))];
         
         if (productIds.length > 0) {
-          // Get products for these order items - using proper parametrization
-          const placeholders = productIds.map((_, index) => `$${index + 1}`).join(', ');
-          const orderProducts = await db.execute(
-            sql`SELECT * FROM products WHERE id IN (${sql.raw(placeholders)})`,
-            productIds
-          );
+          // Process product IDs in batches too
+          let orderProducts = [];
+          
+          for (let i = 0; i < productIds.length; i += BATCH_SIZE) {
+            const batchProductIds = productIds.slice(i, i + BATCH_SIZE);
+            
+            const batchResults = await db.select()
+              .from(products)
+              .where(sql`id IN (${batchProductIds.join(',')})`);
+              
+            orderProducts = [...orderProducts, ...batchResults];
+          }
           
           // Process products from orders to get categories
           orderProducts.forEach(product => {
