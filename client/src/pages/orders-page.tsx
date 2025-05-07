@@ -23,6 +23,8 @@ import {
   TruckIcon,
   AlertCircle,
   CalendarRange,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -67,8 +69,9 @@ interface OrderItemType {
   productName?: string;
 }
 
-interface OrderWithItems extends OrderType {
+interface OrderWithItems extends Omit<OrderType, 'items'> {
   items?: OrderItemType[];
+  [key: string]: OrderItemType[] | string | number | undefined;
 }
 
 export default function OrdersPage() {
