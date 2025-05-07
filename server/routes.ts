@@ -361,6 +361,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const isAdmin = req.user.role === 'admin';
       
+      console.log(`Fetching dashboard metrics for user ID ${userId}, isAdmin: ${isAdmin}`);
+      
       // Get total products count (all for admin, user-created for regular users)
       let productsQuery = db.select().from(products);
       if (!isAdmin) {
@@ -374,6 +376,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ordersQuery = ordersQuery.where(eq(orders.userId, userId));
       }
       const ordersList = await ordersQuery;
+      
+      console.log(`Dashboard orders for user ${userId} (isAdmin: ${isAdmin}):`, 
+                 `Total orders: ${ordersList.length}`,
+                 `First few orders user_ids:`, ordersList.slice(0, 3).map(o => o.userId));
       
       // Calculate revenue from completed orders
       const deliveredOrders = ordersList.filter(order => order.status === 'delivered');
