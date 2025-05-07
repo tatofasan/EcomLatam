@@ -460,38 +460,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get all order IDs for this user
         const orderIds = ordersList.map(order => order.id);
         
-        // Get all order items for these orders - using a different approach
-        let allOrderItems = [];
-        
-        // Process orders in batches of 50 to avoid query size limitations
-        const BATCH_SIZE = 50;
-        for (let i = 0; i < orderIds.length; i += BATCH_SIZE) {
-          const batchOrderIds = orderIds.slice(i, i + BATCH_SIZE);
-          
-          // Using a simpler approach with IN operator for smaller batches
-          const batchResults = await db.select()
-            .from(orderItems)
-            .where(sql`order_id IN (${batchOrderIds.join(',')})`);
-            
-          allOrderItems = [...allOrderItems, ...batchResults];
-        }
+        // Get all order items for these orders
+        const allOrderItems = await db.select()
+          .from(orderItems)
+          .where(sql`order_id IN (${orderIds.join(',')})`);
         
         // Get unique product IDs from order items
         const productIds = [...new Set(allOrderItems.map(item => item.productId))];
         
         if (productIds.length > 0) {
-          // Process product IDs in batches too
-          let orderProducts = [];
-          
-          for (let i = 0; i < productIds.length; i += BATCH_SIZE) {
-            const batchProductIds = productIds.slice(i, i + BATCH_SIZE);
-            
-            const batchResults = await db.select()
-              .from(products)
-              .where(sql`id IN (${batchProductIds.join(',')})`);
-              
-            orderProducts = [...orderProducts, ...batchResults];
-          }
+          // Get products for these order items
+          const orderProducts = await db.select()
+            .from(products)
+            .where(sql`id IN (${productIds.join(',')})`);
           
           // Process products from orders to get categories
           orderProducts.forEach(product => {
