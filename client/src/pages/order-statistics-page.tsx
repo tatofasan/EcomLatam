@@ -51,7 +51,7 @@ interface OrderStatsByDay {
 interface OrderForStats {
   id: number;
   createdAt: string;
-  updatedAt?: string; // fecha de última actividad
+  updatedAt?: string; // date of last activity
   status: string;
   totalAmount: number;
   orderItems?: Array<{
@@ -73,7 +73,7 @@ export default function OrderStatisticsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   
-  // Filtros
+  // Filters
   const [useActivityDate, setUseActivityDate] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [dateRange, setDateRange] = useState<DateRange>({
@@ -103,7 +103,7 @@ export default function OrderStatisticsPage() {
     return total > 0 ? (delivered / total * 100).toFixed(2) : "0.00";
   }, [calcTotalsByStatus]);
 
-  // Mutación para regenerar los datos de estadísticas
+  // Mutation to regenerate statistics data
   const regenerateDataMutation = useMutation({
     mutationFn: async () => {
       const response = await fetch('/api/seed/orders', {
@@ -126,7 +126,7 @@ export default function OrderStatisticsPage() {
         description: "New order statistics data has been created",
         variant: "default",
       });
-      // Refrescar los datos
+      // Refresh the data
       queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
     },
     onError: (error: Error) => {
