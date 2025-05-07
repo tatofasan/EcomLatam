@@ -63,7 +63,7 @@ export default function ProductDetailDialog({
         additionalImages: [],
         weight: 0,
         dimensions: "",
-        specifications: "",  // Specifications como string vacío
+        specifications: {} as Record<string, any>,  // Specifications como objeto vacío (Record<string, any>)
         reference: "",
         provider: ""
       });
@@ -89,10 +89,10 @@ export default function ProductDetailDialog({
         category: "",
         weight: 0,
         dimensions: "",
-        specifications: "",
+        specifications: {} as Record<string, any>,
         reference: "",
         provider: ""
-      } as Product
+      } as unknown as Product
     : product as Product;
   
   // Usar la imagen principal y las adicionales si existen
@@ -201,10 +201,11 @@ export default function ProductDetailDialog({
     // Validación de especificaciones
     if (!formData.specifications) {
       errors.specifications = "Especificaciones son obligatorias";
-    } else if (typeof formData.specifications === 'string' && formData.specifications.trim() === "") {
-      errors.specifications = "Especificaciones son obligatorias";
-    } else if (typeof formData.specifications === 'object' && 
-               Object.keys(formData.specifications).length === 0) {
+    } else if (
+      formData.specifications && 
+      typeof formData.specifications === 'object' && 
+      Object.keys(formData.specifications as Record<string, any>).length === 0
+    ) {
       errors.specifications = "Especificaciones son obligatorias";
     }
     
@@ -592,15 +593,84 @@ export default function ProductDetailDialog({
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="dimensions">Dimensions (LxWxH cm)</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="dimensions">Dimensions (LxWxH cm) *</Label>
                   <Input 
                     id="dimensions"
                     name="dimensions"
                     value={formData.dimensions || ""}
                     onChange={handleInputChange}
                     placeholder="e.g. 20x15x5"
+                    className={formErrors.dimensions ? "border-red-500" : ""}
                   />
+                  {formErrors.dimensions && (
+                    <p className="text-red-500 text-xs flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" /> {formErrors.dimensions}
+                    </p>
+                  )}
+                </div>
+                
+                <div className="space-y-1">
+                  <Label htmlFor="specifications">Specifications *</Label>
+                  <Textarea 
+                    id="specifications"
+                    name="specifications"
+                    value={typeof formData.specifications === 'object' 
+                      ? JSON.stringify(formData.specifications) 
+                      : formData.specifications || ""}
+                    onChange={(e) => {
+                      try {
+                        // Intentar parsear como JSON
+                        const jsonValue = JSON.parse(e.target.value);
+                        setFormData({...formData, specifications: jsonValue});
+                      } catch {
+                        // Si no es JSON válido, guardar como string
+                        setFormData({...formData, specifications: e.target.value as any});
+                      }
+                    }}
+                    placeholder="Enter product specifications"
+                    rows={4}
+                    className={formErrors.specifications ? "border-red-500" : ""}
+                  />
+                  {formErrors.specifications && (
+                    <p className="text-red-500 text-xs flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" /> {formErrors.specifications}
+                    </p>
+                  )}
+                </div>
+                
+                <div className="space-y-1">
+                  <Label htmlFor="reference">Reference *</Label>
+                  <Input 
+                    id="reference"
+                    name="reference"
+                    value={formData.reference || ""}
+                    onChange={handleInputChange}
+                    placeholder="Enter product reference"
+                    className={formErrors.reference ? "border-red-500" : ""}
+                  />
+                  {formErrors.reference && (
+                    <p className="text-red-500 text-xs flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" /> {formErrors.reference}
+                    </p>
+                  )}
+                </div>
+                
+                <div className="space-y-1">
+                  <Label htmlFor="provider">Supplier/Provider *</Label>
+                  <Input 
+                    id="provider"
+                    name="provider"
+                    value={formData.provider || ""}
+                    onChange={handleInputChange}
+                    placeholder="Enter supplier/provider name"
+                    className={formErrors.provider ? "border-red-500" : ""}
+                  />
+                  {formErrors.provider && (
+                    <p className="text-red-500 text-xs flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" /> {formErrors.provider}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
