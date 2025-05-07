@@ -63,8 +63,7 @@ export default function ProductDetailDialog({
         additionalImages: [],
         weight: 0,
         dimensions: "",
-        specifications: {} as Record<string, any>,  // Specifications como objeto vacío (Record<string, any>)
-        reference: "",
+        // specifications y reference se mantienen, pero no se requieren
         provider: ""
       });
     } else if (product) {
@@ -198,21 +197,7 @@ export default function ProductDetailDialog({
       errors.dimensions = "Dimensiones son obligatorias";
     }
     
-    // Validación de especificaciones
-    if (!formData.specifications) {
-      errors.specifications = "Especificaciones son obligatorias";
-    } else if (
-      formData.specifications && 
-      typeof formData.specifications === 'object' && 
-      Object.keys(formData.specifications as Record<string, any>).length === 0
-    ) {
-      errors.specifications = "Especificaciones son obligatorias";
-    }
-    
-    // Validación de referencia
-    if (!formData.reference || formData.reference.trim() === "") {
-      errors.reference = "Referencia es obligatoria";
-    }
+    // Quitamos las validaciones de especificaciones y referencia (por pedido del usuario)
     
     // Validación de proveedor
     if (!formData.provider || formData.provider.trim() === "") {
@@ -630,51 +615,7 @@ export default function ProductDetailDialog({
                   )}
                 </div>
                 
-                <div className="space-y-1">
-                  <Label htmlFor="specifications">Specifications *</Label>
-                  <Textarea 
-                    id="specifications"
-                    name="specifications"
-                    value={typeof formData.specifications === 'object' 
-                      ? JSON.stringify(formData.specifications) 
-                      : formData.specifications || ""}
-                    onChange={(e) => {
-                      try {
-                        // Intentar parsear como JSON
-                        const jsonValue = JSON.parse(e.target.value);
-                        setFormData({...formData, specifications: jsonValue});
-                      } catch {
-                        // Si no es JSON válido, guardar como string
-                        setFormData({...formData, specifications: e.target.value as any});
-                      }
-                    }}
-                    placeholder="Enter product specifications"
-                    rows={4}
-                    className={formErrors.specifications ? "border-red-500" : ""}
-                  />
-                  {formErrors.specifications && (
-                    <p className="text-red-500 text-xs flex items-center">
-                      <AlertCircle className="h-3 w-3 mr-1" /> {formErrors.specifications}
-                    </p>
-                  )}
-                </div>
-                
-                <div className="space-y-1">
-                  <Label htmlFor="reference">Reference *</Label>
-                  <Input 
-                    id="reference"
-                    name="reference"
-                    value={formData.reference || ""}
-                    onChange={handleInputChange}
-                    placeholder="Enter product reference"
-                    className={formErrors.reference ? "border-red-500" : ""}
-                  />
-                  {formErrors.reference && (
-                    <p className="text-red-500 text-xs flex items-center">
-                      <AlertCircle className="h-3 w-3 mr-1" /> {formErrors.reference}
-                    </p>
-                  )}
-                </div>
+                {/* Campos specifications y reference removidos por petición del usuario */}
                 
                 <div className="space-y-1">
                   <Label htmlFor="provider">Supplier/Provider *</Label>
