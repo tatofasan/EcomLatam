@@ -361,6 +361,17 @@ export default function ProductDetailDialog({
                   className="w-full h-full object-contain p-4"
                 />
                 
+                {/* Botón discreto para descargar todas las imágenes */}
+                {images.length > 0 && (
+                  <div 
+                    className="absolute top-2 right-2 p-1 rounded-full bg-white/80 hover:bg-white shadow-sm cursor-pointer transition-all duration-200 hover:shadow-md z-10"
+                    onClick={handleDownloadImages}
+                    title="Download Images"
+                  >
+                    <Download className="h-4 w-4 text-gray-700" />
+                  </div>
+                )}
+                
                 {images.length > 1 && (
                   <>
                     <Button 
@@ -729,13 +740,6 @@ export default function ProductDetailDialog({
             <X className="h-4 w-4 mr-2" />
             Cancel
           </Button>
-          
-          {mode === "view" && images.length > 0 && (
-            <Button variant="outline" onClick={handleDownloadImages}>
-              <Download className="h-4 w-4 mr-2" />
-              Descargar Imágenes
-            </Button>
-          )}
           
           {mode === "view" ? (
             <Button>
