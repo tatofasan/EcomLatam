@@ -54,11 +54,11 @@ export default function SidebarNav({
     orders: activeItem?.startsWith('orders-') || false
   });
   
-  // Cerrar el sidebar automáticamente en móviles después de hacer clic en un enlace
+  // Automatically close the sidebar on mobile after clicking a link
   const handleNavigation = (href: string, subMenuParent?: string) => {
     setLocation(href);
     
-    // Si se navega a un submenú, asegúrate de que su padre esté expandido
+    // If navigating to a submenu, ensure the parent is expanded
     if (subMenuParent && !expandedMenus[subMenuParent]) {
       setExpandedMenus(prev => ({
         ...prev,
@@ -96,12 +96,12 @@ export default function SidebarNav({
     },
     {
       title: "Orders",
-      href: "/orders/statistics", // Por defecto va a statistics
+      href: "/orders/statistics", // Default goes to statistics
       icon: <ShoppingCart className="h-5 w-5" />,
       key: "orders",
       subItems: [
         {
-          title: "Statistics", // Statistics primero
+          title: "Statistics", // Statistics first
           href: "/orders/statistics",
           key: "orders-statistics"
         },
@@ -189,11 +189,11 @@ export default function SidebarNav({
                 <a 
                   href={item.href}
                   onClick={(e) => {
-                    // Si tiene submenús, toggle expansion
+                    // If it has submenus, toggle expansion
                     if (item.subItems && item.subItems.length > 0) {
                       toggleMenuExpansion(item.key, e);
                     } else {
-                      // Si no tiene submenús, navegar normalmente
+                      // If it doesn't have submenus, navigate normally
                       e.preventDefault();
                       handleNavigation(item.href);
                     }
@@ -219,7 +219,7 @@ export default function SidebarNav({
                     </span>
                   </div>
                   
-                  {/* Mostrar indicador de expansión si tiene submenús */}
+                  {/* Show expansion indicator if it has submenus */}
                   {item.subItems && item.subItems.length > 0 && (
                     <span className={cn(
                       "transition-transform duration-200", 
@@ -286,7 +286,7 @@ export default function SidebarNav({
                 onClick={handleLogout}
               >
                 <LogOut className="h-3 w-3" />
-                Cerrar sesión
+                Log out
               </button>
             </div>
           </div>
