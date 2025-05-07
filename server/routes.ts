@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
-import { storage, DatabaseStorage } from "./storage";
+import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { 
   productSchema, 
@@ -13,6 +13,7 @@ import {
   orderItems
 } from "@shared/schema";
 import { db } from "./db";
+import { eq, desc, asc } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
@@ -22,6 +23,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const requireAuth = (req: Request, res: Response, next: Function) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });
+    }
+    next();
+  };
+  
+  // Middleware to ensure admin role
+  const requireAdmin = (req: Request, res: Response, next: Function) => {
+    if (!req.isAuthenticated() || req.user?.role !== 'admin') {
+      return res.status(403).json({ message: "Forbidden: Admin access required" });
     }
     next();
   };
@@ -208,7 +217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all orders for the authenticated user
+  // Get all orders filtered by user role (admin sees all, regular users see only their orders)
   app.get("/api/orders", requireAuth, async (req, res) => {
     try {
       if (!req.user) {
@@ -216,7 +225,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const userId = req.user.id;
-      const orders = await storage.getAllOrders(userId);
+      const isAdmin = req.user.role === 'admin';
+      
+      // If admin and specifically requests all orders, don't filter by userId
+      const orders = isAdmin ? await storage.getAllOrders() : await storage.getAllOrders(userId);
       res.json(orders);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -335,6 +347,118 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dashboard metrics - filtered by user role
+  app.get("/api/dashboard/metrics", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const userId = req.user.id;
+      const isAdmin = req.user.role === 'admin';
+      
+      // Get total products count (all for admin, user-created for regular users)
+      let productsQuery = db.select().from(products);
+      if (!isAdmin) {
+        productsQuery = productsQuery.where(eq(products.userId, userId));
+      }
+      const productsList = await productsQuery;
+      
+      // Get orders data (all for admin, user's orders for regular users)
+      let ordersQuery = db.select().from(orders);
+      if (!isAdmin) {
+        ordersQuery = ordersQuery.where(eq(orders.userId, userId));
+      }
+      const ordersList = await ordersQuery;
+      
+      // Calculate revenue from completed orders
+      const deliveredOrders = ordersList.filter(order => order.status === 'delivered');
+      const totalRevenue = deliveredOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+      
+      // Get recent orders (limit to 5)
+      let recentOrdersQuery = db.select()
+        .from(orders)
+        .orderBy(desc(orders.createdAt))
+        .limit(5);
+        
+      if (!isAdmin) {
+        recentOrdersQuery = recentOrdersQuery.where(eq(orders.userId, userId));
+      }
+      
+      const recentOrders = await recentOrdersQuery;
+      
+      // Get order counts by status
+      const pendingCount = ordersList.filter(order => order.status === 'pending').length;
+      const processingCount = ordersList.filter(order => order.status === 'processing').length;
+      const deliveredCount = ordersList.filter(order => order.status === 'delivered').length;
+      const cancelledCount = ordersList.filter(order => order.status === 'cancelled').length;
+      
+      // Get sales data by month
+      const monthlyData = {};
+      
+      // Initialize with last 6 months
+      const today = new Date();
+      for (let i = 5; i >= 0; i--) {
+        const monthDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        const monthKey = monthDate.toLocaleString('default', { month: 'short' });
+        monthlyData[monthKey] = { sales: 0, orders: 0 };
+      }
+      
+      // Populate with actual data
+      ordersList.forEach(order => {
+        const orderDate = new Date(order.createdAt);
+        const monthKey = orderDate.toLocaleString('default', { month: 'short' });
+        
+        if (monthlyData[monthKey]) {
+          monthlyData[monthKey].orders += 1;
+          if (order.status === 'delivered') {
+            monthlyData[monthKey].sales += order.totalAmount;
+          }
+        }
+      });
+      
+      // Transform to array for chart data
+      const salesData = Object.entries(monthlyData).map(([name, data]) => ({
+        name,
+        sales: parseFloat(data.sales.toFixed(2)),
+        orders: data.orders
+      }));
+      
+      // Get product categories distribution
+      const productCategories = {};
+      productsList.forEach(product => {
+        const category = product.category || 'Uncategorized';
+        if (!productCategories[category]) {
+          productCategories[category] = 0;
+        }
+        productCategories[category] += 1;
+      });
+      
+      const productCategoriesData = Object.entries(productCategories).map(([name, value]) => ({
+        name,
+        value
+      }));
+      
+      res.json({
+        totalProducts: productsList.length,
+        totalOrders: ordersList.length,
+        totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+        recentOrders,
+        orderStatus: {
+          pending: pendingCount,
+          processing: processingCount,
+          delivered: deliveredCount,
+          cancelled: cancelledCount
+        },
+        salesData,
+        productCategoriesData
+      });
+    } catch (error) {
+      console.error("Error fetching dashboard metrics:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard metrics" });
+    }
+  });
+  
   // Get user connections
   app.get("/api/connections", requireAuth, async (req, res) => {
     try {
