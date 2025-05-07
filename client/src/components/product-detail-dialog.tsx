@@ -23,8 +23,11 @@ import {
   ShoppingCart, 
   Save,
   X,
-  AlertCircle 
+  AlertCircle,
+  Download
 } from "lucide-react";
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
 
 import { Product } from "@/types";
 
@@ -211,6 +214,77 @@ export default function ProductDetailDialog({
     return Object.keys(errors).length === 0;
   };
   
+  // Función para descargar todas las imágenes del producto como ZIP
+  const handleDownloadImages = async () => {
+    if (images.length === 0) {
+      toast({
+        title: "No hay imágenes",
+        description: "Este producto no tiene imágenes para descargar",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const zip = new JSZip();
+      const imgFolder = zip.folder("imagenes-producto");
+      
+      // Añadir imagen principal
+      const mainImageName = `imagen-principal.${getImageExtension(productData.imageUrl)}`;
+      await addImageToZip(productData.imageUrl, imgFolder, mainImageName);
+      
+      // Añadir imágenes adicionales
+      if (productData.additionalImages && productData.additionalImages.length > 0) {
+        for (let i = 0; i < productData.additionalImages.length; i++) {
+          const imgUrl = productData.additionalImages[i];
+          const imgName = `imagen-adicional-${i+1}.${getImageExtension(imgUrl)}`;
+          await addImageToZip(imgUrl, imgFolder, imgName);
+        }
+      }
+      
+      // Generar y descargar el archivo ZIP
+      const zipBlob = await zip.generateAsync({type: "blob"});
+      saveAs(zipBlob, `imagenes-${productData.name.replace(/[^a-zA-Z0-9]/g, "-")}.zip`);
+      
+      toast({
+        title: "Imágenes descargadas",
+        description: "Las imágenes se han descargado correctamente",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudieron descargar las imágenes",
+        variant: "destructive",
+      });
+      console.error("Error al descargar imágenes:", error);
+    }
+  };
+
+  // Función auxiliar para determinar la extensión de la imagen
+  const getImageExtension = (url: string) => {
+    if (url.includes(";base64,")) {
+      const mimeType = url.split(";base64,")[0].split("data:")[1];
+      return mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1];
+    }
+    return "jpg"; // Por defecto
+  };
+
+  // Función para convertir URL de imagen a blob y añadirla al ZIP
+  const addImageToZip = async (url: string, folder: JSZip, fileName: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      folder.file(fileName, blob);
+    } catch (error) {
+      console.error(`Error al añadir imagen ${fileName}:`, error);
+      // Si la imagen es base64, añadirla directamente
+      if (url.includes(";base64,")) {
+        const base64Data = url.split(";base64,")[1];
+        folder.file(fileName, base64Data, {base64: true});
+      }
+    }
+  };
+
   const handleSave = () => {
     if (onSave && formData) {
       // Validar el formulario antes de guardar
@@ -647,6 +721,13 @@ export default function ProductDetailDialog({
             <X className="h-4 w-4 mr-2" />
             Cancel
           </Button>
+          
+          {mode === "view" && images.length > 0 && (
+            <Button variant="outline" onClick={handleDownloadImages}>
+              <Download className="h-4 w-4 mr-2" />
+              Descargar Imágenes
+            </Button>
+          )}
           
           {mode === "view" ? (
             <Button>
