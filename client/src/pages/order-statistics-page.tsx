@@ -292,6 +292,16 @@ export default function OrderStatisticsPage() {
       setSortDirection("asc");
     }
   };
+  
+  // Fix TypeScript error with date range reset
+  const resetFilters = () => {
+    setSelectedProductId(null);
+    setDateRange({
+      from: subDays(new Date(), 30),
+      to: new Date(),
+    });
+    setUseActivityDate(false);
+  };
 
   return (
     <DashboardLayout activeItem="orders-statistics">
@@ -428,11 +438,7 @@ export default function OrderStatisticsPage() {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => {
-                        setSelectedProductId(null);
-                        setDateRange(undefined);
-                        setUseActivityDate(false);
-                      }}
+                      onClick={resetFilters}
                     >
                       Reset Filters
                     </Button>
@@ -443,15 +449,95 @@ export default function OrderStatisticsPage() {
                   <Table>
                     <TableCaption>A summary of orders by day</TableCaption>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead className="whitespace-nowrap">Date</TableHead>
-                        <TableHead className="whitespace-nowrap">Pending</TableHead>
-                        <TableHead className="whitespace-nowrap">Processing</TableHead>
-                        <TableHead className="whitespace-nowrap">Delivered</TableHead>
-                        <TableHead className="whitespace-nowrap">Cancelled</TableHead>
-                        <TableHead className="whitespace-nowrap">Total Orders</TableHead>
-                        <TableHead className="whitespace-nowrap">Delivery %</TableHead>
-                        <TableHead className="whitespace-nowrap text-right">Revenue</TableHead>
+                      <TableRow className="border-b border-border bg-accent/50">
+                        <TableHead 
+                          className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none whitespace-nowrap"
+                          onClick={() => handleSort("date")}
+                        >
+                          Date
+                          {sortField === "date" && (
+                            <span className="inline-flex ml-1">
+                              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </span>
+                          )}
+                        </TableHead>
+                        <TableHead 
+                          className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none whitespace-nowrap"
+                          onClick={() => handleSort("pending")}
+                        >
+                          Pending
+                          {sortField === "pending" && (
+                            <span className="inline-flex ml-1">
+                              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </span>
+                          )}
+                        </TableHead>
+                        <TableHead 
+                          className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none whitespace-nowrap"
+                          onClick={() => handleSort("processing")}
+                        >
+                          Processing
+                          {sortField === "processing" && (
+                            <span className="inline-flex ml-1">
+                              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </span>
+                          )}
+                        </TableHead>
+                        <TableHead 
+                          className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none whitespace-nowrap"
+                          onClick={() => handleSort("delivered")}
+                        >
+                          Delivered
+                          {sortField === "delivered" && (
+                            <span className="inline-flex ml-1">
+                              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </span>
+                          )}
+                        </TableHead>
+                        <TableHead 
+                          className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none whitespace-nowrap"
+                          onClick={() => handleSort("cancelled")}
+                        >
+                          Cancelled
+                          {sortField === "cancelled" && (
+                            <span className="inline-flex ml-1">
+                              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </span>
+                          )}
+                        </TableHead>
+                        <TableHead 
+                          className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none whitespace-nowrap"
+                          onClick={() => handleSort("total")}
+                        >
+                          Total Orders
+                          {sortField === "total" && (
+                            <span className="inline-flex ml-1">
+                              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </span>
+                          )}
+                        </TableHead>
+                        <TableHead 
+                          className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none whitespace-nowrap"
+                          onClick={() => handleSort("deliveredPercentage")}
+                        >
+                          Delivery %
+                          {sortField === "deliveredPercentage" && (
+                            <span className="inline-flex ml-1">
+                              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </span>
+                          )}
+                        </TableHead>
+                        <TableHead 
+                          className="text-right py-3 px-4 font-medium text-primary cursor-pointer select-none whitespace-nowrap"
+                          onClick={() => handleSort("revenue")}
+                        >
+                          Revenue
+                          {sortField === "revenue" && (
+                            <span className="inline-flex ml-1">
+                              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </span>
+                          )}
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
