@@ -258,12 +258,12 @@ export default function ConnectionsPage() {
             <DialogTrigger asChild>
               <Button className="flex items-center gap-2">
                 <PlusCircle className="h-4 w-4" />
-                Añadir Conexión
+                Add Connection
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Añadir Conexión</DialogTitle>
+                <DialogTitle>Add Connection</DialogTitle>
                 <DialogDescription>
                   Conecta tu plataforma de e-commerce para sincronizar productos y pedidos.
                 </DialogDescription>
@@ -401,13 +401,13 @@ export default function ConnectionsPage() {
                 <DialogHeader>
                   <DialogTitle>Añadir conexión</DialogTitle>
                   <DialogDescription>
-                    Conecta tu plataforma de e-commerce para sincronizar productos y pedidos.
+                    Connect your e-commerce platform to synchronize products and orders.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="name" className="text-right">
-                      Nombre
+                      Name
                     </Label>
                     <Input 
                       id="name" 
@@ -419,7 +419,7 @@ export default function ConnectionsPage() {
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="platform" className="text-right">
-                      Plataforma
+                      Platform
                     </Label>
                     <Select onValueChange={handleSelectChange} value={formData.platform}>
                       <SelectTrigger className="col-span-3">
