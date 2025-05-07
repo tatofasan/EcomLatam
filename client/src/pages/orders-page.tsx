@@ -527,7 +527,7 @@ export default function OrdersPage() {
                         onClick={() => handleSort("orderNumber")}
                       >
                         <div className="flex items-center">
-                          Pedido
+                          Order
                           {sortField === "orderNumber" && (
                             <span className="ml-1">
                               {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -540,7 +540,7 @@ export default function OrdersPage() {
                         onClick={() => handleSort("customerName")}
                       >
                         <div className="flex items-center">
-                          Cliente
+                          Customer
                           {sortField === "customerName" && (
                             <span className="ml-1">
                               {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -553,7 +553,7 @@ export default function OrdersPage() {
                         onClick={() => handleSort("createdAt")}
                       >
                         <div className="flex items-center">
-                          Fecha
+                          Date
                           {sortField === "createdAt" && (
                             <span className="ml-1">
                               {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -566,7 +566,7 @@ export default function OrdersPage() {
                         onClick={() => handleSort("updatedAt")}
                       >
                         <div className="flex items-center">
-                          Fecha Entrega
+                          Delivery Date
                           {sortField === "updatedAt" && (
                             <span className="ml-1">
                               {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -592,7 +592,7 @@ export default function OrdersPage() {
                         onClick={() => handleSort("status")}
                       >
                         <div className="flex items-center">
-                          Estado
+                          Status
                           {sortField === "status" && (
                             <span className="ml-1">
                               {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -600,7 +600,7 @@ export default function OrdersPage() {
                           )}
                         </div>
                       </th>
-                      <th className="text-right py-3 px-4 font-medium text-primary">Acciones</th>
+                      <th className="text-right py-3 px-4 font-medium text-primary">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -631,7 +631,7 @@ export default function OrdersPage() {
                               className="hover:bg-primary/10 hover:text-primary"
                             >
                               <FileText className="h-4 w-4 mr-1" />
-                              Ver
+                              View
                             </Button>
                           </td>
                         </tr>
@@ -644,7 +644,7 @@ export default function OrdersPage() {
                   {/* Items Per Page Selector */}
                   <div className="flex justify-end mb-4">
                     <div className="flex items-center space-x-2">
-                      <Label htmlFor="items-per-page" className="text-sm whitespace-nowrap">Items por página:</Label>
+                      <Label htmlFor="items-per-page" className="text-sm whitespace-nowrap">Items per page:</Label>
                       <Select
                         value={itemsPerPage.toString()}
                         onValueChange={(value) => {
@@ -683,9 +683,9 @@ export default function OrdersPage() {
           <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Detalles del Pedido</DialogTitle>
+                <DialogTitle>Order Details</DialogTitle>
                 <DialogDescription>
-                  Pedido #{selectedOrder.orderNumber}
+                  Order #{selectedOrder.orderNumber}
                 </DialogDescription>
               </DialogHeader>
               
