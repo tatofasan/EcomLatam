@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
@@ -19,7 +19,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter,
 } from "@/components/ui/table";
+import Pagination from "@/components/pagination";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Order, Product } from "@/types";
 import { Input } from "@/components/ui/input";
@@ -65,10 +67,32 @@ export default function OrderStatisticsPage() {
   const queryClient = useQueryClient();
   const [statistics, setStatistics] = useState<OrderStatsByDay[]>([]);
   
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  
   // Filtros
   const [useActivityDate, setUseActivityDate] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  
+  // Helper functions to calculate totals for all statistics
+  const calcTotalsByStatus = useMemo(() => {
+    return {
+      pending: statistics.reduce((sum, stat) => sum + stat.pending, 0),
+      processing: statistics.reduce((sum, stat) => sum + stat.processing, 0),
+      delivered: statistics.reduce((sum, stat) => sum + stat.delivered, 0),
+      cancelled: statistics.reduce((sum, stat) => sum + stat.cancelled, 0),
+      total: statistics.reduce((sum, stat) => sum + stat.total, 0),
+      revenue: statistics.reduce((sum, stat) => sum + stat.revenue, 0),
+    };
+  }, [statistics]);
+  
+  // Calculate overall delivery percentage
+  const totalDeliveryPercentage = useMemo(() => {
+    const { delivered, total } = calcTotalsByStatus;
+    return total > 0 ? (delivered / total * 100).toFixed(2) : "0.00";
+  }, [calcTotalsByStatus]);
 
   // Mutación para regenerar los datos de estadísticas
   const regenerateDataMutation = useMutation({
@@ -370,6 +394,29 @@ export default function OrderStatisticsPage() {
                 </div>
                 {/* Visualización de tabla para pantallas medianas y grandes */}
                 <div className="hidden md:block overflow-x-auto">
+                  {/* Items Per Page Selector */}
+                  <div className="flex justify-end mb-4">
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor="items-per-page" className="text-sm whitespace-nowrap">Items per page:</Label>
+                      <Select
+                        value={itemsPerPage.toString()}
+                        onValueChange={(value) => {
+                          setItemsPerPage(Number(value));
+                          setCurrentPage(1); // Reset to first page when changing items per page
+                        }}
+                      >
+                        <SelectTrigger className="w-[80px]">
+                          <SelectValue placeholder="20" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                          <SelectItem value="100">100</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
                   <Table>
                     <TableCaption>A summary of orders by day</TableCaption>
                     <TableHeader>
@@ -386,66 +433,175 @@ export default function OrderStatisticsPage() {
                     </TableHeader>
                     <TableBody>
                       {statistics.length > 0 ? (
-                        statistics.map((stat) => (
-                          <TableRow key={stat.date}>
-                            <TableCell className="font-medium whitespace-nowrap">{stat.date}</TableCell>
-                            <TableCell>{stat.pending}</TableCell>
-                            <TableCell>{stat.processing}</TableCell>
-                            <TableCell>{stat.delivered}</TableCell>
-                            <TableCell>{stat.cancelled}</TableCell>
-                            <TableCell>{stat.total}</TableCell>
-                            <TableCell>{stat.deliveredPercentage.toFixed(2)}%</TableCell>
-                            <TableCell className="text-right">${stat.revenue.toFixed(2)}</TableCell>
-                          </TableRow>
-                        ))
+                        // Apply pagination to the statistics data
+                        statistics
+                          .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                          .map((stat) => (
+                            <TableRow key={stat.date}>
+                              <TableCell className="font-medium whitespace-nowrap">{stat.date}</TableCell>
+                              <TableCell>{stat.pending}</TableCell>
+                              <TableCell>{stat.processing}</TableCell>
+                              <TableCell>{stat.delivered}</TableCell>
+                              <TableCell>{stat.cancelled}</TableCell>
+                              <TableCell>{stat.total}</TableCell>
+                              <TableCell>{stat.deliveredPercentage.toFixed(2)}%</TableCell>
+                              <TableCell className="text-right">${stat.revenue.toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))
                       ) : (
                         <TableRow>
                           <TableCell colSpan={8} className="text-center">No order data available</TableCell>
                         </TableRow>
                       )}
                     </TableBody>
+                    {statistics.length > 0 && (
+                      <TableFooter className="bg-muted/50">
+                        <TableRow className="font-bold">
+                          <TableCell>Total (All Pages)</TableCell>
+                          <TableCell>{calcTotalsByStatus.pending}</TableCell>
+                          <TableCell>{calcTotalsByStatus.processing}</TableCell>
+                          <TableCell>{calcTotalsByStatus.delivered}</TableCell>
+                          <TableCell>{calcTotalsByStatus.cancelled}</TableCell>
+                          <TableCell>{calcTotalsByStatus.total}</TableCell>
+                          <TableCell>{totalDeliveryPercentage}%</TableCell>
+                          <TableCell className="text-right">
+                            ${calcTotalsByStatus.revenue.toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      </TableFooter>
+                    )}
                   </Table>
+                  
+                  {/* Pagination */}
+                  {statistics.length > 0 && (
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={Math.ceil(statistics.length / itemsPerPage)}
+                      onPageChange={setCurrentPage}
+                      totalItems={statistics.length}
+                      itemsPerPage={itemsPerPage}
+                    />
+                  )}
                 </div>
                 
                 {/* Visualización de tarjetas para dispositivos móviles */}
                 <div className="md:hidden space-y-4">
                   <h3 className="text-center text-muted-foreground mb-2">Order Summary by Day</h3>
                   
+                  {/* Items Per Page Selector for Mobile */}
+                  <div className="flex justify-end mb-4">
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor="items-per-page-mobile" className="text-xs whitespace-nowrap">Items per page:</Label>
+                      <Select
+                        value={itemsPerPage.toString()}
+                        onValueChange={(value) => {
+                          setItemsPerPage(Number(value));
+                          setCurrentPage(1); // Reset to first page when changing items per page
+                        }}
+                      >
+                        <SelectTrigger className="w-[70px] h-8 text-xs">
+                          <SelectValue placeholder="20" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                          <SelectItem value="100">100</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
                   {statistics.length > 0 ? (
-                    statistics.map((stat) => (
-                      <div key={stat.date} className="bg-card border rounded-lg p-4 shadow-sm">
-                        <div className="flex justify-between items-center border-b pb-2 mb-2">
-                          <h4 className="font-semibold">{stat.date}</h4>
-                          <span className="bg-primary/10 text-primary px-2 py-1 rounded-md text-xs">
-                            Total: {stat.total}
+                    <>
+                      {/* Paginated mobile cards */}
+                      {statistics
+                        .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                        .map((stat) => (
+                          <div key={stat.date} className="bg-card border rounded-lg p-4 shadow-sm">
+                            <div className="flex justify-between items-center border-b pb-2 mb-2">
+                              <h4 className="font-semibold">{stat.date}</h4>
+                              <span className="bg-primary/10 text-primary px-2 py-1 rounded-md text-xs">
+                                Total: {stat.total}
+                              </span>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-2 mb-3">
+                              <div className="flex flex-col">
+                                <span className="text-xs text-muted-foreground">Pending</span>
+                                <span className="font-medium">{stat.pending}</span>
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-xs text-muted-foreground">Processing</span>
+                                <span className="font-medium">{stat.processing}</span>
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-xs text-muted-foreground">Delivered</span>
+                                <span className="font-medium">{stat.delivered}</span>
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-xs text-muted-foreground">Cancelled</span>
+                                <span className="font-medium">{stat.cancelled}</span>
+                              </div>
+                            </div>
+                            
+                            <div className="flex justify-between items-center pt-2 border-t">
+                              <span className="text-xs text-muted-foreground">Delivery: <span className="font-medium">{stat.deliveredPercentage.toFixed(2)}%</span></span>
+                              <span className="text-xs text-green-600 font-medium">${stat.revenue.toFixed(2)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      
+                      {/* Totals Card for Mobile */}
+                      <div className="bg-muted/50 border border-primary/20 rounded-lg p-4 shadow-sm mt-4">
+                        <div className="flex justify-between items-center border-b border-muted-foreground/30 pb-2 mb-3">
+                          <h4 className="font-bold">Total (All Pages)</h4>
+                          <span className="bg-primary/20 text-primary px-2 py-1 rounded-md text-xs font-semibold">
+                            {calcTotalsByStatus.total} Orders
                           </span>
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-2 mb-3">
+                        <div className="grid grid-cols-2 gap-3 mb-3">
                           <div className="flex flex-col">
                             <span className="text-xs text-muted-foreground">Pending</span>
-                            <span className="font-medium">{stat.pending}</span>
+                            <span className="font-bold">{calcTotalsByStatus.pending}</span>
                           </div>
                           <div className="flex flex-col">
                             <span className="text-xs text-muted-foreground">Processing</span>
-                            <span className="font-medium">{stat.processing}</span>
+                            <span className="font-bold">{calcTotalsByStatus.processing}</span>
                           </div>
                           <div className="flex flex-col">
                             <span className="text-xs text-muted-foreground">Delivered</span>
-                            <span className="font-medium">{stat.delivered}</span>
+                            <span className="font-bold">{calcTotalsByStatus.delivered}</span>
                           </div>
                           <div className="flex flex-col">
                             <span className="text-xs text-muted-foreground">Cancelled</span>
-                            <span className="font-medium">{stat.cancelled}</span>
+                            <span className="font-bold">{calcTotalsByStatus.cancelled}</span>
                           </div>
                         </div>
                         
-                        <div className="flex justify-between items-center pt-2 border-t">
-                          <span className="text-xs text-muted-foreground">Delivery: <span className="font-medium">{stat.deliveredPercentage.toFixed(2)}%</span></span>
-                          <span className="text-xs text-green-600 font-medium">${stat.revenue.toFixed(2)}</span>
+                        <div className="flex justify-between items-center pt-2 border-t border-muted-foreground/30">
+                          <span className="text-xs text-muted-foreground">Delivery: 
+                            <span className="font-bold ml-1">
+                              {totalDeliveryPercentage}%
+                            </span>
+                          </span>
+                          <span className="text-sm text-green-600 font-bold">
+                            ${calcTotalsByStatus.revenue.toFixed(2)}
+                          </span>
                         </div>
                       </div>
-                    ))
+                      
+                      {/* Mobile Pagination */}
+                      <div className="mt-4">
+                        <Pagination
+                          currentPage={currentPage}
+                          totalPages={Math.ceil(statistics.length / itemsPerPage)}
+                          onPageChange={setCurrentPage}
+                          totalItems={statistics.length}
+                          itemsPerPage={itemsPerPage}
+                        />
+                      </div>
+                    </>
                   ) : (
                     <div className="bg-muted/20 border rounded-lg p-4 text-center">
                       <Package2 className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
