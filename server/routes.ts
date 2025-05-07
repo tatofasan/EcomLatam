@@ -250,8 +250,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Order not found" });
       }
       
-      // Check if this order belongs to the authenticated user
-      if (order.userId !== req.user.id) {
+      // Check if this order belongs to the authenticated user (or if user is admin)
+      const isAdmin = req.user.role === 'admin';
+      if (order.userId !== req.user.id && !isAdmin) {
         return res.status(403).json({ message: "Forbidden" });
       }
       
@@ -333,8 +334,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Order not found" });
       }
       
-      // Check if this order belongs to the authenticated user
-      if (order.userId !== req.user.id) {
+      // Check if this order belongs to the authenticated user (or if user is admin)
+      const isAdmin = req.user.role === 'admin';
+      if (order.userId !== req.user.id && !isAdmin) {
         return res.status(403).json({ message: "Forbidden" });
       }
       

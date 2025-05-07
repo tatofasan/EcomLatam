@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { 
   Loader2, 
@@ -104,7 +105,11 @@ export default function OrderStatisticsPage() {
     }
   });
 
-  // Fetch orders
+  // Get user role
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  
+  // Fetch orders based on user role - admin gets all orders, regular users only see their orders
   const { data: orders, isLoading: ordersLoading } = useQuery<OrderForStats[]>({
     queryKey: ["/api/orders"],
     queryFn: async () => {
@@ -221,7 +226,16 @@ export default function OrderStatisticsPage() {
   return (
     <DashboardLayout activeItem="orders-statistics">
       <div className="p-3 md:p-6">
-        <h1 className="text-xl md:text-2xl font-bold mb-4">Order Statistics</h1>
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2 mb-4">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold">Estadísticas de Pedidos</h1>
+            <p className="text-sm text-muted-foreground">
+              {isAdmin 
+                ? 'Vista de administrador (todos los pedidos)' 
+                : 'Estadísticas de tus pedidos'}
+            </p>
+          </div>
+        </div>
         
         {isLoading || regenerateDataMutation.isPending ? (
           <div className="flex justify-center items-center h-64">
