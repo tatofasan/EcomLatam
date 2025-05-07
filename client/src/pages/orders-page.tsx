@@ -53,6 +53,8 @@ interface OrderType {
   notes: string;
   createdAt: string;
   updatedAt: string;
+  // Índice para poder acceder a propiedades con strings
+  [key: string]: string | number;
 }
 
 interface OrderItemType {
@@ -89,6 +91,10 @@ export default function OrdersPage() {
     from: subDays(new Date(), 30),
     to: new Date(),
   });
+  
+  // Sort states
+  const [sortField, setSortField] = useState<string>("createdAt");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   // Function to load order details
   const fetchOrderDetails = async (orderId: number) => {
@@ -178,7 +184,8 @@ export default function OrdersPage() {
 
   // Filter orders based on all criteria
   const filteredOrders = useMemo(() => {
-    return orders.filter(order => {
+    // First filter the orders
+    const filtered = orders.filter(order => {
       // Text search filter
       const matchesSearch = 
         order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -214,7 +221,29 @@ export default function OrdersPage() {
       
       return matchesSearch && matchesStatus && matchesDateRange;
     });
-  }, [orders, searchTerm, statusFilter, dateRange]);
+    
+    // Then sort the filtered orders
+    return [...filtered].sort((a, b) => {
+      let comparison = 0;
+      
+      // Handle different data types for different fields
+      if (sortField === "createdAt" || sortField === "updatedAt") {
+        // Date comparison
+        comparison = new Date(a[sortField]).getTime() - new Date(b[sortField]).getTime();
+      } else if (sortField === "totalAmount") {
+        // Number comparison
+        comparison = a[sortField] - b[sortField];
+      } else {
+        // String comparison for other fields
+        const aValue = String(a[sortField] || "").toLowerCase();
+        const bValue = String(b[sortField] || "").toLowerCase();
+        comparison = aValue.localeCompare(bValue);
+      }
+      
+      // Apply sort direction
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+  }, [orders, searchTerm, statusFilter, dateRange, sortField, sortDirection]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -261,6 +290,18 @@ export default function OrdersPage() {
   const openOrderDetails = async (order: OrderType) => {
     // Fetch the details including items
     await fetchOrderDetails(order.id);
+  };
+  
+  // Function to handle sort change
+  const handleSort = (field: string) => {
+    // If clicking the same field, toggle direction
+    if (field === sortField) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      // If clicking a new field, set it as the sort field and default to asc
+      setSortField(field);
+      setSortDirection("asc");
+    }
   };
   
   // Function to export orders to Excel
@@ -478,12 +519,84 @@ export default function OrdersPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-accent/50">
-                      <th className="text-left py-3 px-4 font-medium text-primary">Pedido</th>
-                      <th className="text-left py-3 px-4 font-medium text-primary">Cliente</th>
-                      <th className="text-left py-3 px-4 font-medium text-primary">Fecha</th>
-                      <th className="text-left py-3 px-4 font-medium text-primary">Fecha Entrega</th>
-                      <th className="text-left py-3 px-4 font-medium text-primary">Total</th>
-                      <th className="text-left py-3 px-4 font-medium text-primary">Estado</th>
+                      <th 
+                        className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none"
+                        onClick={() => handleSort("orderNumber")}
+                      >
+                        <div className="flex items-center">
+                          Pedido
+                          {sortField === "orderNumber" && (
+                            <span className="ml-1">
+                              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none"
+                        onClick={() => handleSort("customerName")}
+                      >
+                        <div className="flex items-center">
+                          Cliente
+                          {sortField === "customerName" && (
+                            <span className="ml-1">
+                              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none"
+                        onClick={() => handleSort("createdAt")}
+                      >
+                        <div className="flex items-center">
+                          Fecha
+                          {sortField === "createdAt" && (
+                            <span className="ml-1">
+                              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none"
+                        onClick={() => handleSort("updatedAt")}
+                      >
+                        <div className="flex items-center">
+                          Fecha Entrega
+                          {sortField === "updatedAt" && (
+                            <span className="ml-1">
+                              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none"
+                        onClick={() => handleSort("totalAmount")}
+                      >
+                        <div className="flex items-center">
+                          Total
+                          {sortField === "totalAmount" && (
+                            <span className="ml-1">
+                              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none"
+                        onClick={() => handleSort("status")}
+                      >
+                        <div className="flex items-center">
+                          Estado
+                          {sortField === "status" && (
+                            <span className="ml-1">
+                              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </span>
+                          )}
+                        </div>
+                      </th>
                       <th className="text-right py-3 px-4 font-medium text-primary">Acciones</th>
                     </tr>
                   </thead>
