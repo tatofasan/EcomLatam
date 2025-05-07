@@ -273,10 +273,23 @@ export default function ProductDetailDialog({
                 <ImageUpload 
                   className="h-[300px]"
                   currentImage={formData.imageUrl}
+                  additionalImages={formData.additionalImages || []}
                   onImageChange={(image) => {
                     setFormData({
                       ...formData,
                       imageUrl: image
+                    });
+                  }}
+                  onSelectAdditionalImage={(image, index) => {
+                    // Promover una imagen adicional a ser la imagen principal
+                    // y eliminarla del array de imágenes adicionales
+                    const newAdditionalImages = [...(formData.additionalImages || [])];
+                    newAdditionalImages.splice(index, 1);
+                    
+                    setFormData({
+                      ...formData,
+                      imageUrl: image,
+                      additionalImages: newAdditionalImages
                     });
                   }}
                 />
