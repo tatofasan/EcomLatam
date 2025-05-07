@@ -56,8 +56,7 @@ export default function WalletPage() {
   const [transactionDetailOpen, setTransactionDetailOpen] = useState(false);
   const [updateStatusDialogOpen, setUpdateStatusDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState("");
-  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [paymentProofText, setPaymentProofText] = useState("");
   
   // Fetch transactions
   const { data: transactions = [], isLoading: isLoadingTransactions } = useQuery({
@@ -655,6 +654,9 @@ export default function WalletPage() {
                       <th className="text-left py-3 px-4 font-medium">Reference</th>
                       <th className="text-left py-3 px-4 font-medium">Status</th>
                       <th className="text-right py-3 px-4 font-medium">Amount</th>
+                      {user?.role === "admin" && (
+                        <th className="text-center py-3 px-4 font-medium">Actions</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -693,22 +695,58 @@ export default function WalletPage() {
                         }`}>
                           {transaction.amount > 0 ? '+' : ''}
                           ${Math.abs(transaction.amount).toFixed(2)}
-                          {user?.role === "admin" && transaction.type === "withdrawal" && 
-                           (transaction.status === "pending" || transaction.status === "processing") && 
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="ml-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedTransaction(transaction);
-                              setUpdateStatusDialogOpen(true);
-                              setNewStatus(transaction.status === "pending" ? "processing" : "paid");
-                            }}
-                          >
-                            <ArrowUp className="h-4 w-4 text-amber-600" />
-                          </Button>}
                         </td>
+                        {user?.role === "admin" && (
+                          <td className="py-4 px-4">
+                            {transaction.type === "withdrawal" && transaction.status === "pending" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="mr-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateTransactionStatusMutation.mutate({
+                                    transactionId: transaction.id,
+                                    status: "processing"
+                                  });
+                                }}
+                              >
+                                Process
+                              </Button>
+                            )}
+                            {transaction.type === "withdrawal" && transaction.status === "processing" && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedTransaction(transaction);
+                                  setUpdateStatusDialogOpen(true);
+                                  setNewStatus("paid");
+                                }}
+                              >
+                                Paid
+                              </Button>
+                            )}
+                            {transaction.type === "withdrawal" && 
+                             (transaction.status === "pending" || transaction.status === "processing") && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-gray-500"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateTransactionStatusMutation.mutate({
+                                    transactionId: transaction.id,
+                                    status: "cancelled"
+                                  });
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -907,25 +945,20 @@ export default function WalletPage() {
                     </Select>
                   </div>
                   
-                  {/* Payment Proof Upload - Only for paid status */}
+                  {/* Payment Proof - Only for paid status */}
                   {newStatus === "paid" && (
                     <div className="space-y-2">
-                      <Label htmlFor="paymentProof">Payment Proof (required)</Label>
+                      <Label htmlFor="paymentProof">Tronscan Transaction Link (required)</Label>
                       <div className="grid gap-2">
                         <Input
                           id="paymentProof"
-                          type="file"
-                          accept="image/*"
-                          ref={fileInputRef}
-                          onChange={handleFileChange}
+                          type="text" 
+                          placeholder="https://tronscan.org/#/transaction/..."
+                          value={paymentProofText}
+                          onChange={(e) => setPaymentProofText(e.target.value)}
                         />
-                        {paymentProofFile && (
-                          <p className="text-xs text-green-600">
-                            File selected: {paymentProofFile.name}
-                          </p>
-                        )}
                         <p className="text-xs text-gray-500">
-                          Upload a screenshot or image showing proof of payment
+                          Paste the Tronscan transaction link as proof of payment
                         </p>
                       </div>
                     </div>
