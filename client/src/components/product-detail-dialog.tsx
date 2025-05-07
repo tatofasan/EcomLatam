@@ -57,15 +57,15 @@ export default function ProductDetailDialog({
         price: 0,
         stock: 0,
         status: "draft",
-        sku: `SKU-${Math.floor(Math.random() * 10000)}`,
-        imageUrl: "https://placehold.co/600x400?text=Product+Image",
+        sku: "",
+        imageUrl: "",
         category: "",
         additionalImages: [],
-        weight: null,
-        dimensions: null,
-        specifications: null,
-        reference: null,
-        provider: null
+        weight: 0,
+        dimensions: "",
+        specifications: "",  // Specifications como string vacío
+        reference: "",
+        provider: ""
       });
     } else if (product) {
       setFormData({ ...product });
@@ -78,14 +78,20 @@ export default function ProductDetailDialog({
   // Inicializar datos del producto para edición/creación
   const productData = mode === "create" 
     ? {
+        id: -1, // ID temporal para modo creación
         name: "",
         description: "",
         price: 0,
         stock: 0,
         status: "draft",
         sku: "",
-        imageUrl: "https://placehold.co/600x400?text=Product+Image",
-        category: ""
+        imageUrl: "",
+        category: "",
+        weight: 0,
+        dimensions: "",
+        specifications: "",
+        reference: "",
+        provider: ""
       } as Product
     : product as Product;
   
@@ -164,12 +170,52 @@ export default function ProductDetailDialog({
       }
     }
     
-    if (formData.price === undefined || formData.price < 0) {
-      errors.price = "Precio debe ser un valor positivo";
+    // Validación de precio - debe ser mayor que 0
+    if (formData.price === undefined || formData.price <= 0) {
+      errors.price = "Precio debe ser mayor que 0";
     }
     
+    // Validación de stock - solo puede ser 0 si status es draft o inactive
     if (formData.stock === undefined || formData.stock < 0) {
       errors.stock = "Stock debe ser un valor positivo";
+    } else if (formData.stock === 0 && 
+              !(formData.status === "draft" || formData.status === "inactive")) {
+      errors.stock = "Stock solo puede ser 0 si el estado es Borrador o Inactivo";
+    }
+    
+    // Validación de categoría
+    if (!formData.category || formData.category.trim() === "") {
+      errors.category = "Categoría es obligatoria";
+    }
+    
+    // Validación de peso
+    if (formData.weight === undefined || formData.weight === null) {
+      errors.weight = "Peso es obligatorio";
+    }
+    
+    // Validación de dimensiones
+    if (!formData.dimensions || formData.dimensions.trim() === "") {
+      errors.dimensions = "Dimensiones son obligatorias";
+    }
+    
+    // Validación de especificaciones
+    if (!formData.specifications) {
+      errors.specifications = "Especificaciones son obligatorias";
+    } else if (typeof formData.specifications === 'string' && formData.specifications.trim() === "") {
+      errors.specifications = "Especificaciones son obligatorias";
+    } else if (typeof formData.specifications === 'object' && 
+               Object.keys(formData.specifications).length === 0) {
+      errors.specifications = "Especificaciones son obligatorias";
+    }
+    
+    // Validación de referencia
+    if (!formData.reference || formData.reference.trim() === "") {
+      errors.reference = "Referencia es obligatoria";
+    }
+    
+    // Validación de proveedor
+    if (!formData.provider || formData.provider.trim() === "") {
+      errors.provider = "Proveedor es obligatorio";
     }
     
     // Actualizar los errores y devolver si pasó la validación
@@ -189,22 +235,22 @@ export default function ProductDetailDialog({
         return;
       }
       
-      // Clean formData to ensure it matches schema requirements
+      // Clean formData - no defaults, todos los campos deben estar completos
       const cleanedData = {
-        name: formData.name || "",
-        description: formData.description || "",
-        price: formData.price || 0,
-        stock: formData.stock || 0,
-        status: formData.status || "draft",
-        sku: formData.sku || `SKU-${Math.floor(Math.random() * 10000)}`,
-        imageUrl: formData.imageUrl || "",
-        additionalImages: formData.additionalImages || null,
-        category: formData.category || null,
-        weight: formData.weight || null,
-        dimensions: formData.dimensions || null,
-        specifications: formData.specifications || null,
-        reference: formData.reference || null,
-        provider: formData.provider || null
+        name: formData.name,
+        description: formData.description,
+        price: formData.price,
+        stock: formData.stock,
+        status: formData.status,
+        sku: formData.sku,
+        imageUrl: formData.imageUrl,
+        additionalImages: formData.additionalImages || [],
+        category: formData.category,
+        weight: formData.weight,
+        dimensions: formData.dimensions,
+        specifications: formData.specifications,
+        reference: formData.reference,
+        provider: formData.provider
       };
       
       // Si es modo crear, asegúrate de que se creará con un ID temporal 
