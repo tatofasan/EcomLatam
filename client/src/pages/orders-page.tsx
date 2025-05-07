@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,11 +21,23 @@ import {
   Clock,
   XCircle,
   TruckIcon,
-  AlertCircle
+  AlertCircle,
+  CalendarRange,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format, subDays, isAfter, isBefore, isEqual } from "date-fns";
+import { es } from "date-fns/locale";
+import Pagination from "@/components/pagination";
+
+// DateRange interface
+interface DateRange {
+  from: Date;
+  to?: Date;
+}
 
 // Type definitions for data from the API
 interface OrderType {
@@ -67,6 +79,16 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  
+  // Date filter - default to last 30 days
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: subDays(new Date(), 30),
+    to: new Date(),
+  });
 
   // Function to load order details
   const fetchOrderDetails = async (orderId: number) => {
@@ -154,16 +176,45 @@ export default function OrdersPage() {
     loadOrders();
   }, []);
 
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = 
-      order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customerEmail.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === "all" || order.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
+  // Filter orders based on all criteria
+  const filteredOrders = useMemo(() => {
+    return orders.filter(order => {
+      // Text search filter
+      const matchesSearch = 
+        order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.customerEmail.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // Status filter
+      const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+      
+      // Date range filter
+      const orderDate = new Date(order.createdAt);
+      let matchesDateRange = true;
+      
+      if (dateRange.from) {
+        // Set time to beginning of day for "from" date
+        const fromDate = new Date(dateRange.from);
+        fromDate.setHours(0, 0, 0, 0);
+        
+        // Check if order date is on or after the fromDate
+        matchesDateRange = matchesDateRange && 
+          (isAfter(orderDate, fromDate) || isEqual(orderDate, fromDate));
+      }
+      
+      if (dateRange.to) {
+        // Set time to end of day for "to" date
+        const toDate = new Date(dateRange.to);
+        toDate.setHours(23, 59, 59, 999);
+        
+        // Check if order date is on or before the toDate
+        matchesDateRange = matchesDateRange && 
+          (isBefore(orderDate, toDate) || isEqual(orderDate, toDate));
+      }
+      
+      return matchesSearch && matchesStatus && matchesDateRange;
+    });
+  }, [orders, searchTerm, statusFilter, dateRange]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -282,7 +333,7 @@ export default function OrdersPage() {
         
         {/* Filters and search */}
         <div className="flex flex-wrap gap-4 mb-6">
-          <div className="flex-1 min-w-[300px]">
+          <div className="flex-1 min-w-[250px]">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <Input 
@@ -293,6 +344,74 @@ export default function OrdersPage() {
               />
             </div>
           </div>
+          
+          {/* Date Range Selector */}
+          <div className="w-[230px]">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal"
+                >
+                  <CalendarRange className="mr-2 h-4 w-4" />
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, "dd/MM/yyyy")} -{" "}
+                        {format(dateRange.to, "dd/MM/yyyy")}
+                      </>
+                    ) : (
+                      format(dateRange.from, "dd/MM/yyyy")
+                    )
+                  ) : (
+                    <span>Seleccionar rango de fechas</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  initialFocus
+                  mode="range"
+                  defaultMonth={dateRange?.from}
+                  selected={{
+                    from: dateRange.from,
+                    to: dateRange.to
+                  }}
+                  onSelect={(range) => {
+                    if (range) {
+                      setDateRange(range);
+                    }
+                  }}
+                  numberOfMonths={2}
+                  locale={es}
+                />
+                <div className="p-3 border-t border-border flex justify-between">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setDateRange({
+                      from: subDays(new Date(), 30),
+                      to: new Date(),
+                    })}
+                  >
+                    Últimos 30 días
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setDateRange({
+                      from: subDays(new Date(), 90),
+                      to: new Date(),
+                    })}
+                  >
+                    Últimos 90 días
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+          
+          {/* Status Filter */}
           <div className="w-[200px]">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger>
@@ -368,35 +487,72 @@ export default function OrdersPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredOrders.map((order) => (
-                      <tr key={order.id} className="border-b border-border hover:bg-accent/20">
-                        <td className="py-4 px-4 font-medium">{order.orderNumber}</td>
-                        <td className="py-4 px-4">
-                          <div>
-                            <p>{order.customerName}</p>
-                            <p className="text-muted-foreground text-xs">{order.customerEmail}</p>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">{new Date(order.createdAt).toLocaleDateString()}</td>
-                        <td className="py-4 px-4 font-medium text-primary">${order.totalAmount.toFixed(2)}</td>
-                        <td className="py-4 px-4">
-                          {getStatusBadge(order.status)}
-                        </td>
-                        <td className="py-4 px-4 text-right">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => openOrderDetails(order)}
-                            className="hover:bg-primary/10 hover:text-primary"
-                          >
-                            <FileText className="h-4 w-4 mr-1" />
-                            Ver
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredOrders
+                      .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                      .map((order) => (
+                        <tr key={order.id} className="border-b border-border hover:bg-accent/20">
+                          <td className="py-4 px-4 font-medium">{order.orderNumber}</td>
+                          <td className="py-4 px-4">
+                            <div>
+                              <p>{order.customerName}</p>
+                              <p className="text-muted-foreground text-xs">{order.customerEmail}</p>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4">{new Date(order.createdAt).toLocaleDateString()}</td>
+                          <td className="py-4 px-4 font-medium text-primary">${order.totalAmount.toFixed(2)}</td>
+                          <td className="py-4 px-4">
+                            {getStatusBadge(order.status)}
+                          </td>
+                          <td className="py-4 px-4 text-right">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => openOrderDetails(order)}
+                              className="hover:bg-primary/10 hover:text-primary"
+                            >
+                              <FileText className="h-4 w-4 mr-1" />
+                              Ver
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
+                
+                {/* Items Per Page & Pagination Controls */}
+                <div className="mt-6">
+                  {/* Items Per Page Selector */}
+                  <div className="flex justify-end mb-4">
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor="items-per-page" className="text-sm whitespace-nowrap">Items por página:</Label>
+                      <Select
+                        value={itemsPerPage.toString()}
+                        onValueChange={(value) => {
+                          setItemsPerPage(Number(value));
+                          setCurrentPage(1); // Reset to first page when changing items per page
+                        }}
+                      >
+                        <SelectTrigger className="w-[80px]">
+                          <SelectValue placeholder="20" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                          <SelectItem value="100">100</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  {/* Pagination */}
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={Math.ceil(filteredOrders.length / itemsPerPage)}
+                    onPageChange={setCurrentPage}
+                    totalItems={filteredOrders.length}
+                    itemsPerPage={itemsPerPage}
+                  />
+                </div>
               </div>
             )}
           </CardContent>
