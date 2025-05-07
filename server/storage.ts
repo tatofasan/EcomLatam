@@ -289,9 +289,30 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getUserBalance(userId: number): Promise<number> {
-    const userTransactions = await this.getUserTransactions(userId);
-    const balance = userTransactions.reduce((total, tx) => total + tx.amount, 0);
-    return balance;
+    // Obtener la suma de pedidos entregados (ingresos)
+    const [deliveredOrdersResult] = await db
+      .select({ total: sql`SUM(total_amount)` })
+      .from(orders)
+      .where(and(
+        eq(orders.userId, userId),
+        eq(orders.status, "delivered")
+      ));
+    
+    // Obtener la suma de retiros (salidas)
+    const [withdrawalsResult] = await db
+      .select({ total: sql`SUM(amount)` })
+      .from(transactions)
+      .where(and(
+        eq(transactions.userId, userId),
+        eq(transactions.type, "withdrawal")
+      ));
+      
+    // Calcular el balance total (ingresos - retiros)
+    const ordersTotal = deliveredOrdersResult.total ? Number(deliveredOrdersResult.total) : 0;
+    const withdrawalsTotal = withdrawalsResult.total ? Number(withdrawalsResult.total) : 0;
+    
+    // El balance es la suma de pedidos entregados menos los retiros
+    return ordersTotal + withdrawalsTotal; // withdrawalsTotal ya es negativo
   }
 
   // Function to seed demo products if needed

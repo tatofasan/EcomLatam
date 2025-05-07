@@ -510,8 +510,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (isAdmin) {
         // Admin sees total balance of all users
-        const allTransactions = await db.select().from(transactions);
-        balance = allTransactions.reduce((total, tx) => total + tx.amount, 0);
+        // Obtener la suma de todos los pedidos entregados
+        const [deliveredOrdersResult] = await db
+          .select({ total: sql`SUM(total_amount)` })
+          .from(orders)
+          .where(eq(orders.status, "delivered"));
+        
+        // Obtener la suma de todos los retiros
+        const [withdrawalsResult] = await db
+          .select({ total: sql`SUM(amount)` })
+          .from(transactions)
+          .where(eq(transactions.type, "withdrawal"));
+          
+        const ordersTotal = deliveredOrdersResult.total ? Number(deliveredOrdersResult.total) : 0;
+        const withdrawalsTotal = withdrawalsResult.total ? Number(withdrawalsResult.total) : 0;
+        
+        balance = ordersTotal + withdrawalsTotal; // withdrawalsTotal ya es negativo
       } else {
         // Regular users see only their balance
         balance = await storage.getUserBalance(userId);
