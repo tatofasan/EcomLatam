@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "./button";
 import { UploadCloud, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -7,12 +7,25 @@ interface ImageUploadProps {
   className?: string;
   currentImage?: string;
   onImageChange: (image: string) => void;
+  additionalImages?: string[];
+  onSelectAdditionalImage?: (image: string, index: number) => void;
 }
 
-export function ImageUpload({ className, currentImage, onImageChange }: ImageUploadProps) {
+export function ImageUpload({ 
+  className, 
+  currentImage, 
+  onImageChange,
+  additionalImages = [],
+  onSelectAdditionalImage
+}: ImageUploadProps) {
   const [preview, setPreview] = useState<string | null>(currentImage || null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Actualizar el preview cuando cambia currentImage externamente
+  useEffect(() => {
+    setPreview(currentImage || null);
+  }, [currentImage]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -54,8 +67,17 @@ export function ImageUpload({ className, currentImage, onImageChange }: ImageUpl
 
   const clearImage = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setPreview(null);
-    onImageChange("");
+    
+    // Si hay imágenes adicionales disponibles y tenemos un callback para promover una,
+    // usamos la primera imagen adicional como principal
+    if (additionalImages.length > 0 && onSelectAdditionalImage) {
+      onSelectAdditionalImage(additionalImages[0], 0);
+    } else {
+      // Si no hay imágenes adicionales, simplemente limpiamos
+      setPreview(null);
+      onImageChange("");
+    }
+    
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }

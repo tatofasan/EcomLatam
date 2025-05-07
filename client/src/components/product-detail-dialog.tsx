@@ -16,12 +16,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { AdditionalImagesUpload } from "@/components/ui/additional-images-upload";
+import { useToast } from "@/hooks/use-toast";
 import { 
   ChevronLeft, 
   ChevronRight, 
   ShoppingCart, 
   Save,
-  X 
+  X,
+  AlertCircle 
 } from "lucide-react";
 
 import { Product } from "@/types";
@@ -43,6 +45,8 @@ export default function ProductDetailDialog({
 }: ProductDetailDialogProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [formData, setFormData] = useState<Partial<Product>>({});
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const { toast } = useToast();
   
   // Inicializar los datos del formulario cuando cambia el producto o el modo
   useEffect(() => {
@@ -128,8 +132,63 @@ export default function ProductDetailDialog({
     });
   };
 
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    // Validar campos obligatorios
+    if (!formData.name || formData.name.trim() === "") {
+      errors.name = "Nombre del producto es obligatorio";
+    }
+    
+    if (!formData.description || formData.description.trim() === "") {
+      errors.description = "Descripción del producto es obligatoria";
+    }
+    
+    if (!formData.sku || formData.sku.trim() === "") {
+      errors.sku = "SKU es obligatorio";
+    }
+    
+    if (!formData.imageUrl || formData.imageUrl === "") {
+      // Si no hay imagen principal pero hay imágenes adicionales,
+      // promover la primera imagen adicional a principal
+      if (formData.additionalImages && formData.additionalImages.length > 0) {
+        const newAdditionalImages = [...formData.additionalImages];
+        const newMainImage = newAdditionalImages.shift();
+        setFormData({
+          ...formData,
+          imageUrl: newMainImage,
+          additionalImages: newAdditionalImages
+        });
+      } else {
+        errors.imageUrl = "Imagen principal es obligatoria";
+      }
+    }
+    
+    if (formData.price === undefined || formData.price < 0) {
+      errors.price = "Precio debe ser un valor positivo";
+    }
+    
+    if (formData.stock === undefined || formData.stock < 0) {
+      errors.stock = "Stock debe ser un valor positivo";
+    }
+    
+    // Actualizar los errores y devolver si pasó la validación
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+  
   const handleSave = () => {
     if (onSave && formData) {
+      // Validar el formulario antes de guardar
+      if (!validateForm()) {
+        toast({
+          title: "Error de validación",
+          description: "Por favor complete todos los campos obligatorios",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // Clean formData to ensure it matches schema requirements
       const cleanedData = {
         name: formData.name || "",
@@ -138,7 +197,7 @@ export default function ProductDetailDialog({
         stock: formData.stock || 0,
         status: formData.status || "draft",
         sku: formData.sku || `SKU-${Math.floor(Math.random() * 10000)}`,
-        imageUrl: formData.imageUrl || "https://placehold.co/600x400?text=Product+Image",
+        imageUrl: formData.imageUrl || "",
         additionalImages: formData.additionalImages || null,
         category: formData.category || null,
         weight: formData.weight || null,
@@ -260,19 +319,25 @@ export default function ProductDetailDialog({
             {/* Formulario para la columna izquierda en modo edición/creación */}
             {mode !== "view" && (
               <div className="space-y-4">
-                <div>
-                  <Label htmlFor="name">Product Name</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="name">Product Name *</Label>
                   <Input 
                     id="name"
                     name="name"
                     value={formData.name || ""}
                     onChange={handleInputChange}
                     placeholder="Enter product name"
+                    className={formErrors.name ? "border-red-500" : ""}
                   />
+                  {formErrors.name && (
+                    <p className="text-red-500 text-xs flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" /> {formErrors.name}
+                    </p>
+                  )}
                 </div>
 
-                <div>
-                  <Label htmlFor="sku">SKU</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="sku">SKU *</Label>
                   <Input 
                     id="sku"
                     name="sku"
@@ -280,13 +345,16 @@ export default function ProductDetailDialog({
                     onChange={handleInputChange}
                     placeholder="Enter product SKU"
                     readOnly={mode === "edit"} // SKU no se puede editar, solo crear
-                    className={mode === "edit" ? "bg-muted" : ""}
+                    className={`${mode === "edit" ? "bg-muted" : ""} ${formErrors.sku ? "border-red-500" : ""}`}
                   />
+                  {formErrors.sku && (
+                    <p className="text-red-500 text-xs flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" /> {formErrors.sku}
+                    </p>
+                  )}
                 </div>
 
-
-
-                <div>
+                <div className="space-y-1">
                   <Label htmlFor="category">Category</Label>
                   <Input 
                     id="category"
@@ -375,8 +443,8 @@ export default function ProductDetailDialog({
             ) : (
               // Formulario para la columna derecha en modo edición/creación
               <div className="space-y-4">
-                <div>
-                  <Label htmlFor="description">Description</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="description">Description *</Label>
                   <Textarea 
                     id="description"
                     name="description"
@@ -384,12 +452,18 @@ export default function ProductDetailDialog({
                     onChange={handleInputChange}
                     placeholder="Enter product description"
                     rows={5}
+                    className={formErrors.description ? "border-red-500" : ""}
                   />
+                  {formErrors.description && (
+                    <p className="text-red-500 text-xs flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" /> {formErrors.description}
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="price">Price ($)</Label>
+                  <div className="space-y-1">
+                    <Label htmlFor="price">Price ($) *</Label>
                     <Input 
                       id="price"
                       name="price"
@@ -399,10 +473,16 @@ export default function ProductDetailDialog({
                       value={formData.price || 0}
                       onChange={handleInputChange}
                       placeholder="0.00"
+                      className={formErrors.price ? "border-red-500" : ""}
                     />
+                    {formErrors.price && (
+                      <p className="text-red-500 text-xs flex items-center">
+                        <AlertCircle className="h-3 w-3 mr-1" /> {formErrors.price}
+                      </p>
+                    )}
                   </div>
-                  <div>
-                    <Label htmlFor="stock">Stock</Label>
+                  <div className="space-y-1">
+                    <Label htmlFor="stock">Stock *</Label>
                     <Input 
                       id="stock"
                       name="stock"
@@ -411,7 +491,13 @@ export default function ProductDetailDialog({
                       value={formData.stock || 0}
                       onChange={handleInputChange}
                       placeholder="0"
+                      className={formErrors.stock ? "border-red-500" : ""}
                     />
+                    {formErrors.stock && (
+                      <p className="text-red-500 text-xs flex items-center">
+                        <AlertCircle className="h-3 w-3 mr-1" /> {formErrors.stock}
+                      </p>
+                    )}
                   </div>
                 </div>
 
