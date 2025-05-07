@@ -95,11 +95,11 @@ export default function HomePage() {
               <Card>
                 <CardContent className="p-4 flex items-center">
                   <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mr-4">
-                    <Package className="w-6 h-6 text-blue-600" />
+                    <CheckCircle2 className="w-6 h-6 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Total Products</p>
-                    <h3 className="text-2xl font-bold">{metrics.totalProducts}</h3>
+                    <p className="text-sm text-gray-500">Total Delivered</p>
+                    <h3 className="text-2xl font-bold">{metrics.orderStatus.delivered}</h3>
                   </div>
                 </CardContent>
               </Card>
@@ -168,8 +168,8 @@ export default function HomePage() {
                         <YAxis />
                         <Tooltip formatter={(value) => value} />
                         <Legend />
-                        <Bar name="Sales (qty)" dataKey="sales" fill="#4f46e5" barSize={30} />
-                        <Bar name="Orders (qty)" dataKey="orders" fill="#0ea5e9" barSize={30} />
+                        <Bar name="Delivered Orders" dataKey="sales" fill="#4f46e5" barSize={30} />
+                        <Bar name="Total Orders" dataKey="orders" fill="#0ea5e9" barSize={30} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
