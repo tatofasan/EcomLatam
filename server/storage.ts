@@ -466,43 +466,83 @@ export class DatabaseStorage implements IStorage {
           "Delivery instructions: Leave at the door",
           "Gift wrapped please",
           "Express shipping",
-          "Cancelled by customer",
+          "Please call before delivery",
           ""
         ];
         
-        // Crear órdenes para los últimos 7 días
+        // Calcular distribución de estados según antigüedad del pedido
+        const getStatusByDay = (daysPast: number) => {
+          if (daysPast === 0) { // Hoy
+            const rand = Math.random() * 100;
+            if (rand < 60) return "pending";
+            if (rand < 95) return "processing";
+            return "cancelled";
+          } 
+          else if (daysPast === 1) { // Ayer
+            const rand = Math.random() * 100;
+            if (rand < 20) return "pending";
+            if (rand < 70) return "processing";
+            if (rand < 90) return "delivered";
+            return "cancelled";
+          }
+          else if (daysPast <= 3) { // 2-3 días atrás
+            const rand = Math.random() * 100;
+            if (rand < 10) return "pending";
+            if (rand < 30) return "processing";
+            if (rand < 85) return "delivered";
+            return "cancelled";
+          }
+          else { // 4+ días atrás
+            const rand = Math.random() * 100;
+            if (rand < 5) return "processing";
+            if (rand < 85) return "delivered";
+            return "cancelled";
+          }
+        };
+        
+        // Crear órdenes para los últimos 7 días con distribución realista de estados
         for (let i = 0; i < 7; i++) {
           const orderDate = new Date();
           orderDate.setDate(today.getDate() - i);
           
-          // Generar entre 3-6 órdenes por día
-          const numOrdersPerDay = 3 + Math.floor(Math.random() * 4);
+          // Más pedidos en días recientes, menos en días antiguos
+          const numOrdersPerDay = i === 0 ? 5 + Math.floor(Math.random() * 3) : // 5-7 hoy
+                                  i === 1 ? 4 + Math.floor(Math.random() * 3) : // 4-6 ayer 
+                                  i <= 3 ? 3 + Math.floor(Math.random() * 3) : // 3-5 hace 2-3 días
+                                  2 + Math.floor(Math.random() * 3); // 2-4 hace 4+ días
           
           for (let j = 0; j < numOrdersPerDay; j++) {
-            // Escoger estado aleatorio (más órdenes entregadas y en proceso que pendientes o canceladas)
-            const statuses = ["pending", "processing", "delivered", "cancelled"];
-            const weights = [20, 30, 40, 10]; // probabilidades en porcentaje
-            
-            let randomNum = Math.random() * 100;
-            let selectedStatus = statuses[0];
-            let accumulatedWeight = 0;
-            
-            for (let k = 0; k < weights.length; k++) {
-              accumulatedWeight += weights[k];
-              if (randomNum <= accumulatedWeight) {
-                selectedStatus = statuses[k];
-                break;
-              }
-            }
+            // Determinar estado basado en la antigüedad del pedido
+            const selectedStatus = getStatusByDay(i);
             
             // Elegir cliente aleatorio
             const customer = customerData[Math.floor(Math.random() * customerData.length)];
             
-            // Generar número de orden único
-            const orderNumber = `ORD-${orderDate.getDate().toString().padStart(2, '0')}${(orderDate.getMonth()+1).toString().padStart(2, '0')}-${timestamp}-${j}`;
+            // Generar número de orden único con fecha legible
+            const orderNumber = `ORD-${orderDate.getFullYear().toString().substring(2)}${(orderDate.getMonth()+1).toString().padStart(2, '0')}${orderDate.getDate().toString().padStart(2, '0')}-${timestamp}-${j}`;
             
-            // Generar monto total aleatorio entre 50 y 250
-            const totalAmount = parseFloat((50 + Math.random() * 200).toFixed(2));
+            // Calcular monto total basado en productos (más realista)
+            // Entre 1-4 productos por orden
+            const itemCount = 1 + Math.floor(Math.random() * 4);
+            let orderTotal = 0;
+            const selectedItems = [];
+            
+            for (let k = 0; k < itemCount; k++) {
+              const product = prods[Math.floor(Math.random() * prods.length)];
+              const quantity = 1 + Math.floor(Math.random() * 3); // 1-3 unidades
+              orderTotal += product.price * quantity;
+              
+              // Guardar info del producto para usarla después en la creación de orderItems
+              selectedItems.push({
+                productId: product.id,
+                quantity,
+                price: product.price,
+                subtotal: product.price * quantity
+              });
+            }
+            
+            // Redondear a 2 decimales
+            orderTotal = parseFloat(orderTotal.toFixed(2));
             
             // Crear objeto de orden
             const newOrder = {
@@ -512,8 +552,9 @@ export class DatabaseStorage implements IStorage {
               customerPhone: customer.phone,
               shippingAddress: customer.address,
               status: selectedStatus,
-              totalAmount,
-              notes: orderNotes[Math.floor(Math.random() * orderNotes.length)]
+              totalAmount: orderTotal,
+              notes: orderNotes[Math.floor(Math.random() * orderNotes.length)],
+              items: selectedItems
             };
             
             demoOrders.push(newOrder);
@@ -522,21 +563,28 @@ export class DatabaseStorage implements IStorage {
         
         // Insertamos órdenes directamente en la base de datos para poder especificar fechas personalizadas
         for (const order of demoOrders) {
-          // Usamos el objeto "orders" directamente para evitar problemas con userId vs user_id
-          // Crear fecha para esta orden (hace i días)
-          const orderDate = new Date();
-          orderDate.setDate(orderDate.getDate() - parseInt(order.orderNumber.split('-')[1].substring(0, 2)) % 7);
+          // Extraer el día del número de orden para determinar la fecha
+          const datePart = order.orderNumber.split('-')[1];
+          const year = parseInt(`20${datePart.substring(0, 2)}`);
+          const month = parseInt(datePart.substring(2, 4)) - 1; // Meses en JS son 0-11
+          const day = parseInt(datePart.substring(4, 6));
           
-          // Crear una fecha de actualización diferente para simular cambios de estado
-          // La fecha de actualización estará entre la fecha de creación y ahora
+          // Crear fecha para esta orden según datePart
+          const orderDate = new Date(year, month, day);
+          
+          // Crear fecha de actualización según el estado
           const updatedDate = new Date(orderDate);
           
-          // Para órdenes que no están "pending", simular un cambio de estado posterior
-          if (order.status !== "pending") {
-            // Agregar entre 1 y 36 horas a la fecha de creación
-            updatedDate.setHours(
-              updatedDate.getHours() + Math.floor(1 + Math.random() * 36)
-            );
+          // Ajustar updatedDate según el estado
+          if (order.status === "processing") {
+            // Para pedidos en proceso: entre 1 y 12 horas después
+            updatedDate.setHours(updatedDate.getHours() + Math.floor(1 + Math.random() * 12));
+          } else if (order.status === "delivered") {
+            // Para pedidos entregados: entre 6 y 48 horas después
+            updatedDate.setHours(updatedDate.getHours() + Math.floor(6 + Math.random() * 42));
+          } else if (order.status === "cancelled") {
+            // Para pedidos cancelados: entre 1 y 24 horas después
+            updatedDate.setHours(updatedDate.getHours() + Math.floor(1 + Math.random() * 24));
           }
           
           const [newOrder] = await db
@@ -556,27 +604,14 @@ export class DatabaseStorage implements IStorage {
             })
             .returning();
             
-          // Agregar items a cada orden (entre 1 y 3 productos aleatorios)
-          const numProducts = 1 + Math.floor(Math.random() * 3);
-          
-          // Seleccionar productos aleatorios sin repetir
-          const selectedProductIndexes = new Set<number>();
-          while (selectedProductIndexes.size < numProducts && selectedProductIndexes.size < prods.length) {
-            selectedProductIndexes.add(Math.floor(Math.random() * prods.length));
-          }
-          
-          // Convertir Set a Array para iterar
-          const productIndexes = Array.from(selectedProductIndexes);
-          for (const prodIndex of productIndexes) {
-            const product = prods[prodIndex];
-            const quantity = 1 + Math.floor(Math.random() * 3); // 1-3 unidades
-            
+          // Agregar los items usando la info calculada previamente en selectedItems
+          for (const item of order.items) {
             await this.addOrderItem({
               orderId: newOrder.id,
-              productId: product.id,
-              quantity,
-              price: product.price,
-              subtotal: product.price * quantity
+              productId: item.productId,
+              quantity: item.quantity,
+              price: item.price,
+              subtotal: item.subtotal
             });
           }
         }
@@ -623,42 +658,89 @@ export class DatabaseStorage implements IStorage {
   
   // Seed demo transactions for a user
   async seedDemoTransactions(userId: number) {
-    const existingTransactions = await this.getUserTransactions(userId);
-    if (existingTransactions.length === 0) {
-      const demoTransactions = [
-        {
-          type: "deposit",
-          amount: 500.00,
-          status: "completed",
-          description: "Account Funding",
-          reference: "DEP12345"
-        },
-        {
-          type: "payment",
-          amount: -125.99,
-          status: "completed",
-          description: "Order ORD-001-2025",
-          reference: "PAY78965"
-        },
-        {
-          type: "withdrawal",
-          amount: -200.00,
-          status: "processing",
-          description: "Bank Transfer",
-          reference: "WIT54321"
-        },
-        {
-          type: "refund",
-          amount: 75.50,
-          status: "completed",
-          description: "Order ORD-003-2024 Refund",
-          reference: "REF98765"
-        }
-      ];
+    try {
+      // Limpiar transacciones existentes primero
+      await db.delete(transactions).where(eq(transactions.userId, userId));
       
-      for (const transaction of demoTransactions) {
-        await this.createTransaction(transaction as InsertTransaction, userId);
+      // Obtener órdenes existentes para crear transacciones vinculadas a órdenes reales
+      const userOrders = await this.getAllOrders(userId);
+      
+      if (userOrders.length > 0) {
+        // Crear transacción inicial de depósito
+        await this.createTransaction({
+          type: "deposit",
+          amount: 1000.00,
+          status: "completed",
+          description: "Initial Account Funding",
+          reference: "DEP" + Date.now().toString().slice(-6)
+        } as InsertTransaction, userId);
+        
+        // Crear transacciones de pago para órdenes entregadas (delivered)
+        const deliveredOrders = userOrders.filter(order => order.status === "delivered");
+        for (const order of deliveredOrders) {
+          await this.createTransaction({
+            type: "payment",
+            amount: -order.totalAmount, // Negativo porque es un pago
+            status: "completed",
+            description: `Payment for Order ${order.orderNumber}`,
+            reference: `PAY-${order.orderNumber}`
+          } as InsertTransaction, userId);
+        }
+        
+        // Crear algunas transacciones de reembolso (para un 20% aleatorio de las órdenes canceladas)
+        const cancelledOrders = userOrders.filter(order => order.status === "cancelled");
+        const refundCount = Math.ceil(cancelledOrders.length * 0.2); // Reembolsar ~20% de órdenes canceladas
+        
+        for (let i = 0; i < refundCount && i < cancelledOrders.length; i++) {
+          const order = cancelledOrders[i];
+          const refundAmount = order.totalAmount * 0.9; // Reembolsar 90% del valor
+          
+          await this.createTransaction({
+            type: "refund",
+            amount: refundAmount, // Positivo porque es un reembolso
+            status: "completed",
+            description: `Refund for Order ${order.orderNumber}`,
+            reference: `REF-${order.orderNumber}`
+          } as InsertTransaction, userId);
+        }
+        
+        // Agregar un retiro si hay suficiente balance
+        const currentBalance = await this.getUserBalance(userId);
+        if (currentBalance > 300) {
+          await this.createTransaction({
+            type: "withdrawal",
+            amount: -Math.min(currentBalance * 0.3, 500), // Retirar 30% del balance o máximo 500
+            status: "completed",
+            description: "Withdrawal to Bank Account",
+            reference: "WIT" + Date.now().toString().slice(-6)
+          } as InsertTransaction, userId);
+        }
+      } else {
+        // Si no hay órdenes, crear transacciones demo básicas
+        const demoTransactions = [
+          {
+            type: "deposit",
+            amount: 500.00,
+            status: "completed",
+            description: "Account Funding",
+            reference: "DEP" + Date.now().toString().slice(-6)
+          },
+          {
+            type: "withdrawal",
+            amount: -200.00,
+            status: "processing",
+            description: "Bank Transfer",
+            reference: "WIT" + Date.now().toString().slice(-6)
+          }
+        ];
+        
+        for (const transaction of demoTransactions) {
+          await this.createTransaction(transaction as InsertTransaction, userId);
+        }
       }
+    } catch (error) {
+      console.error("Error seeding demo transactions:", error);
+      throw error;
     }
   }
 }
