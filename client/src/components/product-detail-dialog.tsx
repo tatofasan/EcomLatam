@@ -316,9 +316,17 @@ export default function ProductDetailDialog({
                 )}
               </div>
             ) : (
-              <div>
+              <div className="space-y-1">
+                <div className="flex items-center mb-1">
+                  <Label>Main Image *</Label>
+                  {formErrors.imageUrl && (
+                    <p className="text-red-500 text-xs flex items-center ml-2">
+                      <AlertCircle className="h-3 w-3 mr-1" /> {formErrors.imageUrl}
+                    </p>
+                  )}
+                </div>
                 <ImageUpload 
-                  className="h-[300px]"
+                  className={`h-[300px] ${formErrors.imageUrl ? "border-red-500" : ""}`}
                   currentImage={formData.imageUrl}
                   additionalImages={formData.additionalImages || []}
                   onImageChange={(image) => {
@@ -415,14 +423,20 @@ export default function ProductDetailDialog({
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="category">Category</Label>
+                  <Label htmlFor="category">Category *</Label>
                   <Input 
                     id="category"
                     name="category"
                     value={formData.category || ""}
                     onChange={handleInputChange}
                     placeholder="Enter product category"
+                    className={formErrors.category ? "border-red-500" : ""}
                   />
+                  {formErrors.category && (
+                    <p className="text-red-500 text-xs flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" /> {formErrors.category}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -562,7 +576,7 @@ export default function ProductDetailDialog({
                 </div>
 
                 <div>
-                  <Label htmlFor="status">Status</Label>
+                  <Label htmlFor="status">Status *</Label>
                   <Select 
                     value={formData.status || "draft"} 
                     onValueChange={(value) => handleSelectChange("status", value)}
@@ -579,8 +593,8 @@ export default function ProductDetailDialog({
                   </Select>
                 </div>
 
-                <div>
-                  <Label htmlFor="weight">Weight (kg)</Label>
+                <div className="space-y-1">
+                  <Label htmlFor="weight">Weight (kg) *</Label>
                   <Input 
                     id="weight"
                     name="weight"
@@ -590,7 +604,13 @@ export default function ProductDetailDialog({
                     value={formData.weight || ""}
                     onChange={handleInputChange}
                     placeholder="0.0"
+                    className={formErrors.weight ? "border-red-500" : ""}
                   />
+                  {formErrors.weight && (
+                    <p className="text-red-500 text-xs flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" /> {formErrors.weight}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
