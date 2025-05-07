@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 import {
   ShoppingCart,
   Search,
@@ -209,6 +211,55 @@ export default function OrdersPage() {
     // Fetch the details including items
     await fetchOrderDetails(order.id);
   };
+  
+  // Function to export orders to Excel
+  const exportToExcel = () => {
+    try {
+      // Prepare the data for Excel
+      const ordersForExport = filteredOrders.map(order => ({
+        "Número de Pedido": order.orderNumber,
+        "Cliente": order.customerName,
+        "Correo": order.customerEmail,
+        "Teléfono": order.customerPhone || "N/A",
+        "Dirección": order.shippingAddress,
+        "Estado": order.status === "pending" ? "Pendiente" :
+                 order.status === "processing" ? "En proceso" :
+                 order.status === "shipped" ? "Enviado" :
+                 order.status === "delivered" ? "Entregado" :
+                 order.status === "cancelled" ? "Cancelado" : order.status,
+        "Total": `$${order.totalAmount.toFixed(2)}`,
+        "Fecha": new Date(order.createdAt).toLocaleDateString(),
+        "Notas": order.notes || "N/A"
+      }));
+      
+      // Create a worksheet from the data
+      const worksheet = XLSX.utils.json_to_sheet(ordersForExport);
+      
+      // Create a workbook and add the worksheet
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Pedidos");
+      
+      // Generate and save the Excel file
+      const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
+      
+      // Use date for the filename
+      const today = new Date().toISOString().slice(0, 10);
+      saveAs(blob, `pedidos_${today}.xlsx`);
+      
+      toast({
+        title: "Exportación completada",
+        description: "Los pedidos han sido exportados a Excel exitosamente.",
+      });
+    } catch (error) {
+      console.error("Error exporting to Excel:", error);
+      toast({
+        title: "Error de exportación",
+        description: "No se pudieron exportar los pedidos. Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <DashboardLayout activeItem="orders-list">
@@ -218,7 +269,12 @@ export default function OrdersPage() {
             <h1 className="text-2xl font-bold text-primary">Pedidos</h1>
             <p className="text-muted-foreground mt-1">Gestiona y realiza seguimiento de los pedidos</p>
           </div>
-          <Button variant="outline" className="flex items-center gap-2">
+          <Button 
+            variant="outline"
+            className="flex items-center gap-2"
+            onClick={exportToExcel}
+            disabled={isLoading || error !== null || filteredOrders.length === 0}
+          >
             <Download className="h-4 w-4" />
             Exportar
           </Button>
