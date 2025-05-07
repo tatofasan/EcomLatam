@@ -460,19 +460,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get all order IDs for this user
         const orderIds = ordersList.map(order => order.id);
         
-        // Get all order items for these orders
-        const allOrderItems = await db.select()
-          .from(orderItems)
-          .where(sql`order_id IN (${orderIds.join(',')})`);
+        // Get all order items for these orders - using proper parametrization
+        let allOrderItems = [];
+        if (orderIds.length > 0) {
+          // Using placeholders for each ID instead of joining them as a string
+          const placeholders = orderIds.map((_, index) => `$${index + 1}`).join(', ');
+          allOrderItems = await db.execute(
+            sql`SELECT * FROM order_items WHERE order_id IN (${sql.raw(placeholders)})`,
+            orderIds
+          );
+        }
         
         // Get unique product IDs from order items
         const productIds = [...new Set(allOrderItems.map(item => item.productId))];
         
         if (productIds.length > 0) {
-          // Get products for these order items
-          const orderProducts = await db.select()
-            .from(products)
-            .where(sql`id IN (${productIds.join(',')})`);
+          // Get products for these order items - using proper parametrization
+          const placeholders = productIds.map((_, index) => `$${index + 1}`).join(', ');
+          const orderProducts = await db.execute(
+            sql`SELECT * FROM products WHERE id IN (${sql.raw(placeholders)})`,
+            productIds
+          );
           
           // Process products from orders to get categories
           orderProducts.forEach(product => {
