@@ -391,15 +391,15 @@ export default function ConnectionsPage() {
         ) : connections.length === 0 ? (
           <div className="bg-accent border border-border rounded-lg p-8 my-4 text-center">
             <Link2 className="h-12 w-12 text-primary/60 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">No hay conexiones activas</h3>
-            <p className="text-muted-foreground mb-4">Conecta tus tiendas para sincronizar productos y pedidos.</p>
+            <h3 className="text-lg font-medium text-foreground mb-2">No active connections</h3>
+            <p className="text-muted-foreground mb-4">Connect your stores to synchronize products and orders.</p>
             <Dialog>
               <DialogTrigger asChild>
-                <Button>Añadir conexión</Button>
+                <Button>Add Connection</Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                  <DialogTitle>Añadir conexión</DialogTitle>
+                  <DialogTitle>Add Connection</DialogTitle>
                   <DialogDescription>
                     Connect your e-commerce platform to synchronize products and orders.
                   </DialogDescription>
@@ -423,7 +423,7 @@ export default function ConnectionsPage() {
                     </Label>
                     <Select onValueChange={handleSelectChange} value={formData.platform}>
                       <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Selecciona plataforma" />
+                        <SelectValue placeholder="Select platform" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="shopify">Shopify</SelectItem>
@@ -459,7 +459,7 @@ export default function ConnectionsPage() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button onClick={handleCreateConnection}>Conectar</Button>
+                  <Button onClick={handleCreateConnection}>Connect</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -472,7 +472,7 @@ export default function ConnectionsPage() {
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle>{connection.name}</CardTitle>
-                      <CardDescription className="mt-1">Última sincronización: {connection.lastSync}</CardDescription>
+                      <CardDescription className="mt-1">Last sync: {connection.lastSync}</CardDescription>
                     </div>
                     <div>
                       {getPlatformIcon(connection.platform)}
@@ -487,14 +487,14 @@ export default function ConnectionsPage() {
                     <div className="flex items-center gap-2">
                       <ShoppingCart className="w-5 h-5 text-primary/70" />
                       <div>
-                        <p className="text-sm text-muted-foreground">Pedidos</p>
+                        <p className="text-sm text-muted-foreground">Orders</p>
                         <p className="font-medium">{connection.orders}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Link2 className="w-5 h-5 text-primary/70" />
                       <div>
-                        <p className="text-sm text-muted-foreground">Productos</p>
+                        <p className="text-sm text-muted-foreground">Products</p>
                         <p className="font-medium">{connection.products}</p>
                       </div>
                     </div>
@@ -510,7 +510,7 @@ export default function ConnectionsPage() {
                     }}
                     className="hover:bg-primary/10 hover:text-primary border-border"
                   >
-                    {connection.status === "active" ? "Desactivar" : "Activar"}
+                    {connection.status === "active" ? "Deactivate" : "Activate"}
                   </Button>
                   <Button 
                     variant={connection.status === "active" ? "default" : "outline"}
@@ -518,7 +518,7 @@ export default function ConnectionsPage() {
                     className={connection.status !== "active" ? "opacity-50 cursor-not-allowed" : ""}
                     disabled={connection.status !== "active"}
                   >
-                    Sincronizar
+                    Synchronize
                   </Button>
                 </CardFooter>
               </Card>
