@@ -124,16 +124,17 @@ export const transactions = pgTable("transactions", {
   userId: integer("user_id").references(() => users.id).notNull(),
   type: text("type").notNull(), // deposit, withdrawal, payment, refund
   amount: doublePrecision("amount").notNull(),
-  status: text("status").notNull().default("pending"), // pending, completed, failed
+  status: text("status").notNull().default("pending"), // pending, processing, paid, failed, cancelled
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow(),
   reference: text("reference"), // order_id, payment_id, etc.
+  settings: jsonb("settings") // Used to store additional data like payment proof
 });
 
 export const insertTransactionSchema = createInsertSchema(transactions, {
   type: z.enum(["deposit", "withdrawal", "payment", "refund"]),
-  status: z.enum(["pending", "completed", "failed"])
-}).omit({ id: true, userId: true, createdAt: true });
+  status: z.enum(["pending", "processing", "paid", "failed", "cancelled"])
+}).omit({ id: true, userId: true, createdAt: true, settings: true });
 
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type Transaction = typeof transactions.$inferSelect;

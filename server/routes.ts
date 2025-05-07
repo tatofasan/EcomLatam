@@ -699,6 +699,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Update transaction status (admin only)
+  app.patch("/api/wallet/transactions/:id/status", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Check if user is admin
+      if (req.user.role !== "admin") {
+        return res.status(403).json({ message: "Forbidden. Admin access required." });
+      }
+      
+      const transactionId = parseInt(req.params.id);
+      const { status, paymentProof } = req.body;
+      
+      if (!status || typeof status !== 'string') {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+      
+      // Check if the status is valid
+      if (!['pending', 'processing', 'paid', 'failed', 'cancelled'].includes(status)) {
+        return res.status(400).json({ message: "Invalid status value" });
+      }
+      
+      // Update transaction status
+      const updatedTransaction = await storage.updateTransactionStatus(
+        transactionId, 
+        status, 
+        paymentProof
+      );
+      
+      if (!updatedTransaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+      
+      res.json(updatedTransaction);
+    } catch (error) {
+      console.error("Error updating transaction status:", error);
+      res.status(500).json({ message: "Failed to update transaction status" });
+    }
+  });
+  
+  // Get transaction details
+  app.get("/api/wallet/transactions/:id", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const transactionId = parseInt(req.params.id);
+      const userId = req.user.id;
+      const isAdmin = req.user.role === "admin";
+      
+      // Get all transactions for the user
+      const userTransactions = await storage.getUserTransactions(userId);
+      
+      // Find the specific transaction
+      const transaction = userTransactions.find(t => t.id === transactionId);
+      
+      // If admin, allow access to any transaction
+      if (isAdmin && !transaction) {
+        // Admin can get any transaction, so try to get it directly from DB
+        const allTransactions = await db.select().from(transactions).where(eq(transactions.id, transactionId));
+        if (allTransactions.length > 0) {
+          return res.json(allTransactions[0]);
+        }
+      }
+      
+      if (!transaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+      
+      res.json(transaction);
+    } catch (error) {
+      console.error("Error fetching transaction:", error);
+      res.status(500).json({ message: "Failed to fetch transaction" });
+    }
+  });
+  
   // Get user connections
   app.get("/api/connections", requireAuth, async (req, res) => {
     try {
