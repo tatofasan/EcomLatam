@@ -394,29 +394,6 @@ export default function OrderStatisticsPage() {
                 </div>
                 {/* Visualización de tabla para pantallas medianas y grandes */}
                 <div className="hidden md:block overflow-x-auto">
-                  {/* Items Per Page Selector */}
-                  <div className="flex justify-end mb-4">
-                    <div className="flex items-center space-x-2">
-                      <Label htmlFor="items-per-page" className="text-sm whitespace-nowrap">Items per page:</Label>
-                      <Select
-                        value={itemsPerPage.toString()}
-                        onValueChange={(value) => {
-                          setItemsPerPage(Number(value));
-                          setCurrentPage(1); // Reset to first page when changing items per page
-                        }}
-                      >
-                        <SelectTrigger className="w-[80px]">
-                          <SelectValue placeholder="20" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="20">20</SelectItem>
-                          <SelectItem value="50">50</SelectItem>
-                          <SelectItem value="100">100</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  
                   <Table>
                     <TableCaption>A summary of orders by day</TableCaption>
                     <TableHeader>
@@ -472,6 +449,31 @@ export default function OrderStatisticsPage() {
                     )}
                   </Table>
                   
+                  {/* Items Per Page Selector */}
+                  {statistics.length > 0 && (
+                    <div className="flex justify-end mt-6 mb-4">
+                      <div className="flex items-center space-x-2">
+                        <Label htmlFor="items-per-page" className="text-sm whitespace-nowrap">Items per page:</Label>
+                        <Select
+                          value={itemsPerPage.toString()}
+                          onValueChange={(value) => {
+                            setItemsPerPage(Number(value));
+                            setCurrentPage(1); // Reset to first page when changing items per page
+                          }}
+                        >
+                          <SelectTrigger className="w-[80px]">
+                            <SelectValue placeholder="20" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="20">20</SelectItem>
+                            <SelectItem value="50">50</SelectItem>
+                            <SelectItem value="100">100</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* Pagination */}
                   {statistics.length > 0 && (
                     <Pagination
@@ -487,29 +489,6 @@ export default function OrderStatisticsPage() {
                 {/* Visualización de tarjetas para dispositivos móviles */}
                 <div className="md:hidden space-y-4">
                   <h3 className="text-center text-muted-foreground mb-2">Order Summary by Day</h3>
-                  
-                  {/* Items Per Page Selector for Mobile */}
-                  <div className="flex justify-end mb-4">
-                    <div className="flex items-center space-x-2">
-                      <Label htmlFor="items-per-page-mobile" className="text-xs whitespace-nowrap">Items per page:</Label>
-                      <Select
-                        value={itemsPerPage.toString()}
-                        onValueChange={(value) => {
-                          setItemsPerPage(Number(value));
-                          setCurrentPage(1); // Reset to first page when changing items per page
-                        }}
-                      >
-                        <SelectTrigger className="w-[70px] h-8 text-xs">
-                          <SelectValue placeholder="20" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="20">20</SelectItem>
-                          <SelectItem value="50">50</SelectItem>
-                          <SelectItem value="100">100</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
                   
                   {statistics.length > 0 ? (
                     <>
@@ -591,8 +570,31 @@ export default function OrderStatisticsPage() {
                         </div>
                       </div>
                       
+                      {/* Items Per Page Selector for Mobile */}
+                      <div className="flex justify-end mt-6 mb-4">
+                        <div className="flex items-center space-x-2">
+                          <Label htmlFor="items-per-page-mobile" className="text-xs whitespace-nowrap">Items per page:</Label>
+                          <Select
+                            value={itemsPerPage.toString()}
+                            onValueChange={(value) => {
+                              setItemsPerPage(Number(value));
+                              setCurrentPage(1); // Reset to first page when changing items per page
+                            }}
+                          >
+                            <SelectTrigger className="w-[70px] h-8 text-xs">
+                              <SelectValue placeholder="20" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="20">20</SelectItem>
+                              <SelectItem value="50">50</SelectItem>
+                              <SelectItem value="100">100</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      
                       {/* Mobile Pagination */}
-                      <div className="mt-4">
+                      <div className="mt-2">
                         <Pagination
                           currentPage={currentPage}
                           totalPages={Math.ceil(statistics.length / itemsPerPage)}
