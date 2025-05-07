@@ -10,7 +10,9 @@ import {
   insertTransactionSchema,
   products,
   orders,
-  orderItems
+  orderItems,
+  transactions,
+  type InsertTransaction
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc } from "drizzle-orm";
@@ -471,17 +473,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const isAdmin = req.user.role === 'admin';
       
-      let transactions = [];
+      let userTransactions = [];
       
       if (isAdmin) {
         // Admin sees all transactions
-        transactions = await db.select().from(transactions).orderBy(desc(transactions.createdAt));
+        userTransactions = await db.select().from(transactions).orderBy(desc(transactions.createdAt));
       } else {
         // Regular users see only their transactions
-        transactions = await storage.getUserTransactions(userId);
+        userTransactions = await storage.getUserTransactions(userId);
       }
       
-      res.json(transactions);
+      res.json(userTransactions);
     } catch (error) {
       console.error("Error fetching transactions:", error);
       res.status(500).json({ message: "Failed to fetch transactions" });

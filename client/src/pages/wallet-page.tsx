@@ -1,105 +1,175 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { 
   Wallet, 
   ArrowUp, 
-  ArrowDown, 
-  Plus, 
+  ArrowDown,
   CreditCard, 
   Clock, 
   CheckCircle2, 
   XCircle,
-  DollarSign,
   Calendar,
   Search,
-  Filter,
   Download,
-  Banknote
+  Banknote,
+  AlertCircle,
+  DollarSign,
+  Plus
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { type Transaction } from "@shared/schema";
 
-// Sample data - this would typically come from API
-const transactions = [
-  {
-    id: 1,
-    date: "2025-04-23",
-    type: "deposit",
-    description: "Account Funding",
-    amount: 500.00,
-    status: "completed",
-    reference: "DEP12345"
-  },
-  {
-    id: 2,
-    date: "2025-04-22",
-    type: "payment",
-    description: "Order ORD-001-2025",
-    amount: -125.99,
-    status: "completed",
-    reference: "PAY78965"
-  },
-  {
-    id: 3,
-    date: "2025-04-20",
-    type: "withdrawal",
-    description: "Bank Transfer",
-    amount: -200.00,
-    status: "processing",
-    reference: "WIT54321"
-  },
-  {
-    id: 4,
-    date: "2025-04-18",
-    type: "refund",
-    description: "Order ORD-003-2024 Refund",
-    amount: 75.50,
-    status: "completed",
-    reference: "REF98765"
-  },
-  {
-    id: 5,
-    date: "2025-04-15",
-    type: "payment",
-    description: "Order ORD-007-2025",
-    amount: -89.99,
-    status: "failed",
-    reference: "PAY12789"
-  }
-];
-
-const balanceHistory = [
-  { date: '2025-01-01', balance: 100 },
-  { date: '2025-02-01', balance: 250 },
-  { date: '2025-03-01', balance: 180 },
-  { date: '2025-04-01', balance: 320 },
-  { date: '2025-04-15', balance: 450 },
-  { date: '2025-04-23', balance: 350 },
-];
+// Tipo para el balance history
+interface BalancePoint {
+  date: string;
+  balance: number;
+}
 
 export default function WalletPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [currentBalance, setCurrentBalance] = useState(349.52);
-
-  const filteredTransactions = transactions.filter(transaction => {
-    const matchesSearch = 
-      transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      transaction.reference.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesType = typeFilter === "all" || transaction.type === typeFilter;
-    
-    return matchesSearch && matchesType;
+  const [walletAddress, setWalletAddress] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState<number | "">("");
+  const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
+  const [walletAddressDialogOpen, setWalletAddressDialogOpen] = useState(false);
+  const [newWalletAddress, setNewWalletAddress] = useState("");
+  
+  // Fetch transactions
+  const { data: transactions = [], isLoading: isLoadingTransactions } = useQuery({
+    queryKey: ['/api/wallet/transactions'],
+    enabled: !!user
   });
+  
+  // Fetch balance
+  const { data: balanceData, isLoading: isLoadingBalance } = useQuery({
+    queryKey: ['/api/wallet/balance'],
+    enabled: !!user
+  });
+  
+  // Fetch wallet address
+  const { data: walletAddressData } = useQuery({
+    queryKey: ['/api/user/wallet-address'],
+    enabled: !!user,
+    onSuccess: (data: any) => {
+      if (data?.walletAddress) {
+        setWalletAddress(data.walletAddress);
+      }
+    }
+  });
+  
+  // Create withdrawal mutation
+  const withdrawMutation = useMutation({
+    mutationFn: (data: { amount: number, walletAddress: string }) => {
+      return apiRequest('/api/wallet/withdraw', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      } as any);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Withdrawal Requested",
+        description: "Your withdrawal request has been submitted and is now being processed.",
+        variant: "default"
+      });
+      setWithdrawDialogOpen(false);
+      setWithdrawAmount("");
+      queryClient.invalidateQueries({ queryKey: ['/api/wallet/transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/wallet/balance'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Withdrawal Failed",
+        description: error.message || "Failed to process your withdrawal. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Update wallet address mutation
+  const updateWalletAddressMutation = useMutation({
+    mutationFn: (walletAddress: string) => {
+      return apiRequest('/api/user/wallet-address', {
+        method: 'PATCH',
+        body: JSON.stringify({ walletAddress })
+      } as any);
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Wallet Address Updated",
+        description: "Your virtual wallet address has been updated successfully.",
+        variant: "default"
+      });
+      setWalletAddress(data?.walletAddress || "");
+      setWalletAddressDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/user/wallet-address'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update your wallet address. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Prepare balance history data from transactions
+  const balanceHistory: BalancePoint[] = useMemo(() => {
+    if (!Array.isArray(transactions) || transactions.length === 0) return [];
+    
+    // Sort transactions by date
+    const sortedTransactions = [...transactions].sort((a: any, b: any) => 
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    
+    // Create a map of dates to cumulative balance
+    const balanceMap = new Map<string, number>();
+    let runningBalance = 0;
+    
+    sortedTransactions.forEach((tx: any) => {
+      runningBalance += tx.amount;
+      // Format date to YYYY-MM-DD
+      const dateStr = new Date(tx.createdAt).toISOString().split('T')[0];
+      balanceMap.set(dateStr, runningBalance);
+    });
+    
+    // Convert map to array of points
+    return Array.from(balanceMap.entries()).map(([date, balance]) => ({
+      date,
+      balance
+    }));
+  }, [transactions]);
+  
+  // Filter transactions based on search and type filter
+  const filteredTransactions = useMemo(() => {
+    if (!Array.isArray(transactions) || transactions.length === 0) return [];
+    
+    return transactions.filter((transaction: any) => {
+      const description = transaction.description || '';
+      const reference = transaction.reference || '';
+      
+      const matchesSearch = 
+        description.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        reference.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesType = typeFilter === "all" || transaction.type === typeFilter;
+      
+      return matchesSearch && matchesType;
+    });
+  }, [transactions, searchTerm, typeFilter]);
 
   const getTransactionBadge = (type: string) => {
     switch (type) {
@@ -190,6 +260,26 @@ export default function WalletPage() {
         return null;
     }
   };
+  
+  // Function to handle withdrawal
+  const handleWithdraw = () => {
+    if (!withdrawAmount || !walletAddress) return;
+    
+    withdrawMutation.mutate({
+      amount: Number(withdrawAmount),
+      walletAddress
+    });
+  };
+  
+  // Function to handle wallet address update
+  const handleUpdateWalletAddress = () => {
+    if (!newWalletAddress) return;
+    
+    updateWalletAddressMutation.mutate(newWalletAddress);
+  };
+  
+  // Calculate current balance from balanceData or balance history
+  const currentBalance = balanceData?.balance ?? 0;
 
   return (
     <DashboardLayout activeItem="wallet">
@@ -199,81 +289,99 @@ export default function WalletPage() {
             <h1 className="text-2xl font-bold">Wallet</h1>
             <p className="text-gray-500 mt-1">Manage your balance and transactions</p>
           </div>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Add Funds
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Add Funds to Wallet</DialogTitle>
-                <DialogDescription>
-                  Top up your wallet balance to make purchases
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="amount">Amount</Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
-                    <Input id="amount" type="number" min="0" step="0.01" className="pl-10" placeholder="0.00" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="paymentMethod">Payment Method</Label>
-                  <Select defaultValue="card1">
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select payment method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="card1">Visa ending in 4242</SelectItem>
-                      <SelectItem value="card2">MasterCard ending in 5555</SelectItem>
-                      <SelectItem value="new">Add new payment method</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description (Optional)</Label>
-                  <Input id="description" placeholder="Account funding" />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="submit">Add Funds</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          
+          {/* Wallet Address Setup Button */}
+          <Button 
+            variant="outline" 
+            className="flex items-center gap-2"
+            onClick={() => setWalletAddressDialogOpen(true)}
+          >
+            {walletAddress ? "Change Wallet Address" : "Set Wallet Address"}
+          </Button>
         </div>
+        
+        {/* Wallet Address Dialog */}
+        <Dialog open={walletAddressDialogOpen} onOpenChange={setWalletAddressDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>{walletAddress ? "Change Wallet Address" : "Set Wallet Address"}</DialogTitle>
+              <DialogDescription>
+                {walletAddress 
+                  ? "Update your virtual wallet address for withdrawals." 
+                  : "Set up a virtual wallet address to receive your funds."
+                }
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="walletAddress">Wallet Address</Label>
+                <Input 
+                  id="walletAddress" 
+                  placeholder="Enter your wallet address" 
+                  value={newWalletAddress} 
+                  onChange={(e) => setNewWalletAddress(e.target.value)} 
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button 
+                type="submit" 
+                onClick={handleUpdateWalletAddress} 
+                disabled={!newWalletAddress || updateWalletAddressMutation.isPending}
+              >
+                {updateWalletAddressMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         
         {/* Balance Overview */}
         <div className="grid grid-cols-1 gap-6 mb-6 md:grid-cols-2">
           <Card>
             <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Current Balance</CardTitle>
+              <CardTitle className="text-lg">
+                {user?.role === "admin" ? "Total Balance (All Users)" : "Current Balance"}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center">
                 <Wallet className="h-12 w-12 text-primary mr-4" />
                 <div>
-                  <p className="text-3xl font-bold">${currentBalance.toFixed(2)}</p>
-                  <p className="text-sm text-gray-500">Available for use</p>
+                  {isLoadingBalance ? (
+                    <p className="text-3xl font-bold">Loading...</p>
+                  ) : (
+                    <p className="text-3xl font-bold">${currentBalance.toFixed(2)}</p>
+                  )}
+                  <p className="text-sm text-gray-500">
+                    {user?.role === "admin" 
+                      ? "Total funds across all accounts" 
+                      : "Available for withdrawal"
+                    }
+                  </p>
                 </div>
               </div>
             </CardContent>
             <CardFooter className="border-t pt-4 flex justify-between">
-              <Button variant="outline" className="flex items-center gap-2">
-                <ArrowUp className="h-4 w-4" />
-                Withdraw
-              </Button>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button className="flex items-center gap-2">
-                    <ArrowDown className="h-4 w-4" />
-                    Deposit
-                  </Button>
-                </DialogTrigger>
-              </Dialog>
+              {/* Only show withdraw button for regular users */}
+              {user?.role !== "admin" && (
+                <Button 
+                  variant="outline" 
+                  className="flex items-center gap-2"
+                  onClick={() => setWithdrawDialogOpen(true)}
+                  disabled={!walletAddress || currentBalance <= 0}
+                >
+                  <ArrowUp className="h-4 w-4" />
+                  Withdraw
+                </Button>
+              )}
+              
+              {/* Display info message if wallet address is not set */}
+              {!walletAddress && user?.role !== "admin" && (
+                <div className="flex items-center gap-2 text-amber-600">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="text-sm">Set up a wallet address to enable withdrawals</span>
+                </div>
+              )}
             </CardFooter>
           </Card>
           
@@ -282,29 +390,95 @@ export default function WalletPage() {
               <CardTitle className="text-lg">Balance History</CardTitle>
             </CardHeader>
             <CardContent className="h-[230px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={balanceHistory}
-                  margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip 
-                    formatter={(value) => [`$${value}`, 'Balance']}
-                    labelFormatter={(label) => `Date: ${label}`}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="balance"
-                    stroke="#4f46e5"
-                    activeDot={{ r: 8 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {balanceHistory.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  <p>No transaction history available</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={balanceHistory}
+                    margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value) => [`$${value}`, 'Balance']}
+                      labelFormatter={(label) => `Date: ${label}`}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="balance"
+                      stroke="#4f46e5"
+                      activeDot={{ r: 8 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
         </div>
+        
+        {/* Withdrawal Dialog */}
+        <Dialog open={withdrawDialogOpen} onOpenChange={setWithdrawDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Withdraw Funds</DialogTitle>
+              <DialogDescription>
+                Request a withdrawal to your virtual wallet.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="withdrawAmount">Amount</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+                  <Input 
+                    id="withdrawAmount" 
+                    type="number" 
+                    min="1" 
+                    max={currentBalance} 
+                    step="0.01" 
+                    className="pl-10" 
+                    placeholder="0.00" 
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value === "" ? "" : Number(e.target.value))}
+                  />
+                </div>
+                <p className="text-xs text-gray-500">Available balance: ${currentBalance.toFixed(2)}</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="walletAddressDisplay">Wallet Address</Label>
+                <div className="flex items-center gap-2 p-2 border rounded-md bg-gray-50">
+                  <span className="truncate">{walletAddress}</span>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Funds will be sent to this wallet address. 
+                  <Button 
+                    onClick={() => {
+                      setWithdrawDialogOpen(false);
+                      setWalletAddressDialogOpen(true);
+                    }} 
+                    variant="link" 
+                    className="p-0 h-auto text-xs"
+                  >
+                    Change address
+                  </Button>
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button 
+                type="submit" 
+                onClick={handleWithdraw} 
+                disabled={!withdrawAmount || Number(withdrawAmount) <= 0 || Number(withdrawAmount) > currentBalance || !walletAddress || withdrawMutation.isPending}
+              >
+                {withdrawMutation.isPending ? "Processing..." : "Request Withdrawal"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         
         {/* Transactions Section */}
         <Card>
@@ -350,51 +524,61 @@ export default function WalletPage() {
             </div>
             
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 font-medium">Transaction</th>
-                    <th className="text-left py-3 px-4 font-medium">Date</th>
-                    <th className="text-left py-3 px-4 font-medium">Type</th>
-                    <th className="text-left py-3 px-4 font-medium">Reference</th>
-                    <th className="text-left py-3 px-4 font-medium">Status</th>
-                    <th className="text-right py-3 px-4 font-medium">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTransactions.map((transaction) => (
-                    <tr key={transaction.id} className="border-b hover:bg-gray-50">
-                      <td className="py-4 px-4">
-                        <div className="flex items-center">
-                          {getTransactionIcon(transaction.type)}
-                          <div className="ml-3">
-                            <p className="font-medium">{transaction.description}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-gray-500">
-                        <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                          {transaction.date}
-                        </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        {getTransactionBadge(transaction.type)}
-                      </td>
-                      <td className="py-4 px-4 text-gray-500">{transaction.reference}</td>
-                      <td className="py-4 px-4">
-                        {getStatusBadge(transaction.status)}
-                      </td>
-                      <td className={`py-4 px-4 text-right font-medium ${
-                        transaction.amount > 0 ? 'text-green-600' : 'text-gray-700'
-                      }`}>
-                        {transaction.amount > 0 ? '+' : ''}
-                        ${Math.abs(transaction.amount).toFixed(2)}
-                      </td>
+              {isLoadingTransactions ? (
+                <div className="flex items-center justify-center py-8">
+                  <p className="text-gray-500">Loading transactions...</p>
+                </div>
+              ) : filteredTransactions.length === 0 ? (
+                <div className="flex items-center justify-center py-8">
+                  <p className="text-gray-500">No transactions found</p>
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 px-4 font-medium">Transaction</th>
+                      <th className="text-left py-3 px-4 font-medium">Date</th>
+                      <th className="text-left py-3 px-4 font-medium">Type</th>
+                      <th className="text-left py-3 px-4 font-medium">Reference</th>
+                      <th className="text-left py-3 px-4 font-medium">Status</th>
+                      <th className="text-right py-3 px-4 font-medium">Amount</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filteredTransactions.map((transaction: any) => (
+                      <tr key={transaction.id} className="border-b hover:bg-gray-50">
+                        <td className="py-4 px-4">
+                          <div className="flex items-center">
+                            {getTransactionIcon(transaction.type)}
+                            <div className="ml-3">
+                              <p className="font-medium">{transaction.description}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-gray-500">
+                          <div className="flex items-center">
+                            <Calendar className="h-4 w-4 mr-2 text-gray-400" />
+                            {new Date(transaction.createdAt).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          {getTransactionBadge(transaction.type)}
+                        </td>
+                        <td className="py-4 px-4 text-gray-500">{transaction.reference}</td>
+                        <td className="py-4 px-4">
+                          {getStatusBadge(transaction.status)}
+                        </td>
+                        <td className={`py-4 px-4 text-right font-medium ${
+                          transaction.amount > 0 ? 'text-green-600' : 'text-gray-700'
+                        }`}>
+                          {transaction.amount > 0 ? '+' : ''}
+                          ${Math.abs(transaction.amount).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </CardContent>
         </Card>
