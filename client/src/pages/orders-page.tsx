@@ -702,7 +702,7 @@ export default function OrdersPage() {
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <h4 className="text-sm font-medium text-primary mb-2">Información del Cliente</h4>
+                      <h4 className="text-sm font-medium text-primary mb-2">Customer Information</h4>
                       <div className="border rounded-md p-3 bg-accent">
                         <p className="font-medium">{selectedOrder.customerName}</p>
                         <p className="text-sm text-muted-foreground">{selectedOrder.customerEmail}</p>
@@ -712,18 +712,18 @@ export default function OrdersPage() {
                       </div>
                     </div>
                     <div>
-                      <h4 className="text-sm font-medium text-primary mb-2">Estado del Pedido</h4>
+                      <h4 className="text-sm font-medium text-primary mb-2">Order Status</h4>
                       <div className="border rounded-md p-3 bg-accent">
                         <div className="flex justify-between items-center">
                           <div className="flex flex-col">
                             <div className="flex items-center gap-2 mb-1">
                               <Calendar className="h-4 w-4 text-primary" />
-                              <span className="text-sm">Creado: {new Date(selectedOrder.createdAt).toLocaleDateString()}</span>
+                              <span className="text-sm">Created: {new Date(selectedOrder.createdAt).toLocaleDateString()}</span>
                             </div>
                             {selectedOrder.status === "delivered" && (
                               <div className="flex items-center gap-2">
                                 <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                <span className="text-sm">Entregado: {new Date(selectedOrder.updatedAt).toLocaleDateString()}</span>
+                                <span className="text-sm">Delivered: {new Date(selectedOrder.updatedAt).toLocaleDateString()}</span>
                               </div>
                             )}
                           </div>
@@ -734,35 +734,35 @@ export default function OrdersPage() {
                   </div>
                   
                   <div>
-                    <h4 className="text-sm font-medium text-primary mb-2">Información de Envío</h4>
+                    <h4 className="text-sm font-medium text-primary mb-2">Shipping Information</h4>
                     <div className="border rounded-md p-3 bg-accent mb-2">
                       <p className="text-sm">{selectedOrder.shippingAddress}</p>
                     </div>
                     {selectedOrder.notes && (
                       <div className="flex items-center text-sm">
                         <FileText className="h-4 w-4 text-primary mr-1" />
-                        <span className="text-muted-foreground mr-2">Notas:</span>
+                        <span className="text-muted-foreground mr-2">Notes:</span>
                         <span className="font-medium">{selectedOrder.notes}</span>
                       </div>
                     )}
                   </div>
                   
                   <div>
-                    <h4 className="text-sm font-medium text-primary mb-2">Items del Pedido</h4>
+                    <h4 className="text-sm font-medium text-primary mb-2">Order Items</h4>
                     <div className="border rounded-md overflow-hidden">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="bg-accent border-b">
-                            <th className="text-left py-2 px-3 font-medium">Producto</th>
-                            <th className="text-center py-2 px-3 font-medium">Cantidad</th>
-                            <th className="text-center py-2 px-3 font-medium">Precio</th>
+                            <th className="text-left py-2 px-3 font-medium">Product</th>
+                            <th className="text-center py-2 px-3 font-medium">Quantity</th>
+                            <th className="text-center py-2 px-3 font-medium">Price</th>
                             <th className="text-right py-2 px-3 font-medium">Subtotal</th>
                           </tr>
                         </thead>
                         <tbody>
                           {selectedOrder.items.map((item, idx) => (
                             <tr key={idx} className={idx < selectedOrder.items!.length - 1 ? "border-b" : ""}>
-                              <td className="py-3 px-3">{item.productName || `Producto #${item.productId}`}</td>
+                              <td className="py-3 px-3">{item.productName || `Product #${item.productId}`}</td>
                               <td className="py-3 px-3 text-center">{item.quantity}</td>
                               <td className="py-3 px-3 text-center">${item.price.toFixed(2)}</td>
                               <td className="py-3 px-3 text-right">${item.subtotal.toFixed(2)}</td>
@@ -782,19 +782,19 @@ export default function OrdersPage() {
               )}
               
               <DialogFooter className="flex gap-2">
-                <Button variant="outline">Imprimir Factura</Button>
+                <Button variant="outline">Print Invoice</Button>
                 <Select 
                   onValueChange={(value) => updateOrderStatus(selectedOrder.id, value)}
                 >
                   <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Actualizar Estado" />
+                    <SelectValue placeholder="Update Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pending">Pendiente</SelectItem>
-                    <SelectItem value="processing">En Proceso</SelectItem>
-                    <SelectItem value="shipped">Enviado</SelectItem>
-                    <SelectItem value="delivered">Entregado</SelectItem>
-                    <SelectItem value="cancelled">Cancelado</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="processing">Processing</SelectItem>
+                    <SelectItem value="shipped">Shipped</SelectItem>
+                    <SelectItem value="delivered">Delivered</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
               </DialogFooter>
