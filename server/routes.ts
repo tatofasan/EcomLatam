@@ -15,7 +15,7 @@ import {
   type InsertTransaction
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, asc, sql } from "drizzle-orm";
+import { eq, desc, asc, sql, inArray } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
@@ -463,7 +463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Get all order items for these orders
         const allOrderItems = await db.select()
           .from(orderItems)
-          .where(sql`order_id IN (${orderIds.join(',')})`);
+          .where(inArray(orderItems.orderId, orderIds));
         
         // Get unique product IDs from order items
         const productIds = [...new Set(allOrderItems.map(item => item.productId))];
@@ -472,7 +472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Get products for these order items
           const orderProducts = await db.select()
             .from(products)
-            .where(sql`id IN (${productIds.join(',')})`);
+            .where(inArray(products.id, productIds));
           
           // Process products from orders to get categories
           orderProducts.forEach(product => {
