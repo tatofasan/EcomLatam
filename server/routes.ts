@@ -15,7 +15,7 @@ import {
   type InsertTransaction
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, asc } from "drizzle-orm";
+import { eq, desc, asc, sql } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
@@ -403,6 +403,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const deliveredCount = ordersList.filter(order => order.status === 'delivered').length;
       const cancelledCount = ordersList.filter(order => order.status === 'cancelled').length;
       
+      // Get order items for quantity calculations
+      const orderItemsPromises = ordersList.map(order => 
+        db.select().from(orderItems).where(eq(orderItems.orderId, order.id))
+      );
+      const allOrderItemsResults = await Promise.all(orderItemsPromises);
+      
+      // Create a map of order ID to its items
+      const orderItemsMap = {};
+      ordersList.forEach((order, index) => {
+        orderItemsMap[order.id] = allOrderItemsResults[index];
+      });
+      
       // Get sales data by month
       const monthlyData = {};
       
@@ -421,8 +433,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (monthlyData[monthKey]) {
           monthlyData[monthKey].orders += 1;
+          
+          // For delivered orders, count the quantity of items sold
           if (order.status === 'delivered') {
-            monthlyData[monthKey].sales += order.totalAmount;
+            const orderItems = orderItemsMap[order.id] || [];
+            const itemsCount = orderItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+            monthlyData[monthKey].sales += itemsCount;
           }
         }
       });
@@ -430,7 +446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Transform to array for chart data
       const salesData = Object.entries(monthlyData).map(([name, data]) => ({
         name,
-        sales: parseFloat(data.sales.toFixed(2)),
+        sales: Math.round(data.sales), // Round to nearest integer for item counts
         orders: data.orders
       }));
       
