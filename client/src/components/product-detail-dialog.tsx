@@ -55,6 +55,12 @@ export default function ProductDetailDialog({
         sku: `SKU-${Math.floor(Math.random() * 10000)}`,
         imageUrl: "https://placehold.co/600x400?text=Product+Image",
         category: "",
+        additionalImages: [],
+        weight: null,
+        dimensions: null,
+        specifications: null,
+        reference: null,
+        provider: null
       });
     } else if (product) {
       setFormData({ ...product });

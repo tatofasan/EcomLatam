@@ -14,14 +14,19 @@ export interface Product {
   description: string;
   price: number;
   stock: number;
-  status: string;
+  status: string; // "active" | "inactive" | "draft" | "low"
   sku: string;
   imageUrl: string;
-  category?: string;
-  weight?: number;
-  dimensions?: string;
-  supplier?: string;
-  additionalImages?: string[];
+  additionalImages?: string[] | null;
+  weight?: number | null;
+  dimensions?: string | null;
+  category?: string | null;
+  specifications?: Record<string, any> | null;
+  reference?: string | null;
+  provider?: string | null;
+  userId?: number | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface Order {
