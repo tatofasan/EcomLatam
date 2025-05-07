@@ -461,6 +461,161 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get wallet transactions - filtered by user role
+  app.get("/api/wallet/transactions", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const userId = req.user.id;
+      const isAdmin = req.user.role === 'admin';
+      
+      let transactions = [];
+      
+      if (isAdmin) {
+        // Admin sees all transactions
+        transactions = await db.select().from(transactions).orderBy(desc(transactions.createdAt));
+      } else {
+        // Regular users see only their transactions
+        transactions = await storage.getUserTransactions(userId);
+      }
+      
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching transactions:", error);
+      res.status(500).json({ message: "Failed to fetch transactions" });
+    }
+  });
+  
+  // Get user balance
+  app.get("/api/wallet/balance", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const userId = req.user.id;
+      const isAdmin = req.user.role === 'admin';
+      
+      let balance = 0;
+      
+      if (isAdmin) {
+        // Admin sees total balance of all users
+        const allTransactions = await db.select().from(transactions);
+        balance = allTransactions.reduce((total, tx) => total + tx.amount, 0);
+      } else {
+        // Regular users see only their balance
+        balance = await storage.getUserBalance(userId);
+      }
+      
+      res.json({ balance });
+    } catch (error) {
+      console.error("Error fetching balance:", error);
+      res.status(500).json({ message: "Failed to fetch balance" });
+    }
+  });
+  
+  // Create a withdrawal transaction
+  app.post("/api/wallet/withdraw", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const userId = req.user.id;
+      const { amount, walletAddress } = req.body;
+      
+      // Validate request
+      if (!amount || typeof amount !== 'number' || amount <= 0) {
+        return res.status(400).json({ message: "Invalid withdrawal amount" });
+      }
+      
+      if (!walletAddress || typeof walletAddress !== 'string') {
+        return res.status(400).json({ message: "Wallet address is required" });
+      }
+      
+      // Check if user has sufficient balance
+      const currentBalance = await storage.getUserBalance(userId);
+      
+      if (amount > currentBalance) {
+        return res.status(400).json({ message: "Insufficient balance for withdrawal" });
+      }
+      
+      // Create withdrawal transaction (negative amount)
+      const withdrawal: InsertTransaction = {
+        type: "withdrawal",
+        amount: -Math.abs(amount), // Ensure amount is negative
+        status: "pending",
+        description: `Withdrawal to ${walletAddress}`,
+        reference: `WIT${Date.now().toString().slice(-6)}`
+      };
+      
+      const transaction = await storage.createTransaction(withdrawal, userId);
+      
+      res.status(201).json(transaction);
+    } catch (error) {
+      console.error("Error creating withdrawal:", error);
+      res.status(500).json({ message: "Failed to process withdrawal" });
+    }
+  });
+  
+  // Update user wallet address
+  app.patch("/api/user/wallet-address", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const userId = req.user.id;
+      const { walletAddress } = req.body;
+      
+      if (!walletAddress || typeof walletAddress !== 'string') {
+        return res.status(400).json({ message: "Invalid wallet address" });
+      }
+      
+      // Update user settings with wallet address
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const settings = user.settings || {};
+      settings.walletAddress = walletAddress;
+      
+      const updatedUser = await storage.updateUser(userId, { settings });
+      
+      res.json({ success: true, walletAddress });
+    } catch (error) {
+      console.error("Error updating wallet address:", error);
+      res.status(500).json({ message: "Failed to update wallet address" });
+    }
+  });
+  
+  // Get user wallet address
+  app.get("/api/user/wallet-address", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const walletAddress = user.settings?.walletAddress || '';
+      
+      res.json({ walletAddress });
+    } catch (error) {
+      console.error("Error fetching wallet address:", error);
+      res.status(500).json({ message: "Failed to fetch wallet address" });
+    }
+  });
+  
   // Get user connections
   app.get("/api/connections", requireAuth, async (req, res) => {
     try {
