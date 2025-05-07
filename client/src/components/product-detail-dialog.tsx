@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageUpload } from "@/components/ui/image-upload";
+import { AdditionalImagesUpload } from "@/components/ui/additional-images-upload";
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -179,7 +180,7 @@ export default function ProductDetailDialog({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
           {/* Left column - Images */}
           <div className="space-y-4">
-{mode === "view" ? (
+            {mode === "view" ? (
               <div className="relative bg-accent border border-border rounded-lg overflow-hidden h-[300px]">
                 <img 
                   src={images[currentImageIndex]} 
@@ -209,16 +210,30 @@ export default function ProductDetailDialog({
                 )}
               </div>
             ) : (
-              <ImageUpload 
-                className="h-[300px]"
-                currentImage={formData.imageUrl}
-                onImageChange={(image) => {
-                  setFormData({
-                    ...formData,
-                    imageUrl: image
-                  });
-                }}
-              />
+              <div>
+                <ImageUpload 
+                  className="h-[300px]"
+                  currentImage={formData.imageUrl}
+                  onImageChange={(image) => {
+                    setFormData({
+                      ...formData,
+                      imageUrl: image
+                    });
+                  }}
+                />
+                
+                <div className="mt-4">
+                  <AdditionalImagesUpload
+                    currentImages={formData.additionalImages || []}
+                    onImagesChange={(images) => {
+                      setFormData({
+                        ...formData,
+                        additionalImages: images
+                      });
+                    }}
+                  />
+                </div>
+              </div>
             )}
             
             {images.length > 1 && mode === "view" && (
