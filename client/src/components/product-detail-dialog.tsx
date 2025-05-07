@@ -84,13 +84,10 @@ export default function ProductDetailDialog({
       } as Product
     : product as Product;
   
-  // Para esta versión inicial, usamos solo la imagen principal
-  // y algunas imágenes de demostración hasta que tengamos additionalImages en la BD
-  const images = [
-    productData.imageUrl,
-    "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=500&h=350&fit=crop",
-    "https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=500&h=350&fit=crop"
-  ];
+  // Usar la imagen principal y las adicionales si existen
+  const images = productData.additionalImages && productData.additionalImages.length > 0
+    ? [productData.imageUrl, ...productData.additionalImages]
+    : [productData.imageUrl];
 
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % images.length);
@@ -333,36 +330,30 @@ export default function ProductDetailDialog({
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <h3 className="text-sm font-medium text-primary mb-1">Weight</h3>
-                        <p className="text-muted-foreground">0.5 kg</p>
+                        <p className="text-muted-foreground">{productData.weight ? `${productData.weight} kg` : 'Not specified'}</p>
                       </div>
                       <div>
                         <h3 className="text-sm font-medium text-primary mb-1">Dimensions</h3>
-                        <p className="text-muted-foreground">20 x 15 x 5 cm</p>
+                        <p className="text-muted-foreground">{productData.dimensions || 'Not specified'}</p>
                       </div>
                     </div>
                     
                     <div>
                       <h3 className="text-sm font-medium text-primary mb-1">Supplier</h3>
-                      <p className="text-muted-foreground">Main Supplier</p>
+                      <p className="text-muted-foreground">{productData.provider || 'Not specified'}</p>
                     </div>
                   </TabsContent>
                   
                   <TabsContent value="specs" className="space-y-4 pt-4">
-                    {/* Demo specifications */}
-                    <div className="space-y-3">
-                      <div>
-                        <h3 className="text-sm font-medium text-primary mb-1">Material</h3>
-                        <p className="text-muted-foreground">ABS Plastic</p>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-primary mb-1">Battery</h3>
-                        <p className="text-muted-foreground">300 mAh</p>
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium text-primary mb-1">Connectivity</h3>
-                        <p className="text-muted-foreground">Bluetooth 5.0</p>
-                      </div>
-                    </div>
+                    {productData.specifications ? (
+                      <pre className="text-sm whitespace-pre-wrap">
+                        {typeof productData.specifications === 'string' 
+                          ? productData.specifications 
+                          : JSON.stringify(productData.specifications, null, 2)}
+                      </pre>
+                    ) : (
+                      <div className="text-muted-foreground text-center py-4">No specifications available</div>
+                    )}
                   </TabsContent>
                 </Tabs>
               </>
