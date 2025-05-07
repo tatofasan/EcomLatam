@@ -718,6 +718,248 @@ export default function WalletPage() {
           </CardContent>
         </Card>
       </div>
+      
+      {/* Transaction Details Dialog */}
+      <Dialog open={transactionDetailOpen} onOpenChange={setTransactionDetailOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          {selectedTransaction && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  {getTransactionIcon(selectedTransaction.type)}
+                  <span>Transaction Details</span>
+                </DialogTitle>
+                <DialogDescription>
+                  View the details of this transaction
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-500">Transaction ID</p>
+                    <p className="font-medium">{selectedTransaction.id}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-500">Reference</p>
+                    <p className="font-medium">{selectedTransaction.reference || 'N/A'}</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-500">Type</p>
+                    <div>{getTransactionBadge(selectedTransaction.type)}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-500">Status</p>
+                    <div>{getStatusBadge(selectedTransaction.status)}</div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-500">Date</p>
+                    <p className="font-medium">
+                      {new Date(selectedTransaction.createdAt).toLocaleDateString()} 
+                      {' '}
+                      {new Date(selectedTransaction.createdAt).toLocaleTimeString()}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm text-gray-500">Amount</p>
+                    <p className={`font-medium ${selectedTransaction.amount > 0 ? 'text-green-600' : 'text-gray-700'}`}>
+                      {selectedTransaction.amount > 0 ? '+' : ''}
+                      ${Math.abs(selectedTransaction.amount).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-500">Description</p>
+                  <p className="font-medium">{selectedTransaction.description || 'No description'}</p>
+                </div>
+                
+                {/* Payment Proof section - only show if available */}
+                {selectedTransaction.status === "paid" && 
+                 selectedTransaction.type === "withdrawal" && 
+                 selectedTransaction.settings?.paymentProof && (
+                  <div className="space-y-2 mt-2">
+                    <p className="text-sm text-gray-500 font-medium">Payment Proof</p>
+                    <div className="border rounded-md p-3 bg-gray-50">
+                      <img 
+                        src={selectedTransaction.settings.paymentProof} 
+                        alt="Payment Proof" 
+                        className="max-w-full h-auto rounded-md"
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                {/* Admin Actions - Only for admin users and withdrawal transactions */}
+                {user?.role === "admin" && 
+                 selectedTransaction.type === "withdrawal" && 
+                 (selectedTransaction.status === "pending" || selectedTransaction.status === "processing") && (
+                  <div className="mt-4 pt-4 border-t">
+                    <h4 className="font-medium mb-2">Admin Actions</h4>
+                    <div className="flex gap-2">
+                      {selectedTransaction.status === "pending" && (
+                        <Button 
+                          onClick={() => {
+                            setTransactionDetailOpen(false);
+                            setSelectedTransaction(selectedTransaction);
+                            setUpdateStatusDialogOpen(true);
+                            setNewStatus("processing");
+                          }}
+                          className="flex items-center gap-2"
+                        >
+                          <Clock className="h-4 w-4" />
+                          Mark as Processing
+                        </Button>
+                      )}
+                      
+                      {selectedTransaction.status === "processing" && (
+                        <Button 
+                          onClick={() => {
+                            setTransactionDetailOpen(false);
+                            setSelectedTransaction(selectedTransaction);
+                            setUpdateStatusDialogOpen(true);
+                            setNewStatus("paid");
+                          }}
+                          className="flex items-center gap-2"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                          Mark as Paid
+                        </Button>
+                      )}
+                      
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          setTransactionDetailOpen(false);
+                          setSelectedTransaction(selectedTransaction);
+                          setUpdateStatusDialogOpen(true);
+                          setNewStatus("cancelled");
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <XCircle className="h-4 w-4" />
+                        Cancel Withdrawal
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setTransactionDetailOpen(false)}>
+                  Close
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Update Transaction Status Dialog - Only for admin users */}
+      {user?.role === "admin" && (
+        <Dialog open={updateStatusDialogOpen} onOpenChange={setUpdateStatusDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            {selectedTransaction && (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Update Transaction Status</DialogTitle>
+                  <DialogDescription>
+                    Change the status of transaction #{selectedTransaction.id}
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="grid gap-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Current Status</Label>
+                    <div className="p-2 rounded-md bg-gray-50 border">
+                      {getStatusBadge(selectedTransaction.status)}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="newStatus">New Status</Label>
+                    <Select
+                      value={newStatus}
+                      onValueChange={setNewStatus}
+                    >
+                      <SelectTrigger id="newStatus">
+                        <SelectValue placeholder="Select a new status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {selectedTransaction.status === "pending" && (
+                          <SelectItem value="processing">Processing</SelectItem>
+                        )}
+                        {(selectedTransaction.status === "pending" || 
+                          selectedTransaction.status === "processing") && (
+                          <SelectItem value="paid">Paid</SelectItem>
+                        )}
+                        {(selectedTransaction.status === "pending" || 
+                          selectedTransaction.status === "processing") && (
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {/* Payment Proof Upload - Only for paid status */}
+                  {newStatus === "paid" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="paymentProof">Payment Proof (required)</Label>
+                      <div className="grid gap-2">
+                        <Input
+                          id="paymentProof"
+                          type="file"
+                          accept="image/*"
+                          ref={fileInputRef}
+                          onChange={handleFileChange}
+                        />
+                        {paymentProofFile && (
+                          <p className="text-xs text-green-600">
+                            File selected: {paymentProofFile.name}
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-500">
+                          Upload a screenshot or image showing proof of payment
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <DialogFooter>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setUpdateStatusDialogOpen(false);
+                      setNewStatus("");
+                      setPaymentProofFile(null);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    onClick={handleUpdateTransactionStatus}
+                    disabled={
+                      !newStatus || 
+                      (newStatus === "paid" && !paymentProofFile) ||
+                      updateTransactionStatusMutation.isPending
+                    }
+                  >
+                    {updateTransactionStatusMutation.isPending ? "Updating..." : "Update Status"}
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
     </DashboardLayout>
   );
 }
