@@ -151,7 +151,7 @@ export default function WalletPage() {
       });
       setUpdateStatusDialogOpen(false);
       setNewStatus("");
-      setPaymentProofFile(null);
+      setPaymentProofText("");
       queryClient.invalidateQueries({ queryKey: ['/api/wallet/transactions'] });
     },
     onError: (error: Error) => {
@@ -163,46 +163,24 @@ export default function WalletPage() {
     }
   });
   
-  // Handle file selection for payment proof
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setPaymentProofFile(e.target.files[0]);
-    }
-  };
-  
   // Handle transaction status update
   const handleUpdateTransactionStatus = async () => {
     if (!selectedTransaction || !newStatus) return;
     
-    let paymentProofBase64: string | undefined;
-    
-    // Si es estado "paid" y hay archivo de comprobante, convertir a base64
-    if (newStatus === "paid" && paymentProofFile) {
-      try {
-        const fileReader = new FileReader();
-        paymentProofBase64 = await new Promise<string>((resolve, reject) => {
-          fileReader.onload = (e) => {
-            resolve(e.target?.result as string);
-          };
-          fileReader.onerror = (error) => {
-            reject(error);
-          };
-          fileReader.readAsDataURL(paymentProofFile);
-        });
-      } catch (error) {
-        toast({
-          title: "Error Processing File",
-          description: "There was an error processing the payment proof file.",
-          variant: "destructive"
-        });
-        return;
-      }
+    // Para estados "paid", se requiere el comprobante de pago como texto
+    if (newStatus === "paid" && !paymentProofText) {
+      toast({
+        title: "Missing Payment Proof",
+        description: "Please enter the Tronscan transaction link as payment proof.",
+        variant: "destructive"
+      });
+      return;
     }
     
     updateTransactionStatusMutation.mutate({
       transactionId: selectedTransaction.id,
       status: newStatus,
-      paymentProof: paymentProofBase64
+      paymentProof: newStatus === "paid" ? paymentProofText : undefined
     });
   };
   
@@ -825,11 +803,15 @@ export default function WalletPage() {
                   <div className="space-y-2 mt-2">
                     <p className="text-sm text-gray-500 font-medium">Payment Proof</p>
                     <div className="border rounded-md p-3 bg-gray-50">
-                      <img 
-                        src={selectedTransaction.settings.paymentProof} 
-                        alt="Payment Proof" 
-                        className="max-w-full h-auto rounded-md"
-                      />
+                      <a 
+                        href={selectedTransaction.settings.paymentProof}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center text-blue-600 hover:underline"
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Transaction on Tronscan
+                      </a>
                     </div>
                   </div>
                 )}
@@ -971,7 +953,7 @@ export default function WalletPage() {
                     onClick={() => {
                       setUpdateStatusDialogOpen(false);
                       setNewStatus("");
-                      setPaymentProofFile(null);
+                      setPaymentProofText("");
                     }}
                   >
                     Cancel
@@ -981,7 +963,7 @@ export default function WalletPage() {
                     onClick={handleUpdateTransactionStatus}
                     disabled={
                       !newStatus || 
-                      (newStatus === "paid" && !paymentProofFile) ||
+                      (newStatus === "paid" && !paymentProofText) ||
                       updateTransactionStatusMutation.isPending
                     }
                   >
