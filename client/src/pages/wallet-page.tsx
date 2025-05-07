@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +21,10 @@ import {
   Banknote,
   AlertCircle,
   DollarSign,
-  Plus
+  Plus,
+  Upload,
+  FileCheck,
+  Eye
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -47,6 +50,14 @@ export default function WalletPage() {
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
   const [walletAddressDialogOpen, setWalletAddressDialogOpen] = useState(false);
   const [newWalletAddress, setNewWalletAddress] = useState("");
+  
+  // Admin - Gestión de retiros
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [transactionDetailOpen, setTransactionDetailOpen] = useState(false);
+  const [updateStatusDialogOpen, setUpdateStatusDialogOpen] = useState(false);
+  const [newStatus, setNewStatus] = useState("");
+  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Fetch transactions
   const { data: transactions = [], isLoading: isLoadingTransactions } = useQuery({
@@ -121,6 +132,80 @@ export default function WalletPage() {
       });
     }
   });
+  
+  // Admin - Update transaction status mutation
+  const updateTransactionStatusMutation = useMutation({
+    mutationFn: async (data: { transactionId: number, status: string, paymentProof?: string }) => {
+      const { transactionId, status, paymentProof } = data;
+      
+      return apiRequest(
+        'PATCH', 
+        `/api/wallet/transactions/${transactionId}/status`, 
+        { status, paymentProof }
+      );
+    },
+    onSuccess: () => {
+      toast({
+        title: "Transaction Updated",
+        description: "The transaction status has been updated successfully.",
+        variant: "default"
+      });
+      setUpdateStatusDialogOpen(false);
+      setNewStatus("");
+      setPaymentProofFile(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/wallet/transactions'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update transaction status. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Handle file selection for payment proof
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setPaymentProofFile(e.target.files[0]);
+    }
+  };
+  
+  // Handle transaction status update
+  const handleUpdateTransactionStatus = async () => {
+    if (!selectedTransaction || !newStatus) return;
+    
+    let paymentProofBase64: string | undefined;
+    
+    // Si es estado "paid" y hay archivo de comprobante, convertir a base64
+    if (newStatus === "paid" && paymentProofFile) {
+      try {
+        const fileReader = new FileReader();
+        paymentProofBase64 = await new Promise<string>((resolve, reject) => {
+          fileReader.onload = (e) => {
+            resolve(e.target?.result as string);
+          };
+          fileReader.onerror = (error) => {
+            reject(error);
+          };
+          fileReader.readAsDataURL(paymentProofFile);
+        });
+      } catch (error) {
+        toast({
+          title: "Error Processing File",
+          description: "There was an error processing the payment proof file.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+    
+    updateTransactionStatusMutation.mutate({
+      transactionId: selectedTransaction.id,
+      status: newStatus,
+      paymentProof: paymentProofBase64
+    });
+  };
   
   // Prepare balance history data from transactions
   const balanceHistory: BalancePoint[] = useMemo(() => {
@@ -200,7 +285,14 @@ export default function WalletPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "completed":
+      case "paid":
+        return (
+          <span className="flex items-center text-green-700">
+            <CheckCircle2 className="h-3 w-3 mr-1" />
+            Paid
+          </span>
+        );
+      case "completed": // Legacy status - mantenerlo para transacciones antiguas
         return (
           <span className="flex items-center text-green-700">
             <CheckCircle2 className="h-3 w-3 mr-1" />
@@ -214,6 +306,13 @@ export default function WalletPage() {
             Processing
           </span>
         );
+      case "pending":
+        return (
+          <span className="flex items-center text-blue-700">
+            <Clock className="h-3 w-3 mr-1" />
+            Pending
+          </span>
+        );
       case "failed":
         return (
           <span className="flex items-center text-red-700">
@@ -221,8 +320,20 @@ export default function WalletPage() {
             Failed
           </span>
         );
+      case "cancelled":
+        return (
+          <span className="flex items-center text-gray-700">
+            <XCircle className="h-3 w-3 mr-1" />
+            Cancelled
+          </span>
+        );
       default:
-        return null;
+        return (
+          <span className="flex items-center text-gray-500">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            {status || "Unknown"}
+          </span>
+        );
     }
   };
 
@@ -548,7 +659,14 @@ export default function WalletPage() {
                   </thead>
                   <tbody>
                     {filteredTransactions.map((transaction: any) => (
-                      <tr key={transaction.id} className="border-b hover:bg-gray-50">
+                      <tr 
+                        key={transaction.id} 
+                        className="border-b hover:bg-gray-50 cursor-pointer"
+                        onClick={() => {
+                          setSelectedTransaction(transaction);
+                          setTransactionDetailOpen(true);
+                        }}
+                      >
                         <td className="py-4 px-4">
                           <div className="flex items-center">
                             {getTransactionIcon(transaction.type)}
@@ -575,6 +693,21 @@ export default function WalletPage() {
                         }`}>
                           {transaction.amount > 0 ? '+' : ''}
                           ${Math.abs(transaction.amount).toFixed(2)}
+                          {user?.role === "admin" && transaction.type === "withdrawal" && 
+                           (transaction.status === "pending" || transaction.status === "processing") && 
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="ml-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTransaction(transaction);
+                              setUpdateStatusDialogOpen(true);
+                              setNewStatus(transaction.status === "pending" ? "processing" : "paid");
+                            }}
+                          >
+                            <ArrowUp className="h-4 w-4 text-amber-600" />
+                          </Button>}
                         </td>
                       </tr>
                     ))}
