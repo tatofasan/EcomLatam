@@ -709,10 +709,10 @@ export class DatabaseStorage implements IStorage {
         await this.createTransaction({
           type: "deposit",
           amount: 1000.00,
-          status: "completed",
+          status: "paid", // Cambiado de completed a paid
           description: "Initial Account Funding",
           reference: "DEP" + Date.now().toString().slice(-6)
-        } as InsertTransaction, userId);
+        }, userId);
         
         // Crear transacciones de pago para órdenes entregadas (delivered)
         const deliveredOrders = userOrders.filter(order => order.status === "delivered");
@@ -720,10 +720,10 @@ export class DatabaseStorage implements IStorage {
           await this.createTransaction({
             type: "payment",
             amount: -order.totalAmount, // Negativo porque es un pago
-            status: "completed",
+            status: "paid", // Cambiado de completed a paid
             description: `Payment for Order ${order.orderNumber}`,
             reference: `PAY-${order.orderNumber}`
-          } as InsertTransaction, userId);
+          }, userId);
         }
         
         // Crear algunas transacciones de reembolso (para un 20% aleatorio de las órdenes canceladas)
@@ -737,10 +737,10 @@ export class DatabaseStorage implements IStorage {
           await this.createTransaction({
             type: "refund",
             amount: refundAmount, // Positivo porque es un reembolso
-            status: "completed",
+            status: "paid", // Cambiado de completed a paid
             description: `Refund for Order ${order.orderNumber}`,
             reference: `REF-${order.orderNumber}`
-          } as InsertTransaction, userId);
+          }, userId);
         }
         
         // Agregar un retiro si hay suficiente balance
@@ -749,10 +749,10 @@ export class DatabaseStorage implements IStorage {
           await this.createTransaction({
             type: "withdrawal",
             amount: -Math.min(currentBalance * 0.3, 500), // Retirar 30% del balance o máximo 500
-            status: "completed",
+            status: "paid", // Cambiado de completed a paid
             description: "Withdrawal to Bank Account",
             reference: "WIT" + Date.now().toString().slice(-6)
-          } as InsertTransaction, userId);
+          }, userId);
         }
       } else {
         // Si no hay órdenes, crear transacciones demo básicas
@@ -760,21 +760,21 @@ export class DatabaseStorage implements IStorage {
           {
             type: "deposit",
             amount: 500.00,
-            status: "completed",
+            status: "paid", // Cambiado de completed a paid
             description: "Account Funding",
             reference: "DEP" + Date.now().toString().slice(-6)
           },
           {
             type: "withdrawal",
             amount: -200.00,
-            status: "processing",
+            status: "processing", // Este ya está correcto
             description: "Bank Transfer",
             reference: "WIT" + Date.now().toString().slice(-6)
           }
         ];
         
         for (const transaction of demoTransactions) {
-          await this.createTransaction(transaction as InsertTransaction, userId);
+          await this.createTransaction(transaction, userId);
         }
       }
     } catch (error) {
