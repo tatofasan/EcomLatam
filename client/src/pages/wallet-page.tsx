@@ -290,50 +290,54 @@ export default function WalletPage() {
             <p className="text-gray-500 mt-1">Manage your balance and transactions</p>
           </div>
           
-          {/* Wallet Address Setup Button */}
-          <Button 
-            variant="outline" 
-            className="flex items-center gap-2"
-            onClick={() => setWalletAddressDialogOpen(true)}
-          >
-            {walletAddress ? "Change Wallet Address" : "Set Wallet Address"}
-          </Button>
+          {/* Wallet Address Setup Button - Only for non-admin users */}
+          {user?.role !== "admin" && (
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2"
+              onClick={() => setWalletAddressDialogOpen(true)}
+            >
+              {walletAddress ? "Change Wallet Address" : "Set Wallet Address"}
+            </Button>
+          )}
         </div>
         
-        {/* Wallet Address Dialog */}
-        <Dialog open={walletAddressDialogOpen} onOpenChange={setWalletAddressDialogOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>{walletAddress ? "Change Wallet Address" : "Set Wallet Address"}</DialogTitle>
-              <DialogDescription>
-                {walletAddress 
-                  ? "Update your virtual wallet address for withdrawals." 
-                  : "Set up a virtual wallet address to receive your funds."
-                }
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="walletAddress">Wallet Address</Label>
-                <Input 
-                  id="walletAddress" 
-                  placeholder="Enter your wallet address" 
-                  value={newWalletAddress} 
-                  onChange={(e) => setNewWalletAddress(e.target.value)} 
-                />
+        {/* Wallet Address Dialog - Only for non-admin users */}
+        {user?.role !== "admin" && (
+          <Dialog open={walletAddressDialogOpen} onOpenChange={setWalletAddressDialogOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>{walletAddress ? "Change Wallet Address" : "Set Wallet Address"}</DialogTitle>
+                <DialogDescription>
+                  {walletAddress 
+                    ? "Update your virtual wallet address for withdrawals." 
+                    : "Set up a virtual wallet address to receive your funds."
+                  }
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="walletAddress">Wallet Address</Label>
+                  <Input 
+                    id="walletAddress" 
+                    placeholder="Enter your wallet address" 
+                    value={newWalletAddress} 
+                    onChange={(e) => setNewWalletAddress(e.target.value)} 
+                  />
+                </div>
               </div>
-            </div>
-            <DialogFooter>
-              <Button 
-                type="submit" 
-                onClick={handleUpdateWalletAddress} 
-                disabled={!newWalletAddress || updateWalletAddressMutation.isPending}
-              >
-                {updateWalletAddressMutation.isPending ? "Saving..." : "Save"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter>
+                <Button 
+                  type="submit" 
+                  onClick={handleUpdateWalletAddress} 
+                  disabled={!newWalletAddress || updateWalletAddressMutation.isPending}
+                >
+                  {updateWalletAddressMutation.isPending ? "Saving..." : "Save"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
         
         {/* Balance Overview */}
         <div className="grid grid-cols-1 gap-6 mb-6 md:grid-cols-2">
@@ -420,65 +424,67 @@ export default function WalletPage() {
           </Card>
         </div>
         
-        {/* Withdrawal Dialog */}
-        <Dialog open={withdrawDialogOpen} onOpenChange={setWithdrawDialogOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Withdraw Funds</DialogTitle>
-              <DialogDescription>
-                Request a withdrawal to your virtual wallet.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="withdrawAmount">Amount</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
-                  <Input 
-                    id="withdrawAmount" 
-                    type="number" 
-                    min="1" 
-                    max={currentBalance} 
-                    step="0.01" 
-                    className="pl-10" 
-                    placeholder="0.00" 
-                    value={withdrawAmount}
-                    onChange={(e) => setWithdrawAmount(e.target.value === "" ? "" : Number(e.target.value))}
-                  />
+        {/* Withdrawal Dialog - Only for non-admin users */}
+        {user?.role !== "admin" && (
+          <Dialog open={withdrawDialogOpen} onOpenChange={setWithdrawDialogOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Withdraw Funds</DialogTitle>
+                <DialogDescription>
+                  Request a withdrawal to your virtual wallet.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="withdrawAmount">Amount</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+                    <Input 
+                      id="withdrawAmount" 
+                      type="number" 
+                      min="1" 
+                      max={currentBalance} 
+                      step="0.01" 
+                      className="pl-10" 
+                      placeholder="0.00" 
+                      value={withdrawAmount}
+                      onChange={(e) => setWithdrawAmount(e.target.value === "" ? "" : Number(e.target.value))}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500">Available balance: ${currentBalance.toFixed(2)}</p>
                 </div>
-                <p className="text-xs text-gray-500">Available balance: ${currentBalance.toFixed(2)}</p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="walletAddressDisplay">Wallet Address</Label>
-                <div className="flex items-center gap-2 p-2 border rounded-md bg-gray-50">
-                  <span className="truncate">{walletAddress}</span>
+                <div className="space-y-2">
+                  <Label htmlFor="walletAddressDisplay">Wallet Address</Label>
+                  <div className="flex items-center gap-2 p-2 border rounded-md bg-gray-50">
+                    <span className="truncate">{walletAddress}</span>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Funds will be sent to this wallet address. 
+                    <Button 
+                      onClick={() => {
+                        setWithdrawDialogOpen(false);
+                        setWalletAddressDialogOpen(true);
+                      }} 
+                      variant="link" 
+                      className="p-0 h-auto text-xs"
+                    >
+                      Change address
+                    </Button>
+                  </p>
                 </div>
-                <p className="text-xs text-gray-500">
-                  Funds will be sent to this wallet address. 
-                  <Button 
-                    onClick={() => {
-                      setWithdrawDialogOpen(false);
-                      setWalletAddressDialogOpen(true);
-                    }} 
-                    variant="link" 
-                    className="p-0 h-auto text-xs"
-                  >
-                    Change address
-                  </Button>
-                </p>
               </div>
-            </div>
-            <DialogFooter>
-              <Button 
-                type="submit" 
-                onClick={handleWithdraw} 
-                disabled={!withdrawAmount || Number(withdrawAmount) <= 0 || Number(withdrawAmount) > currentBalance || !walletAddress || withdrawMutation.isPending}
-              >
-                {withdrawMutation.isPending ? "Processing..." : "Request Withdrawal"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter>
+                <Button 
+                  type="submit" 
+                  onClick={handleWithdraw} 
+                  disabled={!withdrawAmount || Number(withdrawAmount) <= 0 || Number(withdrawAmount) > currentBalance || !walletAddress || withdrawMutation.isPending}
+                >
+                  {withdrawMutation.isPending ? "Processing..." : "Request Withdrawal"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
         
         {/* Transactions Section */}
         <Card>
