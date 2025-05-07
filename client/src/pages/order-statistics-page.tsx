@@ -323,7 +323,7 @@ export default function OrderStatisticsPage() {
           </div>
         ) : (
           <>
-            {/* Información y botón para regenerar datos */}
+            {/* Information and button to regenerate data */}
             <div className="mb-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center mb-4">
                 <Alert>
