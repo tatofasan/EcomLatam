@@ -49,6 +49,7 @@ export interface IStorage {
   // Transaction methods
   getUserTransactions(userId: number): Promise<Transaction[]>;
   createTransaction(transaction: InsertTransaction, userId: number): Promise<Transaction>;
+  updateTransactionStatus(id: number, status: string, paymentProof?: string): Promise<Transaction | undefined>;
   getUserBalance(userId: number): Promise<number>;
   
   // Seed methods
@@ -293,6 +294,37 @@ export class DatabaseStorage implements IStorage {
       .values(transactionWithUserId)
       .returning();
     return newTransaction;
+  }
+  
+  async updateTransactionStatus(id: number, status: string, paymentProof?: string): Promise<Transaction | undefined> {
+    const [transaction] = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.id, id));
+    
+    if (!transaction) {
+      return undefined;
+    }
+    
+    // Update transaction with new status and payment proof if provided
+    const updateData: Record<string, any> = { status };
+    
+    // If payment proof is provided, store it in the settings field
+    if (paymentProof) {
+      const settings = transaction.settings || {};
+      updateData.settings = {
+        ...settings,
+        paymentProof
+      };
+    }
+    
+    const [updatedTransaction] = await db
+      .update(transactions)
+      .set(updateData)
+      .where(eq(transactions.id, id))
+      .returning();
+    
+    return updatedTransaction;
   }
   
   async getUserBalance(userId: number): Promise<number> {
