@@ -453,13 +453,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get product categories distribution
       const productCategories = {};
       productsList.forEach(product => {
-        const category = product.category || 'Uncategorized';
+        // Asegurarse de que los valores null, undefined, o cadenas vacías se conviertan a "Sin categoría"
+        const category = (product.category && product.category.trim()) ? product.category.trim() : 'Sin categoría';
         if (!productCategories[category]) {
           productCategories[category] = 0;
         }
         productCategories[category] += 1;
       });
       
+      // Convertir a array para el gráfico
       const productCategoriesData = Object.entries(productCategories).map(([name, value]) => ({
         name,
         value
