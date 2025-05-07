@@ -463,6 +463,17 @@ export default function OrderStatisticsPage() {
                         </TableHead>
                         <TableHead 
                           className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none whitespace-nowrap"
+                          onClick={() => handleSort("delivered")}
+                        >
+                          Delivered
+                          {sortField === "delivered" && (
+                            <span className="inline-flex ml-1">
+                              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </span>
+                          )}
+                        </TableHead>
+                        <TableHead 
+                          className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none whitespace-nowrap"
                           onClick={() => handleSort("pending")}
                         >
                           Pending
@@ -476,19 +487,8 @@ export default function OrderStatisticsPage() {
                           className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none whitespace-nowrap"
                           onClick={() => handleSort("processing")}
                         >
-                          Processing
+                          In Distribution
                           {sortField === "processing" && (
-                            <span className="inline-flex ml-1">
-                              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                            </span>
-                          )}
-                        </TableHead>
-                        <TableHead 
-                          className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none whitespace-nowrap"
-                          onClick={() => handleSort("delivered")}
-                        >
-                          Delivered
-                          {sortField === "delivered" && (
                             <span className="inline-flex ml-1">
                               {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                             </span>
@@ -548,9 +548,9 @@ export default function OrderStatisticsPage() {
                           .map((stat) => (
                             <TableRow key={stat.date}>
                               <TableCell className="font-medium whitespace-nowrap">{stat.date}</TableCell>
+                              <TableCell>{stat.delivered}</TableCell>
                               <TableCell>{stat.pending}</TableCell>
                               <TableCell>{stat.processing}</TableCell>
-                              <TableCell>{stat.delivered}</TableCell>
                               <TableCell>{stat.cancelled}</TableCell>
                               <TableCell>{stat.total}</TableCell>
                               <TableCell>{stat.deliveredPercentage.toFixed(2)}%</TableCell>
@@ -567,9 +567,9 @@ export default function OrderStatisticsPage() {
                       <TableFooter className="bg-muted/50">
                         <TableRow className="font-bold">
                           <TableCell>Total (All Pages)</TableCell>
+                          <TableCell>{calcTotalsByStatus.delivered}</TableCell>
                           <TableCell>{calcTotalsByStatus.pending}</TableCell>
                           <TableCell>{calcTotalsByStatus.processing}</TableCell>
-                          <TableCell>{calcTotalsByStatus.delivered}</TableCell>
                           <TableCell>{calcTotalsByStatus.cancelled}</TableCell>
                           <TableCell>{calcTotalsByStatus.total}</TableCell>
                           <TableCell>{totalDeliveryPercentage}%</TableCell>
@@ -638,16 +638,16 @@ export default function OrderStatisticsPage() {
                             
                             <div className="grid grid-cols-2 gap-2 mb-3">
                               <div className="flex flex-col">
+                                <span className="text-xs text-muted-foreground">Delivered</span>
+                                <span className="font-medium">{stat.delivered}</span>
+                              </div>
+                              <div className="flex flex-col">
                                 <span className="text-xs text-muted-foreground">Pending</span>
                                 <span className="font-medium">{stat.pending}</span>
                               </div>
                               <div className="flex flex-col">
-                                <span className="text-xs text-muted-foreground">Processing</span>
+                                <span className="text-xs text-muted-foreground">In Distribution</span>
                                 <span className="font-medium">{stat.processing}</span>
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="text-xs text-muted-foreground">Delivered</span>
-                                <span className="font-medium">{stat.delivered}</span>
                               </div>
                               <div className="flex flex-col">
                                 <span className="text-xs text-muted-foreground">Cancelled</span>
