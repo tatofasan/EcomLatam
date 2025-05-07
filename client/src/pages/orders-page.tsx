@@ -606,7 +606,7 @@ export default function OrdersPage() {
                             </div>
                             {selectedOrder.status === "delivered" && (
                               <div className="flex items-center gap-2">
-                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                <CheckCircle2 className="h-4 w-4 text-green-500" />
                                 <span className="text-sm">Entregado: {new Date(selectedOrder.updatedAt).toLocaleDateString()}</span>
                               </div>
                             )}
