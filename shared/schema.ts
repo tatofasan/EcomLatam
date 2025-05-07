@@ -50,7 +50,8 @@ export const products = pgTable("products", {
 });
 
 export const productSchema = createInsertSchema(products, {
-  status: z.enum(["active", "inactive", "draft", "low"])
+  status: z.enum(["active", "inactive", "draft", "low"]),
+  additionalImages: z.array(z.string()).optional().nullable()
 }).omit({ id: true, userId: true, createdAt: true, updatedAt: true });
 
 export type InsertProduct = z.infer<typeof productSchema>;

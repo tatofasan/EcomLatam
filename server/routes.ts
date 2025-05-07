@@ -142,9 +142,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
+      console.log("Product data received:", JSON.stringify(req.body, null, 2));
       const parseResult = productSchema.safeParse(req.body);
       
       if (!parseResult.success) {
+        console.error("Product validation error:", JSON.stringify(parseResult.error.format(), null, 2));
         return res.status(400).json({ 
           message: "Invalid product data", 
           errors: parseResult.error.format() 

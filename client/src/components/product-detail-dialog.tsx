@@ -132,11 +132,29 @@ export default function ProductDetailDialog({
 
   const handleSave = () => {
     if (onSave && formData) {
+      // Clean formData to ensure it matches schema requirements
+      const cleanedData = {
+        name: formData.name || "",
+        description: formData.description || "",
+        price: formData.price || 0,
+        stock: formData.stock || 0,
+        status: formData.status || "draft",
+        sku: formData.sku || `SKU-${Math.floor(Math.random() * 10000)}`,
+        imageUrl: formData.imageUrl || "https://placehold.co/600x400?text=Product+Image",
+        additionalImages: formData.additionalImages || null,
+        category: formData.category || null,
+        weight: formData.weight || null,
+        dimensions: formData.dimensions || null,
+        specifications: formData.specifications || null,
+        reference: formData.reference || null,
+        provider: formData.provider || null
+      };
+      
       // Si es modo crear, asegúrate de que se creará con un ID temporal 
       // (en producción, el backend se encargará de asignar el ID real)
       const productToSave = mode === "create" 
-        ? { ...formData, id: Date.now() } as Product 
-        : { ...productData, ...formData } as Product;
+        ? { ...cleanedData, id: Date.now() } as Product 
+        : { ...productData, ...cleanedData } as Product;
       
       onSave(productToSave);
       onClose();
