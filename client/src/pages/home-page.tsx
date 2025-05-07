@@ -71,10 +71,10 @@ export default function HomePage() {
           <div>
             <h1 className="text-2xl font-bold">Dashboard</h1>
             <p className="text-sm text-muted-foreground">
-              {isAdmin ? 'Vista de administrador (todas las métricas)' : 'Métricas de tus órdenes y productos'}
+              {isAdmin ? 'Admin view (all metrics)' : 'Metrics of your orders and products'}
             </p>
           </div>
-          <p className="text-sm text-gray-500">Bienvenido, {user?.username}</p>
+          <p className="text-sm text-gray-500">Welcome, {user?.username}</p>
         </div>
 
         {isLoading ? (
@@ -98,7 +98,7 @@ export default function HomePage() {
                     <Package className="w-6 h-6 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Total Productos</p>
+                    <p className="text-sm text-gray-500">Total Products</p>
                     <h3 className="text-2xl font-bold">{metrics.totalProducts}</h3>
                   </div>
                 </CardContent>
@@ -110,7 +110,7 @@ export default function HomePage() {
                     <ShoppingCart className="w-6 h-6 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Total Pedidos</p>
+                    <p className="text-sm text-gray-500">Total Orders</p>
                     <h3 className="text-2xl font-bold">{metrics.totalOrders}</h3>
                   </div>
                 </CardContent>
@@ -122,7 +122,7 @@ export default function HomePage() {
                     <CreditCard className="w-6 h-6 text-purple-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Ingresos</p>
+                    <p className="text-sm text-gray-500">Revenue</p>
                     <h3 className="text-2xl font-bold">${metrics.totalRevenue.toLocaleString()}</h3>
                   </div>
                 </CardContent>
@@ -134,7 +134,7 @@ export default function HomePage() {
                     <TrendingUp className="w-6 h-6 text-amber-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Tasa de Entrega</p>
+                    <p className="text-sm text-gray-500">Delivery Rate</p>
                     <h3 className="text-2xl font-bold">
                       {metrics.totalOrders > 0 
                         ? `${((metrics.orderStatus.delivered / metrics.totalOrders) * 100).toFixed(1)}%` 
@@ -149,8 +149,8 @@ export default function HomePage() {
             <div className="grid grid-cols-1 gap-6 mb-6 lg:grid-cols-2">
               <Card>
                 <CardHeader>
-                  <CardTitle>Resumen de Ventas</CardTitle>
-                  <CardDescription>Rendimiento mensual de ventas</CardDescription>
+                  <CardTitle>Sales Summary</CardTitle>
+                  <CardDescription>Monthly sales performance</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="h-80">
@@ -178,8 +178,8 @@ export default function HomePage() {
               
               <Card>
                 <CardHeader>
-                  <CardTitle>Categorías de Productos</CardTitle>
-                  <CardDescription>Distribución por categoría</CardDescription>
+                  <CardTitle>Product Categories</CardTitle>
+                  <CardDescription>Distribution by category</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="h-80">
@@ -211,11 +211,11 @@ export default function HomePage() {
             {/* Recent Orders */}
             <Card>
               <CardHeader>
-                <CardTitle>Pedidos Recientes</CardTitle>
+                <CardTitle>Recent Orders</CardTitle>
                 <CardDescription>
                   {isAdmin 
-                    ? 'Últimos pedidos de todos los usuarios' 
-                    : 'Tus últimos pedidos'}
+                    ? 'Latest orders from all users' 
+                    : 'Your latest orders'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -223,11 +223,11 @@ export default function HomePage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-3 px-4 font-medium">Pedido</th>
-                        <th className="text-left py-3 px-4 font-medium">Cliente</th>
-                        <th className="text-left py-3 px-4 font-medium">Importe</th>
-                        <th className="text-left py-3 px-4 font-medium">Fecha</th>
-                        <th className="text-left py-3 px-4 font-medium">Estado</th>
+                        <th className="text-left py-3 px-4 font-medium">Order</th>
+                        <th className="text-left py-3 px-4 font-medium">Customer</th>
+                        <th className="text-left py-3 px-4 font-medium">Amount</th>
+                        <th className="text-left py-3 px-4 font-medium">Date</th>
+                        <th className="text-left py-3 px-4 font-medium">Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -257,7 +257,7 @@ export default function HomePage() {
                       ) : (
                         <tr>
                           <td colSpan={5} className="py-4 text-center text-muted-foreground">
-                            No hay pedidos recientes para mostrar
+                            No recent orders to display
                           </td>
                         </tr>
                       )}
