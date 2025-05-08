@@ -1047,8 +1047,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Team management endpoints - Only accessible to admin users
-  app.get("/api/users", requireAdmin, async (req, res) => {
+  // Team management endpoints - Accessible to admin and moderator users
+  app.get("/api/users", requireModerator, async (req, res) => {
     try {
       const users = await storage.getAllUsers();
       res.json(users);
@@ -1103,7 +1103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // PATCH endpoint for updating users (same logic as PUT)
-  app.patch("/api/users/:id", requireAdmin, async (req, res) => {
+  app.patch("/api/users/:id", requireAuth, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
       const userData = req.body;
@@ -1124,7 +1124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Prevent non-admin from changing an admin role
+      // Verificar si el usuario existe
       const user = await storage.getUser(userId);
       if (!user) {
         console.error(`User with ID ${userId} not found`);
@@ -1133,6 +1133,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Original user:", user);
       
+      // Verificar permisos: solo admins pueden editar cualquier usuario,
+      // y los usuarios normales/moderadores solo pueden editar su propio perfil
+      if (req.user?.role !== 'admin' && req.user?.id !== userId) {
+        console.error(`User ${req.user?.id} (${req.user?.role}) attempted to edit user ${userId}`);
+        return res.status(403).json({ message: "Forbidden: You can only edit your own profile" });
+      }
+      
+      // Prevent non-admin from changing an admin role
       if (user.role === "admin" && userData.role && userData.role !== "admin" && req.user?.role !== "admin") {
         console.error("Attempt to change admin role by non-admin");
         return res.status(403).json({ message: "Only admins can change admin roles" });
