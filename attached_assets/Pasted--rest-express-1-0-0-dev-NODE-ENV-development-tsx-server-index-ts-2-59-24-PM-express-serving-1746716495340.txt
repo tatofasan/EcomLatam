@@ -1,0 +1,46 @@
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+2:59:24 PM [express] serving on port 5000
+Browserslist: browsers data (caniuse-lite) is 7 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+2:59:31 PM [express] GET /api/user 401 in 2ms
+2:59:36 PM [express] GET /api/user 200 in 139ms :: {"id":5,"username":"u2","password":"73f31b49acd92…
+Fetching dashboard metrics for user ID 5, isAdmin: false
+Dashboard orders for user 5 (isAdmin: false): Total orders: 33 First few orders user_ids: [ 5, 5, 5 ]
+No products created by user 5, fetching from order items instead.
+2:59:39 PM [express] GET /api/dashboard/metrics 200 in 3488ms :: {"totalProducts":0,"totalOrders":33…
+2:59:54 PM [express] GET /api/orders 304 in 343ms :: [{"id":1594,"orderNumber":"ORD-250508-6625-4","…
+2:59:56 PM [express] GET /api/orders/1591 200 in 231ms :: {"id":1591,"orderNumber":"ORD-250508-6625-…
+3:00:03 PM [express] POST /api/logout 200 in 243ms
+3:00:09 PM [express] POST /api/login 200 in 420ms :: {"id":3,"username":"admin2","password":"14ef12b…
+3:00:17 PM [express] GET /api/users 200 in 192ms :: [{"id":1,"username":"admin","password":"a074f1e2…
+3:00:22 PM [express] POST /api/logout 200 in 359ms
+TypeError [ERR_INVALID_ARG_TYPE]: The "salt" argument must be of type string or an instance of ArrayBuffer, Buffer, TypedArray, or DataView. Received undefined
+    at check (node:internal/crypto/scrypt:84:10)
+    at scrypt (node:internal/crypto/scrypt:46:13)
+    at node:internal/util:432:7
+    at new Promise (<anonymous>)
+    at scrypt (node:internal/util:418:12)
+    at comparePasswords (/home/runner/workspace/server/auth.ts:27:30)
+    at Strategy._verify (/home/runner/workspace/server/auth.ts:51:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+TypeError [ERR_INVALID_ARG_TYPE]: The "salt" argument must be of type string or an instance of ArrayBuffer, Buffer, TypedArray, or DataView. Received undefined
+    at check (node:internal/crypto/scrypt:84:10)
+    at scrypt (node:internal/crypto/scrypt:46:13)
+    at node:internal/util:432:7
+    at new Promise (<anonymous>)
+    at scrypt (node:internal/util:418:12)
+    at comparePasswords (/home/runner/workspace/server/auth.ts:27:30)
+    at Strategy._verify (/home/runner/workspace/server/auth.ts:51:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+TypeError [ERR_INVALID_ARG_TYPE]: The "salt" argument must be of type string or an instance of ArrayBuffer, Buffer, TypedArray, or DataView. Received undefined
+    at check (node:internal/crypto/scrypt:84:10)
+    at scrypt (node:internal/crypto/scrypt:46:13)
+    at node:internal/util:432:7
+    at new Promise (<anonymous>)
+    at scrypt (node:internal/util:418:12)
+    at comparePasswords (/home/runner/workspace/server/auth.ts:27:30)
+    at Strategy._verify (/home/runner/workspace/server/auth.ts:51:30)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
