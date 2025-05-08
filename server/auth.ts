@@ -5,7 +5,9 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { User as SelectUser } from "@shared/schema";
+import { User as SelectUser, users } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 declare global {
   namespace Express {
@@ -48,11 +50,29 @@ export function setupAuth(app: Express) {
     new LocalStrategy(async (username, password, done) => {
       try {
         const user = await storage.getUserByUsername(username);
+        
+        // Verificar si el usuario existe y la contraseña es correcta
         if (!user || !(await comparePasswords(password, user.password))) {
-          return done(null, false);
-        } else {
-          return done(null, user);
+          return done(null, false, { message: "Usuario o contraseña incorrectos" });
         }
+        
+        // Verificar estado del usuario
+        if (user.status === 'email_verification') {
+          return done(null, false, { message: "Por favor, verifica tu correo electrónico para activar tu cuenta" });
+        }
+        
+        if (user.status === 'pending') {
+          return done(null, false, { message: "Tu cuenta está pendiente de aprobación por un administrador" });
+        }
+        
+        if (user.status === 'inactive') {
+          return done(null, false, { message: "Tu cuenta está inactiva. Contacta con soporte." });
+        }
+
+        // Si todo está bien, actualizar última fecha de login
+        await storage.updateUser(user.id, { lastLogin: new Date() });
+        
+        return done(null, user);
       } catch (err) {
         return done(err);
       }
@@ -71,21 +91,72 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
+      // Verificar si el usuario ya existe
       const existingUser = await storage.getUserByUsername(req.body.username);
       if (existingUser) {
-        return res.status(400).send("Username already exists");
+        return res.status(400).json({ message: "El nombre de usuario ya existe" });
+      }
+      
+      // Verificar si el email ya existe
+      if (req.body.email) {
+        const [userWithEmail] = await db
+          .select()
+          .from(users)
+          .where(eq(users.email, req.body.email));
+          
+        if (userWithEmail) {
+          return res.status(400).json({ message: "El correo electrónico ya está registrado" });
+        }
       }
 
+      // Importar funciones necesarias
+      const { createVerificationData } = await import('./verification');
+      const { sendVerificationEmail } = await import('./email');
+      
+      // Generar datos de verificación
+      const verificationData = createVerificationData();
+      
+      // Crear el usuario con estado inicial en verificación de email
       const user = await storage.createUser({
         ...req.body,
+        role: "user", // Siempre asignar rol de usuario normal
         password: await hashPassword(req.body.password),
+        status: "email_verification",
+        verificationToken: verificationData.token,
+        verificationExpires: verificationData.expires,
+        isEmailVerified: false
       });
 
-      req.login(user, (err) => {
-        if (err) return next(err);
-        res.status(201).json(user);
+      // Enviar email de verificación
+      if (req.body.email) {
+        try {
+          await sendVerificationEmail(req.body.email, verificationData.token);
+          
+          // Responder al cliente (sin iniciar sesión)
+          return res.status(201).json({ 
+            success: true, 
+            message: "Usuario registrado. Por favor verifica tu correo electrónico."
+          });
+        } catch (emailError) {
+          console.error("Error al enviar correo de verificación:", emailError);
+          
+          // Si hay error al enviar el correo, eliminamos el usuario
+          await db.delete(users).where(eq(users.id, user.id));
+          
+          return res.status(500).json({ 
+            success: false, 
+            message: "Error al enviar correo de verificación. Por favor, intenta nuevamente."
+          });
+        }
+      }
+      
+      // En caso de que no se proporcione un email (no debería ocurrir por validación frontend)
+      return res.status(400).json({ 
+        success: false, 
+        message: "El correo electrónico es obligatorio para el registro"
       });
     } catch (err) {
+      console.error("Error en el registro:", err);
       next(err);
     }
   });

@@ -1,4 +1,4 @@
-import express, { type Express, Request, Response } from "express";
+import express, { type Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
@@ -17,11 +17,13 @@ import {
   orders,
   orderItems,
   transactions,
+  users,
   type InsertTransaction,
   type ApiOrder
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, sql, inArray } from "drizzle-orm";
+import { verifyUserEmail, activateUserAccount } from "./verification";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
@@ -1852,6 +1854,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Serve static files for uploads
   app.use('/uploads', express.static(path.join('.', 'uploads')));
+  
+  // === Email Verification & User Approval ===
+  
+  // Verificar email con token
+  app.get("/api/verify-email", async (req, res) => {
+    try {
+      const { token } = req.query;
+      
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Token de verificación inválido" 
+        });
+      }
+      
+      const success = await verifyUserEmail(token);
+      
+      if (success) {
+        return res.status(200).json({ 
+          success: true, 
+          message: "Email verificado correctamente. Tu cuenta está pendiente de aprobación por un administrador." 
+        });
+      } else {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Token inválido o expirado. Por favor solicita un nuevo token de verificación." 
+        });
+      }
+    } catch (error) {
+      console.error("Error al verificar email:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error al procesar la verificación de email" 
+      });
+    }
+  });
+  
+  // Activar cuenta de usuario (solo admin)
+  app.post("/api/users/:userId/activate", requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "ID de usuario inválido" });
+      }
+      
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "Usuario no encontrado" });
+      }
+      
+      if (user.status !== 'pending') {
+        return res.status(400).json({ 
+          message: `No se puede activar esta cuenta. Estado actual: ${user.status}` 
+        });
+      }
+      
+      const success = await activateUserAccount(userId);
+      
+      if (success) {
+        res.status(200).json({ 
+          success: true, 
+          message: "Cuenta activada correctamente" 
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: "Error al activar la cuenta" 
+        });
+      }
+    } catch (error) {
+      console.error("Error al activar cuenta:", error);
+      res.status(500).json({ message: "Error al activar cuenta de usuario" });
+    }
+  });
+  
+  // Ruta para solicitar un nuevo token de verificación (si el anterior expiró)
+  app.post("/api/resend-verification", async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "El correo electrónico es obligatorio" 
+        });
+      }
+      
+      // Buscar usuario por email
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email));
+      
+      if (!user) {
+        // Por seguridad, no revelamos si el email existe o no
+        return res.status(200).json({ 
+          success: true, 
+          message: "Si tu correo está registrado, recibirás un email con las instrucciones para verificar tu cuenta." 
+        });
+      }
+      
+      // Solo reenviamos si el usuario está en estado de verificación de email
+      if (user.status !== 'email_verification') {
+        // Por seguridad, no revelamos el estado actual
+        return res.status(200).json({ 
+          success: true, 
+          message: "Si tu correo está registrado, recibirás un email con las instrucciones para verificar tu cuenta." 
+        });
+      }
+      
+      // Generar nuevo token
+      const { createVerificationData } = await import('./verification');
+      const { sendVerificationEmail } = await import('./email');
+      
+      const verificationData = createVerificationData();
+      
+      // Actualizar usuario con nuevo token
+      await db
+        .update(users)
+        .set({
+          verificationToken: verificationData.token,
+          verificationExpires: verificationData.expires
+        })
+        .where(eq(users.id, user.id));
+      
+      // Enviar email
+      await sendVerificationEmail(email, verificationData.token);
+      
+      res.status(200).json({ 
+        success: true, 
+        message: "Si tu correo está registrado, recibirás un email con las instrucciones para verificar tu cuenta." 
+      });
+    } catch (error) {
+      console.error("Error al reenviar verificación:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error al procesar la solicitud" 
+      });
+    }
+  });
   
   const httpServer = createServer(app);
 
