@@ -1,41 +1,16 @@
 import nodemailer from 'nodemailer';
 import path from 'path';
 
-// Crear un transporter para pruebas con Ethereal
-let transporter: nodemailer.Transporter;
+// Configuración del transporter para Gmail
+let transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: 'fvgv ixwp pqzq bkt', // Contraseña de aplicación proporcionada
+  },
+});
 
-// Función asíncrona para configurar el transporter
-async function setupEmailTransporter() {
-  try {
-    // Crear cuenta de prueba de Ethereal
-    const testAccount = await nodemailer.createTestAccount();
-    
-    console.log('Cuenta de prueba Ethereal creada:', {
-      user: testAccount.user,
-      pass: testAccount.pass,
-      previewURL: `https://ethereal.email/login`
-    });
-    
-    // Crear el transporter con la cuenta de prueba
-    transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
-      },
-    });
-    
-    console.log('Servicio de email configurado con cuenta Ethereal para pruebas');
-  } catch (error) {
-    console.error('Error al configurar email:', error);
-    throw error;
-  }
-}
-
-// Inicializar el servicio de email
-setupEmailTransporter();
+console.log('Servicio de email configurado con cuenta Gmail (contraseña de aplicación)');
 
 interface SendEmailOptions {
   to: string;
@@ -47,13 +22,8 @@ interface SendEmailOptions {
 // Función para enviar un correo electrónico
 export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
   try {
-    if (!transporter) {
-      console.log('Transporter no inicializado, inicializando...');
-      await setupEmailTransporter();
-    }
-    
     const info = await transporter.sendMail({
-      from: '"EcomDrop" <no-reply@ecomdrop.com>',
+      from: `"EcomDrop" <${process.env.SMTP_USER}>`,
       to: options.to,
       subject: options.subject,
       text: options.text,
