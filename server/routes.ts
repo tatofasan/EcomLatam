@@ -1176,12 +1176,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Finance and Moderator users cannot modify admin users
       if (req.user.role === "finance" || req.user.role === "moderator" && user.role === 'admin') {
-        return res.status(403).json({ message: "Forbidden: Finance users cannot modify admin users" });
+        return res.status(403).json({ message: "Forbidden: Only admins cannot modify admin users" });
       }
       
       // Prevent finance from changing a user to admin role
       if (req.user.role === "finance" || req.user.role === "moderator" && userData.role === 'admin') {
-        return res.status(403).json({ message: "Forbidden: Finance users cannot create or modify admin users" });
+        return res.status(403).json({ message: "Forbidden: Only admins cannot create or modify admin users" });
       }
       
       // Prevent non-admin from changing an admin role
@@ -1237,14 +1237,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Original user:", user);
       
-      // Finance users cannot modify admin users
-      if (req.user.role === 'finance' && user.role === 'admin') {
-        return res.status(403).json({ message: "Forbidden: Finance users cannot modify admin users" });
+      // Finance and Moderator users cannot modify admin users
+      if (req.user.role === "finance" || req.user.role === "moderator" && user.role === 'admin') {
+        return res.status(403).json({ message: "Forbidden: Only admins cannot modify admin users" });
       }
       
       // Prevent finance from changing a user to admin role
-      if (req.user.role === 'finance' && userData.role === 'admin') {
-        return res.status(403).json({ message: "Forbidden: Finance users cannot create or modify admin users" });
+      if (req.user.role === "finance" || req.user.role === "moderator" && userData.role === 'admin') {
+        return res.status(403).json({ message: "Forbidden: Only admins cannot create or modify admin users" });
       }
       
       // Prevent non-admin from changing an admin role
@@ -1299,7 +1299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      // Finance users cannot reset admin user passwords
+      // Finance and Moderator users cannot reset admin user passwords
       if (req.user.role === 'finance' && user.role === 'admin') {
         return res.status(403).json({ message: "Forbidden: Finance users cannot reset admin user passwords" });
       }
