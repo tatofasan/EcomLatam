@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.setQueryData(["/api/user"], user);
       toast({
         title: "Login successful",
-        description: "Welcome to Ecomdrop!",
+        description: "Welcome to EcomLatam!",
       });
     },
     onError: (error: Error) => {
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         queryClient.setQueryData(["/api/user"], response);
         toast({
           title: "Registration successful",
-          description: "Welcome to Ecomdrop!",
+          description: "Welcome to EcomLatam!",
         });
       } else if (response.success === true) {
         // La respuesta es un mensaje de verificación
@@ -73,6 +73,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           title: "Registration successful",
           description: response.message || "Please check your email to verify your account.",
         });
+        
+        // Redirigir a la página de login después de un pequeño delay para que el usuario vea el toast
+        setTimeout(() => {
+          window.location.href = "/auth";
+        }, 2000);
       } else {
         // Respuesta inesperada
         toast({

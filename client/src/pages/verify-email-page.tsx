@@ -47,7 +47,7 @@ export default function VerifyEmailPage() {
   }, []);
 
   const handleReturn = () => {
-    setLocation("/login");
+    setLocation("/auth");
   };
 
   const handleResendEmail = async () => {
