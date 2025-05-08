@@ -5,6 +5,7 @@ import { z } from "zod";
 import { useLocation } from "wouter";
 import { insertUserSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,6 +34,7 @@ export default function AuthPage() {
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
   const { user, loginMutation, registerMutation } = useAuth();
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   
   // Redirect to home if already logged in
   useEffect(() => {
@@ -304,9 +306,40 @@ export default function AuthPage() {
                 )}
               </p>
               <p className="mt-2 text-sm text-gray-600">
-                <a href="#" className="text-primary hover:underline">
-                  Didn't receive your confirmation email?
-                </a>
+                <button 
+                  onClick={() => {
+                    const email = window.prompt("Ingresa tu correo electrónico:");
+                    if (email) {
+                      // Solicitar reenvío de email
+                      fetch("/api/resend-verification", {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ email }),
+                      })
+                        .then((response) => response.json())
+                        .then((data) => {
+                          toast({
+                            title: data.success ? "Correo enviado" : "Error",
+                            description: data.message,
+                            variant: data.success ? "default" : "destructive",
+                          });
+                        })
+                        .catch((error) => {
+                          console.error("Error:", error);
+                          toast({
+                            title: "Error",
+                            description: "Ha ocurrido un error al reenviar el correo de verificación.",
+                            variant: "destructive",
+                          });
+                        });
+                    }
+                  }}
+                  className="text-primary font-semibold hover:underline"
+                >
+                  ¿No recibiste tu correo de confirmación?
+                </button>
               </p>
             </div>
             

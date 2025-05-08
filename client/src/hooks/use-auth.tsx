@@ -58,12 +58,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await apiRequest("POST", "/api/register", credentials);
       return await res.json();
     },
-    onSuccess: (user: SelectUser) => {
-      queryClient.setQueryData(["/api/user"], user);
-      toast({
-        title: "Registration successful",
-        description: "Welcome to Ecomdrop!",
-      });
+    onSuccess: (response: any) => {
+      // Comprobar si la respuesta contiene un usuario o un mensaje de verificación
+      if (response.id) {
+        // La respuesta es un usuario (para compatibilidad con versiones anteriores)
+        queryClient.setQueryData(["/api/user"], response);
+        toast({
+          title: "Registration successful",
+          description: "Welcome to Ecomdrop!",
+        });
+      } else if (response.success === true) {
+        // La respuesta es un mensaje de verificación
+        toast({
+          title: "Registration successful",
+          description: response.message || "Please check your email to verify your account.",
+        });
+      } else {
+        // Respuesta inesperada
+        toast({
+          title: "Something went wrong",
+          description: "Please try again later.",
+          variant: "destructive",
+        });
+      }
     },
     onError: (error: Error) => {
       toast({
