@@ -163,12 +163,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a product
-  app.post("/api/products", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    // Finance users cannot create products (only admin and regular users)
+  app.post("/api/products", requireAuth, async (req, res) => {
+    // Finance users cannot create products (only admin, moderator and regular users)
     if (req.user?.role === 'finance') {
       return res.status(403).json({ message: "Forbidden: Finance users cannot create products" });
     }
@@ -305,12 +301,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update a product
-  app.put("/api/products/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    // Finance users cannot update products (only admin and regular users)
+  app.put("/api/products/:id", requireAuth, async (req, res) => {
+    // Finance users cannot update products (only admin, moderator and regular users)
     if (req.user?.role === 'finance') {
       return res.status(403).json({ message: "Forbidden: Finance users cannot update products" });
     }
@@ -865,7 +857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      // Check if user is admin - moderators cannot approve payments
+      // Check if user is admin or finance - moderators cannot approve payments
       if (req.user.role !== "admin" && req.user.role !== "finance") {
         return res.status(403).json({ message: "Forbidden. Admin or Finance access required for payment approval." });
       }
@@ -1175,8 +1167,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Finance and Moderator users cannot modify admin users
-      if (req.user.role === "finance" || req.user.role === "moderator" && user.role === 'admin') {
-        return res.status(403).json({ message: "Forbidden: Only admins cannot modify admin users" });
+      if ((req.user.role === "finance" || req.user.role === "moderator") && user.role === "admin") {
+        return res.status(403).json({ message: "Forbidden: Only admins can modify admin users" });
       }
       
       // Prevent finance from changing a user to admin role
@@ -1238,8 +1230,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Original user:", user);
       
       // Finance and Moderator users cannot modify admin users
-      if (req.user.role === "finance" || req.user.role === "moderator" && user.role === 'admin') {
-        return res.status(403).json({ message: "Forbidden: Only admins cannot modify admin users" });
+      if ((req.user.role === "finance" || req.user.role === "moderator") && user.role === "admin") {
+        return res.status(403).json({ message: "Forbidden: Only admins can modify admin users" });
       }
       
       // Prevent finance from changing a user to admin role
