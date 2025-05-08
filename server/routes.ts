@@ -168,6 +168,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
+    // Finance users cannot create products (only admin and regular users)
+    if (req.user?.role === 'finance') {
+      return res.status(403).json({ message: "Forbidden: Finance users cannot create products" });
+    }
+
     try {
       console.log("Product data received:", JSON.stringify(req.body, null, 2));
       const parseResult = productSchema.safeParse(req.body);
@@ -303,6 +308,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/products/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    // Finance users cannot update products (only admin and regular users)
+    if (req.user?.role === 'finance') {
+      return res.status(403).json({ message: "Forbidden: Finance users cannot update products" });
     }
 
     try {
