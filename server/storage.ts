@@ -292,7 +292,13 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(transactions.createdAt));
   }
   
-  async createTransaction(transaction: InsertTransaction, userId: number): Promise<Transaction> {
+  async createTransaction(transaction: InsertTransaction | { 
+    type: "withdrawal" | "bonus" | "discount", 
+    amount: number, 
+    status: "pending" | "processing" | "paid" | "failed" | "cancelled", 
+    description?: string,
+    reference?: string
+  }, userId: number): Promise<Transaction> {
     const transactionWithUserId = { ...transaction, userId };
     const [newTransaction] = await db
       .insert(transactions)
@@ -710,43 +716,35 @@ export class DatabaseStorage implements IStorage {
       const userOrders = await this.getAllOrders(userId);
       
       if (userOrders.length > 0) {
-        // Crear transacción inicial de depósito
+        // Crear transacción inicial de bonificación
         await this.createTransaction({
-          type: "deposit",
+          type: "bonus",
           amount: 1000.00,
-          status: "paid", // Cambiado de completed a paid
-          description: "Initial Account Funding",
-          reference: "DEP" + Date.now().toString().slice(-6)
+          status: "paid",
+          description: "Welcome Bonus",
+          reference: "BNS" + Date.now().toString().slice(-6)
         }, userId);
         
-        // Crear transacciones de pago para órdenes entregadas (delivered)
-        const deliveredOrders = userOrders.filter(order => order.status === "delivered");
-        for (const order of deliveredOrders) {
+        // Crear transacciones de descuento para algunas órdenes
+        const someOrders = userOrders.slice(0, Math.ceil(userOrders.length * 0.3)); // 30% de las órdenes
+        for (const order of someOrders) {
           await this.createTransaction({
-            type: "payment",
-            amount: -order.totalAmount, // Negativo porque es un pago
-            status: "paid", // Cambiado de completed a paid
-            description: `Payment for Order ${order.orderNumber}`,
-            reference: `PAY-${order.orderNumber}`
+            type: "discount",
+            amount: -order.totalAmount * 0.1, // Descuento del 10%
+            status: "paid",
+            description: `Discount for Order ${order.orderNumber}`,
+            reference: `DIS-${order.orderNumber}`
           }, userId);
         }
         
-        // Crear algunas transacciones de reembolso (para un 20% aleatorio de las órdenes canceladas)
-        const cancelledOrders = userOrders.filter(order => order.status === "cancelled");
-        const refundCount = Math.ceil(cancelledOrders.length * 0.2); // Reembolsar ~20% de órdenes canceladas
-        
-        for (let i = 0; i < refundCount && i < cancelledOrders.length; i++) {
-          const order = cancelledOrders[i];
-          const refundAmount = order.totalAmount * 0.9; // Reembolsar 90% del valor
-          
-          await this.createTransaction({
-            type: "refund",
-            amount: refundAmount, // Positivo porque es un reembolso
-            status: "paid", // Cambiado de completed a paid
-            description: `Refund for Order ${order.orderNumber}`,
-            reference: `REF-${order.orderNumber}`
-          }, userId);
-        }
+        // Crear transacción de bonificación para clientes frecuentes
+        await this.createTransaction({
+          type: "bonus",
+          amount: 250.00,
+          status: "paid",
+          description: "Loyal Customer Bonus",
+          reference: "BNS" + Date.now().toString().slice(-6)
+        }, userId);
         
         // Agregar un retiro si hay suficiente balance
         const currentBalance = await this.getUserBalance(userId);
@@ -754,7 +752,7 @@ export class DatabaseStorage implements IStorage {
           await this.createTransaction({
             type: "withdrawal",
             amount: -Math.min(currentBalance * 0.3, 500), // Retirar 30% del balance o máximo 500
-            status: "paid", // Cambiado de completed a paid
+            status: "paid",
             description: "Withdrawal to Bank Account",
             reference: "WIT" + Date.now().toString().slice(-6)
           }, userId);
@@ -763,16 +761,16 @@ export class DatabaseStorage implements IStorage {
         // Si no hay órdenes, crear transacciones demo básicas
         const demoTransactions = [
           {
-            type: "deposit",
+            type: "bonus",
             amount: 500.00,
-            status: "paid", // Cambiado de completed a paid
-            description: "Account Funding",
-            reference: "DEP" + Date.now().toString().slice(-6)
+            status: "paid",
+            description: "Welcome Bonus",
+            reference: "BNS" + Date.now().toString().slice(-6)
           },
           {
             type: "withdrawal",
             amount: -200.00,
-            status: "processing", // Este ya está correcto
+            status: "processing",
             description: "Bank Transfer",
             reference: "WIT" + Date.now().toString().slice(-6)
           }
