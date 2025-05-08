@@ -21,7 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -102,8 +102,7 @@ export default function AccountPage() {
         settings
       };
 
-      const response = await apiRequest(`/api/users/${user.id}`, {
-        method: "PATCH",
+      const response = await apiRequest('/api/user/profile', "PATCH", {
         body: JSON.stringify(userData)
       });
 
@@ -113,14 +112,18 @@ export default function AccountPage() {
           description: "Your profile has been successfully updated.",
           variant: "default"
         });
+        
+        // Refresh user data to get updated profile
+        queryClient.invalidateQueries({ queryKey: ['/api/user'] });
       } else {
-        throw new Error("Failed to update profile");
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update profile");
       }
     } catch (error) {
       console.error("Error updating profile:", error);
       toast({
         title: "Update failed",
-        description: "There was a problem updating your profile.",
+        description: error instanceof Error ? error.message : "There was a problem updating your profile.",
         variant: "destructive"
       });
     } finally {
@@ -133,8 +136,7 @@ export default function AccountPage() {
     
     setIsSubmitting(true);
     try {
-      const response = await apiRequest(`/api/users/${user.id}/change-password`, {
-        method: "POST",
+      const response = await apiRequest('/api/user/change-password', "POST", {
         body: JSON.stringify({
           currentPassword: data.currentPassword,
           newPassword: data.newPassword

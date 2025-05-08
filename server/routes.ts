@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, hashPassword } from "./auth";
+import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { 
   productSchema, 
   insertOrderSchema, 
@@ -847,6 +847,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching wallet address:", error);
       res.status(500).json({ message: "Failed to fetch wallet address" });
+    }
+  });
+  
+  // Update current user profile (only for the logged in user)
+  app.patch("/api/user/profile", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const userId = req.user.id;
+      const userData = req.body;
+      
+      console.log("PATCH /api/user/profile received:", {
+        userId,
+        userData,
+        userDataType: typeof userData,
+        userDataKeys: Object.keys(userData)
+      });
+      
+      // Validate userData is an object with properties
+      if (!userData || typeof userData !== 'object' || Object.keys(userData).length === 0) {
+        console.error("Invalid userData received:", userData);
+        return res.status(400).json({ 
+          message: "Invalid request data", 
+          details: "Request body must contain at least one field to update"
+        });
+      }
+      
+      // Only allow updating fullName and settings (prevent changing email, username, role, etc.)
+      const allowedUpdates: Record<string, any> = {};
+      
+      if (userData.fullName !== undefined) {
+        allowedUpdates.fullName = userData.fullName;
+      }
+      
+      if (userData.settings !== undefined) {
+        // Get current user to merge settings properly
+        const user = await storage.getUser(userId);
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+        
+        // Merge existing settings with new settings
+        allowedUpdates.settings = {
+          ...(user.settings || {}),
+          ...(userData.settings || {})
+        };
+      }
+      
+      if (Object.keys(allowedUpdates).length === 0) {
+        return res.status(400).json({ 
+          message: "No valid fields to update", 
+          details: "Only fullName and settings can be updated"
+        });
+      }
+      
+      // Update the user
+      const updatedUser = await storage.updateUser(userId, allowedUpdates);
+      if (!updatedUser) {
+        console.error(`Failed to update user with ID ${userId}`);
+        return res.status(500).json({ message: "Failed to update user profile" });
+      }
+      
+      console.log("Updated user profile:", updatedUser);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ message: "Error updating user profile", error: errorMessage });
+    }
+  });
+  
+  // Change password for current user
+  app.post("/api/user/change-password", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const userId = req.user.id;
+      const { currentPassword, newPassword } = req.body;
+      
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Current password and new password are required" });
+      }
+      
+      // Verify current user exists
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Verify current password (this would need to be implemented in auth.ts)
+      const isPasswordValid = await comparePasswords(currentPassword, user.password);
+      if (!isPasswordValid) {
+        return res.status(400).json({ message: "Current password is incorrect" });
+      }
+      
+      // Hash the new password
+      const hashedPassword = await hashPassword(newPassword);
+      
+      // Update user with new password
+      const updatedUser = await storage.updateUser(userId, { password: hashedPassword });
+      if (!updatedUser) {
+        return res.status(500).json({ message: "Failed to update password" });
+      }
+      
+      res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ message: "Error changing password", error: errorMessage });
     }
   });
   
