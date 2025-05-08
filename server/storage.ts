@@ -344,6 +344,8 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getUserBalance(userId: number): Promise<number> {
+    console.log(`Calculating balance for user ${userId}`);
+    
     // Obtener la suma de pedidos entregados (ingresos)
     const [deliveredOrdersResult] = await db
       .select({ total: sql`SUM(total_amount)` })
@@ -365,7 +367,15 @@ export class DatabaseStorage implements IStorage {
     
     // El balance es la suma de pedidos entregados + todas las transacciones
     // (las transacciones de withdrawal tienen monto negativo, los bonus positivo, los descuentos negativo)
-    return ordersTotal + transactionsTotal;
+    const balance = ordersTotal + transactionsTotal;
+    
+    console.log(`User ${userId} balance calculation:`, {
+      ordersTotal,
+      transactionsTotal,
+      finalBalance: balance
+    });
+    
+    return balance;
   }
 
   // Function to seed demo products if needed
