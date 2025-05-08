@@ -800,15 +800,62 @@ export default function AccountPage() {
                           API Documentation
                         </h4>
                         <p className="text-sm text-blue-700 mt-1">
-                          Learn how to use the API by visiting our 
-                          <a 
-                            href="/api-docs" 
-                            className="underline ml-1 font-medium"
-                            target="_blank"
-                          >
-                            API documentation
-                          </a>.
+                          Our API allows you to programmatically create orders and check order status.
                         </p>
+                        <div className="mt-2 space-y-2 text-sm text-blue-700">
+                          <div>
+                            <span className="bg-blue-100 px-1 py-0.5 rounded font-mono">POST /api/external/orders</span>
+                            <span className="ml-2">Create a new order</span>
+                          </div>
+                          <div>
+                            <span className="bg-blue-100 px-1 py-0.5 rounded font-mono">GET /api/external/orders/:orderNumber/status</span>
+                            <span className="ml-2">Check order status</span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-blue-700 mt-2">
+                          All API requests require your API key in the <span className="font-mono bg-blue-100 px-1 rounded">X-API-Key</span> header.
+                        </p>
+                        <div className="mt-3 text-xs">
+                          <details className="cursor-pointer">
+                            <summary className="text-blue-700 font-medium">Example: Create Order</summary>
+                            <pre className="mt-2 p-2 bg-blue-100 rounded text-blue-800 overflow-x-auto whitespace-pre-wrap">
+{`// Create order example
+fetch('https://yourapp.repl.co/api/external/orders', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': '${user?.apiKey || "your-api-key-here"}'
+  },
+  body: JSON.stringify({
+    productId: 123,
+    quantity: 2,
+    salePrice: 29.99,
+    customerName: "John Doe",
+    customerPhone: "+1234567890",
+    customerAddress: "123 Main St"
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data))
+`}
+                            </pre>
+                          </details>
+                          <details className="cursor-pointer mt-3">
+                            <summary className="text-blue-700 font-medium">Example: Check Order Status</summary>
+                            <pre className="mt-2 p-2 bg-blue-100 rounded text-blue-800 overflow-x-auto whitespace-pre-wrap">
+{`// Check order status example
+fetch('https://yourapp.repl.co/api/external/orders/ORD-12345/status', {
+  method: 'GET',
+  headers: {
+    'X-API-Key': '${user?.apiKey || "your-api-key-here"}'
+  }
+})
+.then(response => response.json())
+.then(data => console.log(data))
+`}
+                            </pre>
+                          </details>
+                        </div>
                       </div>
                     </div>
                   ) : (
