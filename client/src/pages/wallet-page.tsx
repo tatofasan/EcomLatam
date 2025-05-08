@@ -582,22 +582,49 @@ export default function WalletPage() {
                   <p className="text-xs text-gray-500">Available balance: ${currentBalance.toFixed(2)}</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="walletAddressDisplay">Wallet Address</Label>
-                  <div className="flex items-center gap-2 p-2 border rounded-md bg-gray-50">
-                    <span className="truncate">{walletAddress}</span>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    Funds will be sent to this wallet address. 
-                    <Button 
-                      onClick={() => {
-                        setWithdrawDialogOpen(false);
-                        setWalletAddressDialogOpen(true);
-                      }} 
-                      variant="link" 
-                      className="p-0 h-auto text-xs"
+                  <Label htmlFor="walletAddressSelect">Wallet Address</Label>
+                  {walletAddress ? (
+                    <Select 
+                      defaultValue={walletAddress}
+                      onValueChange={(value) => {
+                        if (value === "add_new") {
+                          setWithdrawDialogOpen(false);
+                          setWalletAddressDialogOpen(true);
+                        }
+                      }}
                     >
-                      Change address
-                    </Button>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a wallet address" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={walletAddress}>
+                          <div className="truncate max-w-[300px]">{walletAddress}</div>
+                        </SelectItem>
+                        <SelectItem value="add_new">
+                          <div className="flex items-center text-blue-600">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add new wallet address
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        onClick={() => {
+                          setWithdrawDialogOpen(false);
+                          setWalletAddressDialogOpen(true);
+                        }}
+                        variant="outline"
+                        className="w-full justify-start"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add wallet address
+                      </Button>
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-500">
+                    Funds will be sent to this wallet address.
                   </p>
                 </div>
               </div>

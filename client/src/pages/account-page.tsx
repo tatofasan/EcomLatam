@@ -60,6 +60,7 @@ export default function AccountPage() {
   const [walletAddress, setWalletAddress] = useState("");
   const [showAddWalletDialog, setShowAddWalletDialog] = useState(false);
   const [newWalletAddress, setNewWalletAddress] = useState("");
+  const [activeTab, setActiveTab] = useState("profile");
 
   // Fetch wallet address from user settings or API
   useEffect(() => {
@@ -305,6 +306,11 @@ export default function AccountPage() {
     }
   };
   
+  // Switch to the security tab
+  const switchToSecurityTab = () => {
+    setActiveTab("security");
+  };
+  
   // Handle wallet address update
   const handleUpdateWalletAddress = async () => {
     if (!newWalletAddress || !user) return;
@@ -368,10 +374,10 @@ export default function AccountPage() {
           <p className="text-gray-500 mt-1">Manage your account settings and preferences</p>
         </div>
         
-        <Tabs defaultValue="profile" className="w-full">
+        <Tabs defaultValue="profile" className="w-full" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
+            <TabsTrigger value="security" id="security-tab">Security</TabsTrigger>
           </TabsList>
           
           {/* Profile Tab */}
@@ -471,9 +477,21 @@ export default function AccountPage() {
                         {...profileForm.register("username")}
                         disabled
                       />
-                      <p className="text-xs text-gray-500">
-                        Your username cannot be changed
-                      </p>
+                      <div className="flex justify-between items-center">
+                        <p className="text-xs text-gray-500">
+                          Your username cannot be changed
+                        </p>
+                        <Button 
+                          variant="link" 
+                          type="button" 
+                          size="sm" 
+                          className="text-blue-600"
+                          onClick={switchToSecurityTab}
+                        >
+                          <Lock className="h-3 w-3 mr-1" />
+                          Change Password
+                        </Button>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="phone">
