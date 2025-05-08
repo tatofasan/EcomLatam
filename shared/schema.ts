@@ -12,6 +12,7 @@ export const users = pgTable("users", {
   email: text("email"),
   role: text("role").default("user"), // admin, user, moderator, finance
   status: text("status").default("active"), // active, inactive
+  apiKey: text("api_key").unique(), // API key for order ingestion
   createdAt: timestamp("created_at").defaultNow(),
   lastLogin: timestamp("last_login"),
   settings: jsonb("settings"),
@@ -82,7 +83,25 @@ export const insertOrderSchema = createInsertSchema(orders, {
   status: z.enum(["pending", "processing", "shipped", "delivered", "cancelled"])
 }).omit({ id: true, userId: true, createdAt: true, updatedAt: true });
 
+// Schema for API order ingestion
+export const apiOrderSchema = z.object({
+  productId: z.number().int().positive(),
+  quantity: z.number().int().positive(),
+  price: z.number().positive(),
+  customerName: z.string().min(2),
+  customerPhone: z.string().min(5),
+  customerEmail: z.string().email().optional(),
+  shippingAddress: z.string().optional(),
+  notes: z.string().optional()
+});
+
+// Schema for API order status query
+export const apiOrderStatusSchema = z.object({
+  orderNumber: z.string()
+});
+
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
+export type ApiOrder = z.infer<typeof apiOrderSchema>;
 export type Order = typeof orders.$inferSelect;
 
 // Order Items Schema

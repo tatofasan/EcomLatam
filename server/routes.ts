@@ -32,6 +32,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   };
   
+  // Middleware to authenticate using API key for API routes
+  const requireApiKey = async (req: Request, res: Response, next: Function) => {
+    const apiKey = req.headers['x-api-key'] as string;
+    
+    if (!apiKey) {
+      return res.status(401).json({ 
+        success: false,
+        message: "API key is required" 
+      });
+    }
+    
+    const user = await storage.getUserByApiKey(apiKey);
+    
+    if (!user) {
+      return res.status(401).json({ 
+        success: false,
+        message: "Invalid API key" 
+      });
+    }
+    
+    // Attach the user to the request object for later use
+    req.user = user;
+    next();
+  };
+  
   // Middleware to ensure admin role
   const requireAdmin = (req: Request, res: Response, next: Function) => {
     if (!req.isAuthenticated() || req.user?.role !== 'admin') {

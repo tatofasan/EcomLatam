@@ -11,6 +11,7 @@ import { eq, desc, and, asc, sql } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
+import crypto from "crypto";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -20,8 +21,10 @@ export interface IStorage {
   getAllUsers(): Promise<User[]>;
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByApiKey(apiKey: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(id: number, userData: Partial<InsertUser> | { lastLogin?: Date }): Promise<User | undefined>;
+  updateUser(id: number, userData: Partial<InsertUser> | { lastLogin?: Date; apiKey?: string }): Promise<User | undefined>;
+  generateApiKey(userId: number): Promise<string>;
   
   // Product methods
   getAllProducts(): Promise<Product[]>;
@@ -92,6 +95,11 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
+  async getUserByApiKey(apiKey: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.apiKey, apiKey));
+    return user || undefined;
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
@@ -100,7 +108,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUser(id: number, userData: Partial<InsertUser> | { lastLogin?: Date }): Promise<User | undefined> {
+  async updateUser(id: number, userData: Partial<InsertUser> | { lastLogin?: Date; apiKey?: string }): Promise<User | undefined> {
     const [user] = await db
       .select()
       .from(users)
@@ -117,6 +125,22 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return updatedUser;
+  }
+  
+  async generateApiKey(userId: number): Promise<string> {
+    const user = await this.getUser(userId);
+    
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    // Generate a random API key (UUID v4 format)
+    const apiKey = crypto.randomUUID();
+    
+    // Update the user with the new API key
+    await this.updateUser(userId, { apiKey });
+    
+    return apiKey;
   }
   
   async getAllProducts(): Promise<Product[]> {
