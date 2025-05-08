@@ -505,19 +505,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const userId = req.user.id;
       const isAdmin = req.user.role === 'admin';
+      const isFinance = req.user.role === 'finance';
+      const hasSupervisorAccess = isAdmin || isFinance;
       
-      console.log(`Fetching dashboard metrics for user ID ${userId}, isAdmin: ${isAdmin}`);
+      console.log(`Fetching dashboard metrics for user ID ${userId}, isAdmin: ${isAdmin}, isFinance: ${isFinance}`);
       
-      // Get total products count (all for admin, user-created for regular users)
+      // Get total products count (all for admin/finance, user-created for regular users)
       let productsQuery = db.select().from(products);
-      if (!isAdmin) {
+      if (!hasSupervisorAccess) {
         productsQuery = productsQuery.where(eq(products.userId, userId));
       }
       const productsList = await productsQuery;
       
-      // Get orders data (all for admin, user's orders for regular users)
+      // Get orders data (all for admin/finance, user's orders for regular users)
       let ordersQuery = db.select().from(orders);
-      if (!isAdmin) {
+      if (!hasSupervisorAccess) {
         ordersQuery = ordersQuery.where(eq(orders.userId, userId));
       }
       const ordersList = await ordersQuery;
@@ -536,7 +538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .orderBy(desc(orders.createdAt))
         .limit(5);
         
-      if (!isAdmin) {
+      if (!hasSupervisorAccess) {
         recentOrdersQuery = recentOrdersQuery.where(eq(orders.userId, userId));
       }
       
@@ -684,11 +686,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const userId = req.user.id;
       const isAdmin = req.user.role === 'admin';
+      const isFinance = req.user.role === 'finance';
+      const hasSupervisorAccess = isAdmin || isFinance;
       
       let userTransactions = [];
       
-      if (isAdmin) {
-        // Admin sees all transactions
+      if (hasSupervisorAccess) {
+        // Admin and Finance users see all transactions
         userTransactions = await db.select().from(transactions).orderBy(desc(transactions.createdAt));
       } else {
         // Regular users see only their transactions
@@ -711,11 +715,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const userId = req.user.id;
       const isAdmin = req.user.role === 'admin';
+      const isFinance = req.user.role === 'finance';
+      const hasSupervisorAccess = isAdmin || isFinance;
       
       let balance = 0;
       
-      if (isAdmin) {
-        // Admin sees total balance of all users
+      if (hasSupervisorAccess) {
+        // Admin and Finance users see total balance of all users
         // Obtener la suma de todos los pedidos entregados
         const [deliveredOrdersResult] = await db
           .select({ total: sql`SUM(total_amount)` })
@@ -851,9 +857,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      // Check if user is admin
-      if (req.user.role !== "admin") {
-        return res.status(403).json({ message: "Forbidden. Admin access required." });
+      // Check if user is admin - moderators cannot approve payments
+      if (req.user.role !== "admin" && req.user.role !== "finance") {
+        return res.status(403).json({ message: "Forbidden. Admin or Finance access required for payment approval." });
       }
       
       const transactionId = parseInt(req.params.id);
@@ -896,6 +902,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const transactionId = parseInt(req.params.id);
       const userId = req.user.id;
       const isAdmin = req.user.role === "admin";
+      const isFinance = req.user.role === "finance";
+      const hasSupervisorAccess = isAdmin || isFinance;
       
       // Get all transactions for the user
       const userTransactions = await storage.getUserTransactions(userId);
@@ -903,9 +911,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Find the specific transaction
       const transaction = userTransactions.find(t => t.id === transactionId);
       
-      // If admin, allow access to any transaction
-      if (isAdmin && !transaction) {
-        // Admin can get any transaction, so try to get it directly from DB
+      // If admin or finance, allow access to any transaction
+      if (hasSupervisorAccess && !transaction) {
+        // Admin or finance users can get any transaction, so try to get it directly from DB
         const allTransactions = await db.select().from(transactions).where(eq(transactions.id, transactionId));
         if (allTransactions.length > 0) {
           return res.json(allTransactions[0]);
@@ -937,7 +945,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const userId = req.user.id;
       const isAdmin = req.user.role === 'admin';
-      const showAll = req.query.all === 'true' && isAdmin;
+      const isModerator = req.user.role === 'moderator';
+      const hasAdminAccess = isAdmin || isModerator;
+      const showAll = req.query.all === 'true' && hasAdminAccess;
       
       // Si es admin y pide todas las conexiones, usar getAllConnections
       // De lo contrario, solo mostrar las conexiones del usuario
