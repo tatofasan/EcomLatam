@@ -1045,7 +1045,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if this connection belongs to the authenticated user or if user is an admin
-      if (connection.userId !== req.user.id && req.user.role !== 'admin') {
+      const isModerator = req.user.role === "moderator";
+      const isAdmin = req.user.role === "admin";
+      const hasAdminAccess = isAdmin || isModerator;
+      
+      if (connection.userId !== req.user.id && !hasAdminAccess) {
         return res.status(403).json({ message: "Forbidden" });
       }
       
