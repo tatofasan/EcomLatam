@@ -56,8 +56,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   };
 
-  // Seed demo data if database is empty
+  // WARNING: This endpoint is for development purposes only and should not be used in production
+  // This will be removed in the final production version
   app.post("/api/seed", requireAuth, async (req, res) => {
+    console.warn("WARNING: /api/seed endpoint is deprecated and should not be used in production");
     try {
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -65,21 +67,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const userId = req.user.id;
       
-      // Seed demo data
+      // Seed demo data - These methods are deprecated and will be removed
       await storage.seedDemoProducts();
       await storage.seedDemoOrders(userId);
       await storage.seedDemoConnections(userId);
       await storage.seedDemoTransactions(userId);
       
-      res.status(200).json({ message: "Demo data seeded successfully" });
+      res.status(200).json({ 
+        message: "Demo data seeded successfully", 
+        warning: "This feature is deprecated and will be removed in production"
+      });
     } catch (error) {
       console.error("Error seeding demo data:", error);
       res.status(500).json({ message: "Failed to seed demo data" });
     }
   });
   
-  // Seed only orders for visualization
+  // WARNING: This endpoint is for development purposes only and should not be used in production
+  // This will be removed in the final production version
   app.post("/api/seed/orders", requireAuth, async (req, res) => {
+    console.warn("WARNING: /api/seed/orders endpoint is deprecated and should not be used in production");
     try {
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -87,7 +94,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const userId = req.user.id;
       
-      // Seed only orders for statistics
+      // Seed only orders for statistics - This method is deprecated and will be removed
       await storage.seedDemoOrders(userId);
       
       // Crear un pedido específico de ayer con actualización hoy
@@ -129,7 +136,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      res.status(200).json({ message: "Order data seeded successfully" });
+      res.status(200).json({ 
+        message: "Order data seeded successfully",
+        warning: "This feature is deprecated and will be removed in production"
+      });
     } catch (error) {
       console.error("Error seeding order data:", error);
       res.status(500).json({ message: "Failed to seed order data" });
