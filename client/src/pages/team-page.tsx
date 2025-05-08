@@ -471,10 +471,13 @@ export default function TeamPage() {
                             <User className="h-4 w-4 text-gray-500" />
                           </div>
                           <div>
-                            <p className="font-medium">{member.fullName || member.username}</p>
+                            <p className="font-medium">{member.username}</p>
+                            <p className="text-gray-500 text-xs">
+                              {member.fullName || ''}
+                            </p>
                             <p className="text-gray-500 text-xs flex items-center">
                               <Mail className="h-3 w-3 mr-1" />
-                              {member.email || member.username}
+                              {member.email || ''}
                             </p>
                           </div>
                         </div>
