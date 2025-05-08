@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth } from "./auth";
+import { setupAuth, hashPassword } from "./auth";
 import { 
   productSchema, 
   insertOrderSchema, 
@@ -1076,10 +1076,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // PUT endpoint for updating users
   app.put("/api/users/:id", requireAdmin, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
       const userData = req.body;
+      
+      console.log("PUT /api/users/:id received with data:", userData);
       
       // Prevent non-admin from changing an admin role
       const user = await storage.getUser(userId);
@@ -1096,6 +1099,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating user:", error);
       res.status(500).send("Error updating user");
+    }
+  });
+  
+  // PATCH endpoint for updating users (same logic as PUT)
+  app.patch("/api/users/:id", requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const userData = req.body;
+      
+      console.log("PATCH /api/users/:id received with data:", userData);
+      
+      // Prevent non-admin from changing an admin role
+      const user = await storage.getUser(userId);
+      if (user?.role === "admin" && userData.role !== "admin" && req.user?.role !== "admin") {
+        return res.status(403).json({ message: "Only admins can change admin roles" });
+      }
+      
+      const updatedUser = await storage.updateUser(userId, userData);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Error updating user", error: error.message });
+    }
+  });
+  
+  // Endpoint for resetting user password
+  app.patch("/api/users/:id/reset-password", requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { password } = req.body;
+      
+      console.log(`PATCH /api/users/${userId}/reset-password received`);
+      
+      if (!password) {
+        return res.status(400).json({ message: "Password is required" });
+      }
+      
+      // Get user to check if exists
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Hash password before saving to database
+      const hashedPassword = await hashPassword(password);
+      
+      // Update user with new password
+      const updatedUser = await storage.updateUser(userId, { password: hashedPassword });
+      if (!updatedUser) {
+        return res.status(500).json({ message: "Failed to update user password" });
+      }
+      
+      res.json({ message: "Password reset successfully" });
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      res.status(500).json({ message: "Error resetting password", error: error.message });
     }
   });
   
