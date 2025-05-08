@@ -864,12 +864,12 @@ export default function WalletPage() {
                   </div>
                 )}
                 
-                {/* Admin Actions - Only for admin users and withdrawal transactions */}
-                {user?.role === "admin" && 
+                {/* Admin/Finance Actions - For admin and finance users and withdrawal transactions */}
+                {(user?.role === "admin" || user?.role === "finance") && 
                  selectedTransaction.type === "withdrawal" && 
                  (selectedTransaction.status === "pending" || selectedTransaction.status === "processing") && (
                   <div className="mt-4 pt-4 border-t">
-                    <h4 className="font-medium mb-2">Admin Actions</h4>
+                    <h4 className="font-medium mb-2">Management Actions</h4>
                     <div className="flex gap-2">
                       {selectedTransaction.status === "pending" && (
                         <Button 
@@ -929,8 +929,8 @@ export default function WalletPage() {
         </DialogContent>
       </Dialog>
       
-      {/* Update Transaction Status Dialog - Only for admin users */}
-      {user?.role === "admin" && (
+      {/* Update Transaction Status Dialog - For admin and finance users */}
+      {(user?.role === "admin" || user?.role === "finance") && (
         <Dialog open={updateStatusDialogOpen} onOpenChange={setUpdateStatusDialogOpen}>
           <DialogContent className="sm:max-w-[425px]">
             {selectedTransaction && (
