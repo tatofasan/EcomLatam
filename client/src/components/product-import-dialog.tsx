@@ -143,59 +143,126 @@ export default function ProductImportDialog({ isOpen, onClose }: ProductImportDi
     const validProducts: Omit<Product, 'id'>[] = [];
     const errors: string[] = [];
 
+    if (!Array.isArray(products)) {
+      errors.push('Invalid data format: Expected an array of products');
+      return { valid: [], errors };
+    }
+
+    // Log data for debugging
+    console.log("Data to validate:", products);
+
     products.forEach((product, index) => {
       const rowNumber = index + 2; // Excel rows start at 1, and we have a header row
+      const rowErrors: string[] = [];
+      
+      // Check if product is an object
+      if (!product || typeof product !== 'object') {
+        errors.push(`Row ${rowNumber}: Invalid product data format`);
+        return; // Skip this iteration
+      }
+      
+      // Log the product for debugging
+      console.log(`Validating product at row ${rowNumber}:`, product);
       
       // Required fields validation
       if (!product.name) {
-        errors.push(`Row ${rowNumber}: Name is required`);
+        rowErrors.push(`Row ${rowNumber}: Name is required`);
       }
       
       if (!product.description) {
-        errors.push(`Row ${rowNumber}: Description is required`);
+        rowErrors.push(`Row ${rowNumber}: Description is required`);
       }
       
-      if (isNaN(parseFloat(product.price)) || parseFloat(product.price) <= 0) {
-        errors.push(`Row ${rowNumber}: Price must be a positive number`);
+      // Price validation with better error handling
+      let price = 0;
+      try {
+        price = parseFloat(String(product.price).replace(',', '.'));
+        if (isNaN(price) || price <= 0) {
+          rowErrors.push(`Row ${rowNumber}: Price must be a positive number`);
+        }
+      } catch (e) {
+        rowErrors.push(`Row ${rowNumber}: Invalid price format`);
       }
       
       if (!product.sku) {
-        errors.push(`Row ${rowNumber}: SKU is required`);
+        rowErrors.push(`Row ${rowNumber}: SKU is required`);
       }
       
       if (!product.imageUrl) {
-        errors.push(`Row ${rowNumber}: Image URL is required`);
+        rowErrors.push(`Row ${rowNumber}: Image URL is required`);
       }
       
-      // Status validation
-      if (product.status && !['active', 'inactive', 'draft', 'low'].includes(product.status)) {
-        errors.push(`Row ${rowNumber}: Status must be one of: active, inactive, draft, low`);
+      // Status validation with default value
+      const status = String(product.status || 'draft').toLowerCase();
+      if (status && !['active', 'inactive', 'draft', 'low'].includes(status)) {
+        rowErrors.push(`Row ${rowNumber}: Status must be one of: active, inactive, draft, low`);
       }
       
-      // If no errors, add to valid products
-      if (!errors.some(error => error.startsWith(`Row ${rowNumber}:`))) {
-        // Process additional images (convert from comma-separated string to array)
-        let additionalImages = [];
-        if (typeof product.additionalImages === 'string' && product.additionalImages.trim()) {
-          additionalImages = product.additionalImages.split(',').map((url: string) => url.trim());
-        }
+      // Add all row errors to the main errors array
+      errors.push(...rowErrors);
+      
+      // If no errors for this row, add to valid products
+      if (rowErrors.length === 0) {
+        try {
+          // Process additional images (convert from comma-separated string to array)
+          let additionalImages = [];
+          if (typeof product.additionalImages === 'string' && product.additionalImages.trim()) {
+            additionalImages = product.additionalImages.split(',').map((url: string) => url.trim());
+          }
+          
+          // Parse specifications safely
+          let specifications = {};
+          if (product.specifications) {
+            try {
+              if (typeof product.specifications === 'string') {
+                specifications = JSON.parse(product.specifications);
+              } else if (typeof product.specifications === 'object') {
+                specifications = product.specifications;
+              }
+            } catch (e) {
+              console.warn(`Could not parse specifications for row ${rowNumber}, using empty object`);
+            }
+          }
+          
+          // Convert stock to number safely
+          let stock = 0;
+          try {
+            stock = parseInt(String(product.stock)) || 0;
+          } catch (e) {
+            console.warn(`Could not parse stock for row ${rowNumber}, using 0`);
+          }
+          
+          // Convert weight to number safely
+          let weight = null;
+          if (product.weight) {
+            try {
+              const parsedWeight = parseFloat(String(product.weight).replace(',', '.'));
+              weight = !isNaN(parsedWeight) ? parsedWeight : null;
+            } catch (e) {
+              console.warn(`Could not parse weight for row ${rowNumber}`);
+            }
+          }
 
-        validProducts.push({
-          name: product.name,
-          description: product.description,
-          price: parseFloat(product.price),
-          stock: parseInt(product.stock) || 0,
-          status: product.status || 'draft',
-          sku: product.sku,
-          imageUrl: product.imageUrl,
-          additionalImages: additionalImages,
-          weight: parseFloat(product.weight) || null,
-          dimensions: product.dimensions || null,
-          category: product.category || null,
-          specifications: product.specifications ? JSON.parse(product.specifications) : {},
-          reference: product.reference || null,
-          provider: product.provider || null,
-        });
+          validProducts.push({
+            name: String(product.name),
+            description: String(product.description),
+            price: price,
+            stock: stock,
+            status: status || 'draft',
+            sku: String(product.sku),
+            imageUrl: String(product.imageUrl),
+            additionalImages: additionalImages,
+            weight: weight,
+            dimensions: product.dimensions ? String(product.dimensions) : null,
+            category: product.category ? String(product.category) : null,
+            specifications: specifications,
+            reference: product.reference ? String(product.reference) : null,
+            provider: product.provider ? String(product.provider) : null,
+          });
+        } catch (error) {
+          console.error(`Error processing row ${rowNumber}:`, error);
+          errors.push(`Row ${rowNumber}: Failed to process data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
       }
     });
 
@@ -207,27 +274,63 @@ export default function ProductImportDialog({ isOpen, onClose }: ProductImportDi
     
     setIsProcessing(true);
     setProcessingProgress(10);
+    setValidationErrors([]);
     
     try {
       const reader = new FileReader();
       
       reader.onload = async (e) => {
         try {
-          const data = new Uint8Array(e.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: 'array' });
+          if (!e.target || !e.target.result) {
+            throw new Error("Failed to read file");
+          }
           
-          setProcessingProgress(30);
+          setProcessingProgress(20);
           
-          // Assuming the first sheet contains the product data
-          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+          // Asegurarse de que estamos leyendo el archivo como un array buffer
+          const data = new Uint8Array(e.target.result as ArrayBuffer);
           
-          setProcessingProgress(50);
+          // Opciones de lectura con manejo de errores
+          const workbook = XLSX.read(data, { 
+            type: 'array',
+            cellDates: true,
+            cellNF: false,
+            cellText: false
+          });
+          
+          setProcessingProgress(40);
+          
+          if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+            throw new Error("No worksheets found in the Excel file");
+          }
+          
+          // Obtener la primera hoja
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          
+          if (!worksheet) {
+            throw new Error(`Could not read worksheet '${firstSheetName}'`);
+          }
+          
+          // Convertir a JSON con opciones de manejo
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+            defval: null, // Valor predeterminado para celdas vacías
+            blankrows: false, // Omitir filas vacías
+            raw: false // Convertir valores de Excel a tipos JS
+          });
+          
+          console.log("Parsed data from Excel:", jsonData);
+          
+          setProcessingProgress(60);
+          
+          if (!Array.isArray(jsonData) || jsonData.length === 0) {
+            throw new Error("No data found in the Excel file or format is invalid");
+          }
           
           // Validate the data
           const { valid, errors } = validateProducts(jsonData);
           
-          setProcessingProgress(70);
+          setProcessingProgress(80);
           
           if (errors.length > 0) {
             setValidationErrors(errors);
@@ -237,23 +340,35 @@ export default function ProductImportDialog({ isOpen, onClose }: ProductImportDi
             setValidationErrors(['No valid products found in the file']);
             setProcessingProgress(100);
           } else {
-            // Import the products
-            await importProductsMutation.mutateAsync(valid);
-            setSuccessCount(valid.length);
-            setProcessingProgress(100);
+            try {
+              // Import the products
+              const response = await importProductsMutation.mutateAsync(valid);
+              setSuccessCount(valid.length);
+              setProcessingProgress(100);
+            } catch (importError) {
+              console.error('Error during import:', importError);
+              setValidationErrors([`Error during import: ${importError instanceof Error ? importError.message : 'Unknown error'}`]);
+              setProcessingProgress(100);
+            }
           }
         } catch (error) {
           console.error('Error processing Excel file:', error);
-          setValidationErrors([`Error processing file: ${error instanceof Error ? error.message : 'Unknown error'}`]);
+          setValidationErrors([`Error processing Excel file: ${error instanceof Error ? error.message : 'Unknown error'}`]);
           setProcessingProgress(100);
         }
+      };
+      
+      reader.onerror = (error) => {
+        console.error('File reader error:', error);
+        setValidationErrors(['Failed to read the file. Please try again with a different file.']);
+        setProcessingProgress(100);
       };
       
       reader.readAsArrayBuffer(file);
     } catch (error) {
       console.error('Error reading file:', error);
       setValidationErrors([`Error reading file: ${error instanceof Error ? error.message : 'Unknown error'}`]);
-      setIsProcessing(false);
+      setProcessingProgress(100);
     }
   };
 
