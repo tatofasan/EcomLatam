@@ -722,6 +722,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasSupervisorAccess = isAdmin || isFinance;
       
       let balance = 0;
+      console.log(`Fetching balance for user ID ${userId}, role: ${req.user.role}, is supervisor: ${hasSupervisorAccess}`);
       
       if (hasSupervisorAccess) {
         // Admin and Finance users see total balance of all users
@@ -741,9 +742,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const withdrawalsTotal = withdrawalsResult.total ? Number(withdrawalsResult.total) : 0;
         
         balance = ordersTotal + withdrawalsTotal; // withdrawalsTotal ya es negativo
+        console.log(`Admin/Finance balance calculation: Orders total: ${ordersTotal}, Withdrawals total: ${withdrawalsTotal}, Final balance: ${balance}`);
       } else {
         // Regular users see only their balance
         balance = await storage.getUserBalance(userId);
+        console.log(`Regular user balance for user ${userId}: ${balance}`);
       }
       
       res.json({ balance });
