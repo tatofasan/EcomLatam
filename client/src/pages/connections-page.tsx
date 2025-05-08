@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -62,9 +63,13 @@ export default function ConnectionsPage() {
     apiSecret: "",
   });
   
-  // State for the dialog
+  // State for the dialogs
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [step, setStep] = useState<'platforms' | 'details' | 'authenticating'>('platforms');
+  
+  // Estado para el diálogo de confirmación de eliminación
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [connectionToDelete, setConnectionToDelete] = useState<number | null>(null);
 
   // Function to load connections
   const loadConnections = async () => {
@@ -253,14 +258,18 @@ export default function ConnectionsPage() {
     }
   };
   
+  // Function to handle delete confirmation dialog
+  const handleDeleteClick = (id: number) => {
+    setConnectionToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+  
   // Function to delete a connection
-  const deleteConnection = async (id: number) => {
-    if (!confirm("¿Estás seguro de que deseas eliminar esta conexión? Esta acción no se puede deshacer.")) {
-      return;
-    }
+  const deleteConnection = async () => {
+    if (!connectionToDelete) return;
     
     try {
-      const response = await fetch(`/api/connections/${id}`, {
+      const response = await fetch(`/api/connections/${connectionToDelete}`, {
         method: 'DELETE',
       });
       
@@ -275,6 +284,9 @@ export default function ConnectionsPage() {
         title: "Conexión eliminada",
         description: "La conexión ha sido eliminada exitosamente.",
       });
+      
+      // Reset state
+      setConnectionToDelete(null);
     } catch (err) {
       console.error("Error deleting connection:", err);
       toast({
@@ -282,6 +294,8 @@ export default function ConnectionsPage() {
         description: "No se pudo eliminar la conexión. Por favor, intenta de nuevo.",
         variant: "destructive",
       });
+    } finally {
+      setDeleteDialogOpen(false);
     }
   };
 
@@ -613,7 +627,7 @@ export default function ConnectionsPage() {
                       variant="outline"
                       size="sm"
                       className="text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"
-                      onClick={() => deleteConnection(connection.id)}
+                      onClick={() => handleDeleteClick(connection.id)}
                     >
                       <XCircle className="h-4 w-4 mr-2" />
                       Delete
@@ -634,6 +648,28 @@ export default function ConnectionsPage() {
           </div>
         )}
       </div>
+      
+      {/* AlertDialog para confirmar la eliminación de conexiones */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. Al eliminar esta conexión, 
+              se perderá la sincronización de todos los productos y pedidos asociados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={deleteConnection}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 }
