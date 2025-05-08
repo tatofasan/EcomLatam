@@ -1,42 +1,24 @@
 import nodemailer from 'nodemailer';
 import path from 'path';
 
-// Variable para almacenar el transporter
-let transporter: nodemailer.Transporter;
+// Crear el transporter para Gmail inmediatamente
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || '',
+  },
+});
 
-// Función para configurar el transporter con Ethereal
-async function setupEtherealTransporter() {
-  try {
-    // Crear cuenta de prueba de Ethereal
-    const testAccount = await nodemailer.createTestAccount();
-    
-    console.log('Cuenta Ethereal creada para pruebas:', {
-      user: testAccount.user,
-      pass: testAccount.pass,
-      previewURL: 'https://ethereal.email/login'
-    });
-    
-    // Crear transporter con la cuenta de prueba
-    transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
-      },
-    });
-    
-    console.log('Servicio de email configurado con Ethereal para entorno de desarrollo');
-    return true;
-  } catch (error) {
-    console.error('Error al configurar Ethereal:', error);
-    return false;
+// Verificar conexión
+transporter.verify(function(error, success) {
+  if (error) {
+    console.error('Error en la configuración del email:', error);
+  } else {
+    console.log('Servidor de correo listo para enviar mensajes');
+    console.log('Usando cuenta:', process.env.SMTP_USER);
   }
-}
-
-// Inicializar transporter
-setupEtherealTransporter();
+});
 
 interface SendEmailOptions {
   to: string;
@@ -57,11 +39,6 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
     });
     
     console.log('Correo enviado: %s', info.messageId);
-    
-    // Si estamos usando Ethereal, mostramos la URL para ver el email (solo en dev)
-    if (process.env.NODE_ENV !== 'production' && info.messageId) {
-      console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
-    }
     
     return true;
   } catch (error) {
