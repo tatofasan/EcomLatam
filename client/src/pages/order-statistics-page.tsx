@@ -132,15 +132,6 @@ export default function OrderStatisticsPage() {
   // Process orders into daily statistics when orders data changes or filters change
   useEffect(() => {
     if (!orders) return;
-    
-    // Debugging
-    console.log("Switch state:", useActivityDate);
-    console.log("Sample orders with updatedAt:", orders.slice(0, 3).map(order => ({
-      id: order.id,
-      createdAt: order.createdAt,
-      updatedAt: order.updatedAt,
-      status: order.status
-    })));
 
     // Filter orders first
     let filteredOrders = [...orders];

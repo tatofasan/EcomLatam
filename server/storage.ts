@@ -54,7 +54,7 @@ export interface IStorage {
   updateTransactionStatus(id: number, status: string, paymentProof?: string): Promise<Transaction | undefined>;
   getUserBalance(userId: number): Promise<number>;
   
-  // Seed methods
+  // These methods are deprecated and will be removed in production
   seedDemoProducts(): Promise<void>;
   seedDemoOrders(userId: number): Promise<void>;
   seedDemoConnections(userId: number): Promise<void>;
@@ -378,8 +378,11 @@ export class DatabaseStorage implements IStorage {
     return balance;
   }
 
-  // Function to seed demo products if needed
+  // WARNING: This method is for development purposes only and should not be used in production
+  // This will be removed in the final production version
   async seedDemoProducts() {
+    console.warn("WARNING: seedDemoProducts method is deprecated and should not be used in production");
+    
     const existingProducts = await this.getAllProducts();
     if (existingProducts.length === 0) {
       const demoProducts: InsertProduct[] = [
@@ -476,8 +479,10 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  // Seed demo orders for a user
+  // WARNING: This method is for development purposes only and should not be used in production
+  // This will be removed in the final production version
   async seedDemoOrders(userId: number) {
+    console.warn("WARNING: seedDemoOrders method is deprecated and should not be used in production");
     try {
       // Limpiar órdenes existentes y sus items primero
       await db.delete(orderItems).where(eq(orderItems.orderId, sql`ANY(SELECT id FROM orders WHERE "user_id" = ${userId})`));
@@ -685,8 +690,10 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  // Seed demo connections for a user
+  // WARNING: This method is for development purposes only and should not be used in production
+  // This will be removed in the final production version
   async seedDemoConnections(userId: number) {
+    console.warn("WARNING: seedDemoConnections method is deprecated and should not be used in production");
     const existingConnections = await this.getUserConnections(userId);
     if (existingConnections.length === 0) {
       const demoConnections = [
@@ -719,8 +726,10 @@ export class DatabaseStorage implements IStorage {
     }
   }
   
-  // Seed demo transactions for a user
+  // WARNING: This method is for development purposes only and should not be used in production
+  // This will be removed in the final production version
   async seedDemoTransactions(userId: number) {
+    console.warn("WARNING: seedDemoTransactions method is deprecated and should not be used in production");
     try {
       // Limpiar transacciones existentes primero
       await db.delete(transactions).where(eq(transactions.userId, userId));
