@@ -55,6 +55,9 @@ export default function AccountPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [walletAddress, setWalletAddress] = useState("");
+  const [showAddWalletDialog, setShowAddWalletDialog] = useState(false);
+  const [newWalletAddress, setNewWalletAddress] = useState("");
 
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
