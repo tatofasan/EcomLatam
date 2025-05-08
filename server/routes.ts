@@ -805,7 +805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Update user wallet address
+  // Update user wallet address (Legacy endpoint - maintaining for backwards compatibility)
   app.patch("/api/user/wallet-address", requireAuth, async (req, res) => {
     try {
       if (!req.user) {
@@ -827,11 +827,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const settings = user.settings || {};
+      
+      // Convert to new wallet format if user doesn't have wallets array yet
+      if (!settings.wallets || !Array.isArray(settings.wallets)) {
+        settings.wallets = [{
+          id: "default",
+          name: "Principal",
+          address: walletAddress,
+          isDefault: true
+        }];
+      } else {
+        // Update default wallet address if it exists
+        const defaultWalletIndex = settings.wallets.findIndex(w => w.isDefault);
+        if (defaultWalletIndex >= 0) {
+          settings.wallets[defaultWalletIndex].address = walletAddress;
+        } else if (settings.wallets.length > 0) {
+          // Set first wallet as default and update address
+          settings.wallets[0].address = walletAddress;
+          settings.wallets[0].isDefault = true;
+        } else {
+          // Create new wallet if array is empty
+          settings.wallets.push({
+            id: "default",
+            name: "Principal",
+            address: walletAddress,
+            isDefault: true
+          });
+        }
+      }
+      
+      // Keep legacy walletAddress for backwards compatibility
       settings.walletAddress = walletAddress;
       
       const updatedUser = await storage.updateUser(userId, { settings });
       
-      res.json({ success: true, walletAddress });
+      res.json({ success: true, walletAddress, wallets: settings.wallets });
     } catch (error) {
       console.error("Error updating wallet address:", error);
       res.status(500).json({ message: "Failed to update wallet address" });
