@@ -68,6 +68,10 @@ export default function AccountPage() {
   });
   const [activeTab, setActiveTab] = useState("profile");
   const [editingWalletId, setEditingWalletId] = useState<string | null>(null);
+  // State for API key management
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [isLoadingApiKey, setIsLoadingApiKey] = useState(false);
+  const [isGeneratingApiKey, setIsGeneratingApiKey] = useState(false);
 
   // Fetch wallet addresses from user settings or API
   useEffect(() => {
@@ -146,6 +150,13 @@ export default function AccountPage() {
       });
     }
   }, [user, profileForm]);
+  
+  // Load API key when Security tab is active
+  useEffect(() => {
+    if (activeTab === "security" && user) {
+      fetchApiKey();
+    }
+  }, [activeTab, user]);
 
   const onProfileSubmit = async (data: ProfileFormValues) => {
     if (!user) return;
@@ -337,6 +348,66 @@ export default function AccountPage() {
   // Switch to the security tab
   const switchToSecurityTab = () => {
     setActiveTab("security");
+  };
+  
+  // Fetch API key
+  const fetchApiKey = async () => {
+    if (!user) return;
+    
+    setIsLoadingApiKey(true);
+    try {
+      const response = await apiRequest("GET", '/api/user/api-key');
+      
+      if (response.ok) {
+        const data = await response.json();
+        setApiKey(data.apiKey);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to fetch API key");
+      }
+    } catch (error) {
+      console.error("Error fetching API key:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to fetch API key",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingApiKey(false);
+    }
+  };
+  
+  // Generate new API key
+  const generateApiKey = async () => {
+    if (!user) return;
+    
+    setIsGeneratingApiKey(true);
+    try {
+      const response = await apiRequest("POST", '/api/user/api-key');
+      
+      if (response.ok) {
+        const data = await response.json();
+        setApiKey(data.apiKey);
+        
+        toast({
+          title: "API Key Generated",
+          description: "Your new API key has been generated successfully.",
+          variant: "default"
+        });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to generate API key");
+      }
+    } catch (error) {
+      console.error("Error generating API key:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to generate API key",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingApiKey(false);
+    }
   };
   
   // Handle opening wallet dialog for adding a new wallet or editing existing one
