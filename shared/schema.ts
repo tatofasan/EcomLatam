@@ -11,16 +11,23 @@ export const users = pgTable("users", {
   fullName: text("full_name"),
   email: text("email"),
   role: text("role").default("user"), // admin, user, moderator, finance
-  status: text("status").default("active"), // active, inactive
+  status: text("status").default("pending"), // active, inactive, pending, email_verification
   apiKey: text("api_key").unique(), // API key for order ingestion
   createdAt: timestamp("created_at").defaultNow(),
   lastLogin: timestamp("last_login"),
   settings: jsonb("settings"),
+  verificationToken: text("verification_token"),
+  verificationExpires: timestamp("verification_expires"),
+  isEmailVerified: boolean("is_email_verified").default(false),
 });
 
 export const insertUserSchema = createInsertSchema(users, {
-  role: z.enum(["admin", "user", "moderator", "finance"]),
-  status: z.enum(["active", "inactive"]).default("active")
+  role: z.enum(["admin", "user", "moderator", "finance"]).default("user"),
+  status: z.enum(["active", "inactive", "pending", "email_verification"]).default("email_verification"),
+  email: z.string().email("Por favor ingresa un correo electrónico válido"),
+  isEmailVerified: z.boolean().default(false),
+  verificationToken: z.string().optional(),
+  verificationExpires: z.date().optional()
 }).pick({
   username: true,
   password: true,
@@ -28,6 +35,9 @@ export const insertUserSchema = createInsertSchema(users, {
   email: true,
   role: true,
   status: true,
+  isEmailVerified: true,
+  verificationToken: true,
+  verificationExpires: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
