@@ -303,22 +303,8 @@ export default function ConnectionsPage() {
   useEffect(() => {
     setActiveItem("connections");
     
-    // Call API to seed demo data if needed
-    const seedDemoData = async () => {
-      try {
-        const response = await fetch('/api/seed', { method: 'POST' });
-        if (response.ok) {
-          console.log("Demo data seeded successfully");
-        }
-      } catch (err) {
-        console.error("Error seeding demo data:", err);
-      }
-      
-      // Load connections regardless of seeding success
-      loadConnections();
-    };
-    
-    seedDemoData();
+    // Load connections on component mount
+    loadConnections();
   }, []);
 
   const getPlatformIcon = (platform: string) => {
