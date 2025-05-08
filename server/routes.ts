@@ -868,7 +868,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Get user wallet address
+  // Get user wallet address (Legacy endpoint - maintaining for backwards compatibility)
   app.get("/api/user/wallet-address", requireAuth, async (req, res) => {
     try {
       if (!req.user) {
@@ -882,9 +882,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
-      const walletAddress = user.settings?.walletAddress || '';
+      let walletAddress = user.settings?.walletAddress || '';
+      let wallets: Array<{id: string; name: string; address: string; isDefault?: boolean}> = [];
       
-      res.json({ walletAddress });
+      // Get wallet info from settings
+      if (user.settings?.wallets && Array.isArray(user.settings.wallets)) {
+        wallets = user.settings.wallets;
+        
+        // If no legacy walletAddress but has wallets, use default wallet address
+        if (!walletAddress && wallets.length > 0) {
+          const defaultWallet = wallets.find(w => w.isDefault);
+          if (defaultWallet) {
+            walletAddress = defaultWallet.address;
+          } else {
+            walletAddress = wallets[0].address;
+          }
+        }
+      } 
+      // Create a default wallet structure if there's a legacy walletAddress but no wallets array
+      else if (walletAddress) {
+        wallets = [{
+          id: "default",
+          name: "Principal",
+          address: walletAddress,
+          isDefault: true
+        }];
+      }
+      
+      res.json({ walletAddress, wallets });
     } catch (error) {
       console.error("Error fetching wallet address:", error);
       res.status(500).json({ message: "Failed to fetch wallet address" });
