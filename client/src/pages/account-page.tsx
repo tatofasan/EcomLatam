@@ -601,7 +601,7 @@ export default function AccountPage() {
                     <Button 
                       type="submit" 
                       className="ml-auto"
-                      disabled={isSubmitting || !passwordForm.formState.isValid && passwordForm.formState.isDirty}
+                      disabled={isSubmitting}
                     >
                       {isSubmitting ? "Updating..." : "Update Password"}
                     </Button>
