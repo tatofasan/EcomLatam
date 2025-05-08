@@ -1114,8 +1114,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Team management endpoints - Accessible to admin and finance users
   app.get("/api/users", requireAuth, async (req, res) => {
     try {
-      // Ensure user is admin or finance
-      if (req.user?.role !== 'admin' && req.user?.role !== 'finance') {
+      // Ensure user is admin, finance or moderator
+      if (req.user?.role !== "admin" && req.user?.role !== "finance" && req.user?.role !== "moderator") {
         return res.status(403).json({ message: "Forbidden: Admin or Finance access required" });
       }
       
@@ -1129,8 +1129,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/users", requireAuth, async (req, res) => {
     try {
-      // Ensure user is admin or finance
-      if (req.user?.role !== 'admin' && req.user?.role !== 'finance') {
+      // Ensure user is admin, finance or moderator
+      if (req.user?.role !== "admin" && req.user?.role !== "finance" && req.user?.role !== "moderator") {
         return res.status(403).json({ message: "Forbidden: Admin or Finance access required" });
       }
       
@@ -1142,9 +1142,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).send("Username already exists");
       }
       
-      // Finance users cannot create admin users
-      if (req.user.role === 'finance' && userData.role === 'admin') {
-        return res.status(403).json({ message: "Forbidden: Finance users cannot create admin users" });
+      // Finance and Moderator users cannot create admin users
+      if ((req.user.role === 'finance' || req.user.role === 'moderator') && userData.role === 'admin') {
+        return res.status(403).json({ message: "Forbidden: Only admins can create admin users" });
       }
       
       const newUser = await storage.createUser(userData);
@@ -1158,8 +1158,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PUT endpoint for updating users
   app.put("/api/users/:id", requireAuth, async (req, res) => {
     try {
-      // Ensure user is admin or finance
-      if (req.user?.role !== 'admin' && req.user?.role !== 'finance') {
+      // Ensure user is admin, finance or moderator
+      if (req.user?.role !== "admin" && req.user?.role !== "finance" && req.user?.role !== "moderator") {
         return res.status(403).json({ message: "Forbidden: Admin or Finance access required" });
       }
       
@@ -1204,8 +1204,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PATCH endpoint for updating users (same logic as PUT)
   app.patch("/api/users/:id", requireAuth, async (req, res) => {
     try {
-      // Ensure user is admin or finance
-      if (req.user?.role !== 'admin' && req.user?.role !== 'finance') {
+      // Ensure user is admin, finance or moderator
+      if (req.user?.role !== "admin" && req.user?.role !== "finance" && req.user?.role !== "moderator") {
         return res.status(403).json({ message: "Forbidden: Admin or Finance access required" });
       }
       
@@ -1273,8 +1273,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Endpoint for resetting user password
   app.patch("/api/users/:id/reset-password", requireAuth, async (req, res) => {
     try {
-      // Ensure user is admin or finance
-      if (req.user?.role !== 'admin' && req.user?.role !== 'finance') {
+      // Ensure user is admin, finance or moderator
+      if (req.user?.role !== "admin" && req.user?.role !== "finance" && req.user?.role !== "moderator") {
         return res.status(403).json({ message: "Forbidden: Admin or Finance access required" });
       }
       
