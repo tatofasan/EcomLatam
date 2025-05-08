@@ -41,6 +41,7 @@ export interface IStorage {
   
   // Connection methods
   getUserConnections(userId: number): Promise<Connection[]>;
+  getAllConnections(): Promise<Connection[]>;
   getConnection(id: number): Promise<Connection | undefined>;
   createConnection(connection: InsertConnection, userId: number): Promise<Connection>;
   updateConnectionStatus(id: number, status: string): Promise<Connection | undefined>;
@@ -228,6 +229,10 @@ export class DatabaseStorage implements IStorage {
   // Connection methods
   async getUserConnections(userId: number): Promise<Connection[]> {
     return await db.select().from(connections).where(eq(connections.userId, userId));
+  }
+  
+  async getAllConnections(): Promise<Connection[]> {
+    return await db.select().from(connections);
   }
   
   async getConnection(id: number): Promise<Connection | undefined> {

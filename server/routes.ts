@@ -897,7 +897,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const userId = req.user.id;
-      const connections = await storage.getUserConnections(userId);
+      const isAdmin = req.user.role === 'admin';
+      const showAll = req.query.all === 'true' && isAdmin;
+      
+      // Si es admin y pide todas las conexiones, usar getAllConnections
+      // De lo contrario, solo mostrar las conexiones del usuario
+      let connections;
+      if (showAll) {
+        connections = await storage.getAllConnections();
+      } else {
+        connections = await storage.getUserConnections(userId);
+      }
+      
       res.json(connections);
     } catch (error) {
       console.error("Error fetching connections:", error);
@@ -955,8 +966,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Connection not found" });
       }
       
-      // Check if this connection belongs to the authenticated user
-      if (connection.userId !== req.user.id) {
+      // Check if this connection belongs to the authenticated user or if user is an admin
+      if (connection.userId !== req.user.id && req.user.role !== 'admin') {
         return res.status(403).json({ message: "Forbidden" });
       }
       
@@ -983,8 +994,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Connection not found" });
       }
       
-      // Check if this connection belongs to the authenticated user
-      if (connection.userId !== req.user.id) {
+      // Check if this connection belongs to the authenticated user or if user is an admin
+      if (connection.userId !== req.user.id && req.user.role !== 'admin') {
         return res.status(403).json({ message: "Forbidden" });
       }
       
