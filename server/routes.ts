@@ -36,6 +36,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     next();
   };
+  
+  // Middleware to ensure moderator or admin role
+  const requireModerator = (req: Request, res: Response, next: Function) => {
+    if (!req.isAuthenticated() || (req.user?.role !== 'admin' && req.user?.role !== 'moderator')) {
+      return res.status(403).json({ message: "Forbidden: Moderator access required" });
+    }
+    next();
+  };
+  
+  // Middleware to ensure finance or admin role
+  const requireFinance = (req: Request, res: Response, next: Function) => {
+    if (!req.isAuthenticated() || (req.user?.role !== 'admin' && req.user?.role !== 'finance')) {
+      return res.status(403).json({ message: "Forbidden: Finance access required" });
+    }
+    next();
+  };
 
   // Seed demo data if database is empty
   app.post("/api/seed", requireAuth, async (req, res) => {

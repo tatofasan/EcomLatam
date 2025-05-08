@@ -10,13 +10,15 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   fullName: text("full_name"),
   email: text("email"),
-  role: text("role").default("user"), // admin, user, team_member
+  role: text("role").default("user"), // admin, user, moderator, finance
   createdAt: timestamp("created_at").defaultNow(),
   lastLogin: timestamp("last_login"),
   settings: jsonb("settings"),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
+export const insertUserSchema = createInsertSchema(users, {
+  role: z.enum(["admin", "user", "moderator", "finance"])
+}).pick({
   username: true,
   password: true,
   fullName: true,
