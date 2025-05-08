@@ -194,21 +194,21 @@ export default function ProductsPage() {
           
           {/* Admin Add Product Button */}
           {isAdmin && (
-            <div className="flex gap-2">
-              <Button 
-                variant="outline"
-                onClick={() => setImportDialogOpen(true)}
-                className="whitespace-nowrap"
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Import Products
-              </Button>
+            <div className="flex flex-col gap-2">
               <Button 
                 onClick={handleCreateClick}
                 className="whitespace-nowrap"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Product
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => setImportDialogOpen(true)}
+                className="whitespace-nowrap"
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Mass Import
               </Button>
             </div>
           )}
