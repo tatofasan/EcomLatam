@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import express, { type Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
@@ -1441,6 +1441,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Error resetting password", error: errorMessage });
     }
   });
+  
+  // Configure multer for avatar uploads
+  const avatarStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+      const dir = './uploads/avatars';
+      // Create directory if it doesn't exist
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      cb(null, dir);
+    },
+    filename: function (req, file, cb) {
+      // Use a unique filename to avoid collisions
+      const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(file.originalname)}`;
+      cb(null, uniqueName);
+    }
+  });
+  
+  // File filter to only allow images
+  const fileFilter = (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  };
+  
+  const upload = multer({ 
+    storage: avatarStorage,
+    fileFilter,
+    limits: {
+      fileSize: 5 * 1024 * 1024 // 5MB limit
+    } 
+  });
+  
+  // Upload avatar
+  app.post("/api/user/avatar", requireAuth, upload.single('avatar'), async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      const userId = req.user.id;
+      const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+      
+      // Get current user to check if they already have an avatar
+      const currentUser = await storage.getUser(userId);
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Delete the old avatar file if it exists
+      if (currentUser.settings?.avatar) {
+        const oldAvatarPath = path.join('.', currentUser.settings.avatar);
+        if (fs.existsSync(oldAvatarPath)) {
+          fs.unlinkSync(oldAvatarPath);
+        }
+      }
+      
+      // Update the user with the new avatar URL
+      const settings = {
+        ...(currentUser.settings || {}),
+        avatar: avatarUrl
+      };
+      
+      const updatedUser = await storage.updateUser(userId, { settings });
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Don't send password back to client
+      const { password, ...userWithoutPassword } = updatedUser;
+      
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      res.status(500).json({ message: "Failed to upload avatar" });
+    }
+  });
+  
+  // Delete avatar
+  app.delete("/api/user/avatar", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const userId = req.user.id;
+      
+      // Get current user
+      const currentUser = await storage.getUser(userId);
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Check if user has an avatar
+      if (!currentUser.settings?.avatar) {
+        return res.status(400).json({ message: "User does not have an avatar" });
+      }
+      
+      // Delete the avatar file
+      const avatarPath = path.join('.', currentUser.settings.avatar);
+      if (fs.existsSync(avatarPath)) {
+        fs.unlinkSync(avatarPath);
+      }
+      
+      // Update the user to remove the avatar URL
+      const settings = {
+        ...(currentUser.settings || {})
+      };
+      delete settings.avatar;
+      
+      const updatedUser = await storage.updateUser(userId, { settings });
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Don't send password back to client
+      const { password, ...userWithoutPassword } = updatedUser;
+      
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error removing avatar:", error);
+      res.status(500).json({ message: "Failed to remove avatar" });
+    }
+  });
+  
+  // Serve static files for uploads
+  app.use('/uploads', express.static(path.join('.', 'uploads')));
   
   const httpServer = createServer(app);
 
