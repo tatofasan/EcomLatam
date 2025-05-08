@@ -53,9 +53,9 @@ export default function TeamPage() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   
-  // Si el usuario no es administrador o moderador, redirigir al dashboard
+  // Si el usuario no es administrador, moderador o finance, redirigir al dashboard
   React.useEffect(() => {
-    if (user && user.role !== 'admin' && user.role !== 'moderator') {
+    if (user && user.role !== 'admin' && user.role !== 'moderator' && user.role !== 'finance') {
       toast({
         title: "Acceso denegado",
         description: "No tienes permisos para acceder a esta página",
@@ -68,7 +68,7 @@ export default function TeamPage() {
   // Fetch team members
   const { data: teamMembers = [], isLoading } = useQuery<TeamMember[]>({
     queryKey: ['/api/users'],
-    enabled: !!user && user.role === 'admin',
+    enabled: !!user && (user.role === 'admin' || user.role === 'moderator' || user.role === 'finance'),
   });
   
   // Setup form with validation

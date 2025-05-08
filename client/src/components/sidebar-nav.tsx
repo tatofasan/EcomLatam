@@ -112,20 +112,23 @@ export default function SidebarNav({
         }
       ]
     },
-    {
-      title: "Connections",
-      href: "/connections",
-      icon: <Link2 className="h-5 w-5" />,
-      key: "connections"
-    },
+    // Only show Connections for non-finance users
+    ...(user?.role !== 'finance' ? [
+      {
+        title: "Connections",
+        href: "/connections",
+        icon: <Link2 className="h-5 w-5" />,
+        key: "connections"
+      }
+    ] : []),
     {
       title: "Wallet",
       href: "/wallet",
       icon: <Wallet className="h-5 w-5" />,
       key: "wallet"
     },
-    // Only show Team management for admin users
-    ...(user?.role === 'admin' || user?.role === 'moderator' ? [
+    // Show Team management for admin, moderator, and finance users
+    ...(user?.role === 'admin' || user?.role === 'moderator' || user?.role === 'finance' ? [
       {
         title: "Team",
         href: "/team",
