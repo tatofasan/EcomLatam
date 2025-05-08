@@ -32,6 +32,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { type Transaction } from "@shared/schema";
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 // Tipo para el balance history
 interface BalancePoint {
@@ -181,6 +183,52 @@ export default function WalletPage() {
       transactionId: selectedTransaction.id,
       status: newStatus,
       paymentProof: newStatus === "paid" ? paymentProofText : undefined
+    });
+  };
+  
+  // Function to export transactions to Excel
+  const exportTransactions = () => {
+    if (!filteredTransactions || filteredTransactions.length === 0) {
+      toast({
+        title: "No Data to Export",
+        description: "There are no transactions to export.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Prepare data for export
+    const exportData = filteredTransactions.map((transaction: any) => {
+      return {
+        "ID": transaction.id,
+        "Type": transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1),
+        "Description": transaction.description || "",
+        "Reference": transaction.reference || "",
+        "Amount": transaction.amount > 0 ? `$${transaction.amount.toFixed(2)}` : `-$${Math.abs(transaction.amount).toFixed(2)}`,
+        "Status": transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1),
+        "Date": new Date(transaction.createdAt).toLocaleDateString(),
+        "Time": new Date(transaction.createdAt).toLocaleTimeString()
+      };
+    });
+    
+    // Create worksheet
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    
+    // Create workbook
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Transactions");
+    
+    // Generate Excel file
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const dataBlob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    
+    // Save the file
+    saveAs(dataBlob, `transaction_history_${new Date().toISOString().split('T')[0]}.xlsx`);
+    
+    toast({
+      title: "Export Successful",
+      description: "Transaction history has been exported to Excel.",
+      variant: "default"
     });
   };
   
@@ -578,7 +626,12 @@ export default function WalletPage() {
                 <CardTitle>Transaction History</CardTitle>
                 <CardDescription>Track all your wallet transactions</CardDescription>
               </div>
-              <Button variant="outline" size="sm" className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-2"
+                onClick={exportTransactions}
+              >
                 <Download className="h-4 w-4" />
                 Export
               </Button>
