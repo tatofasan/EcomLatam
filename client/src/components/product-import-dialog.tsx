@@ -66,17 +66,53 @@ export default function ProductImportDialog({ isOpen, onClose }: ProductImportDi
   // Mutation for bulk product import
   const importProductsMutation = useMutation({
     mutationFn: async (products: Omit<Product, 'id'>[]) => {
-      const res = await apiRequest('POST', '/api/products/bulk-import', { products });
-      return await res.json();
+      try {
+        console.log("Sending products to import:", products.length);
+        
+        // Usar fetch directamente para tener más control sobre la respuesta
+        const response = await fetch('/api/products/bulk-import', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ products }),
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Server response error:", errorText);
+          throw new Error(`Server responded with status ${response.status}: ${errorText}`);
+        }
+        
+        // Intentar parsear la respuesta como JSON
+        const text = await response.text();
+        console.log("Response text:", text);
+        
+        // Si la respuesta está vacía, devolver un objeto por defecto
+        if (!text.trim()) {
+          return { success: 0, message: "No response from server" };
+        }
+        
+        try {
+          return JSON.parse(text);
+        } catch (parseError) {
+          console.error("Error parsing JSON response:", parseError);
+          throw new Error(`Failed to parse server response: ${text.substring(0, 100)}...`);
+        }
+      } catch (error) {
+        console.error("Mutation error:", error);
+        throw error;
+      }
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/products'] });
       toast({
         title: 'Import successful',
-        description: `Successfully imported ${data.success} products.`,
+        description: `Successfully imported ${data.success || 0} products.`,
       });
     },
     onError: (error: Error) => {
+      console.error("Mutation error in handler:", error);
       toast({
         title: 'Import failed',
         description: `Failed to import products: ${error.message}`,

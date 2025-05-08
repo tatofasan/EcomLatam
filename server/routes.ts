@@ -175,10 +175,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bulk import products
   app.post("/api/products/bulk-import", requireAdmin, async (req, res) => {
     try {
+      // Registro de debugging para ver cómo llega la solicitud
+      console.log('Bulk import request received:', 
+                  typeof req.body, 
+                  req.body && typeof req.body === 'object' ? Object.keys(req.body) : 'No keys');
+      
       const { products } = req.body;
       
       if (!Array.isArray(products) || products.length === 0) {
-        return res.status(400).json({ message: "No products provided for import" });
+        const errorResponse = { message: "No products provided for import" };
+        console.log('Sending error response:', errorResponse);
+        return res.status(400).json(errorResponse);
       }
       
       console.log(`Attempting to import ${products.length} products`);
@@ -192,9 +199,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (parseResult.success) {
           validProducts.push(parseResult.data);
         } else {
+          // Simplified error format to avoid serialization issues
+          const formattedErrors = Object.entries(parseResult.error.format())
+            .filter(([key]) => key !== '_errors')
+            .map(([key, value]) => `${key}: ${(value as any)._errors?.join(', ') || 'Invalid'}`);
+          
           invalidProducts.push({
-            data: productData,
-            errors: parseResult.error.format()
+            data: {
+              name: productData.name || 'Unknown',
+              sku: productData.sku || 'Unknown'
+            },
+            errors: formattedErrors
           });
         }
       }
@@ -203,11 +218,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Only proceed if we have valid products
       if (validProducts.length === 0) {
-        return res.status(400).json({ 
+        const errorResponse = { 
           message: "None of the products were valid for import",
           invalidCount: invalidProducts.length,
-          errors: invalidProducts
-        });
+          errors: invalidProducts.map(p => `${p.data.name} (${p.data.sku}): ${p.errors.join(', ')}`)
+        };
+        console.log('Sending validation error response:', JSON.stringify(errorResponse).substring(0, 200) + '...');
+        return res.status(400).json(errorResponse);
       }
       
       // Import valid products
@@ -216,26 +233,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const productData of validProducts) {
         try {
           const product = await storage.createProduct(productData);
-          importedProducts.push(product);
+          // Only include essential product info to avoid large responses
+          importedProducts.push({
+            id: product.id,
+            name: product.name,
+            sku: product.sku
+          });
         } catch (error) {
           console.error("Error importing product:", error);
           invalidProducts.push({
-            data: productData,
-            errors: { _errors: [(error as Error).message] }
+            data: {
+              name: productData.name || 'Unknown',
+              sku: productData.sku || 'Unknown'
+            },
+            errors: [(error as Error).message]
           });
         }
       }
       
-      res.status(200).json({
+      // Crear una respuesta simplificada que sea más fácil de serializar
+      const response = {
         message: `Imported ${importedProducts.length} products successfully${invalidProducts.length > 0 ? `, ${invalidProducts.length} products failed validation` : ''}`,
         success: importedProducts.length,
         failed: invalidProducts.length,
-        importedProducts,
-        invalidProducts: invalidProducts.length > 0 ? invalidProducts : undefined
-      });
+        // Solo incluir IDs y nombres en lugar de los objetos completos
+        importedProducts: importedProducts.map(p => `${p.name} (ID: ${p.id})`),
+        // Simplificar los errores para evitar problemas de serialización
+        failedProducts: invalidProducts.length > 0 
+          ? invalidProducts.map(p => `${p.data.name} (${p.data.sku}): ${p.errors.join(', ')}`) 
+          : []
+      };
+      
+      console.log('Sending success response:', JSON.stringify(response).substring(0, 200) + '...');
+      
+      // Validar que la respuesta se puede serializar correctamente
+      const jsonString = JSON.stringify(response);
+      const parsedBack = JSON.parse(jsonString);
+      
+      // Enviar la respuesta simplificada
+      res.status(200).json(response);
     } catch (error) {
       console.error("Error in bulk import:", error);
-      res.status(500).json({ message: "Failed to process bulk import" });
+      const errorResponse = { 
+        message: "Failed to process bulk import", 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
+      console.log('Sending error response:', errorResponse);
+      res.status(500).json(errorResponse);
     }
   });
 
