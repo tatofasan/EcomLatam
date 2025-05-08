@@ -69,7 +69,13 @@ export default function ConnectionsPage() {
   const loadConnections = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/connections');
+      
+      // Si el usuario es administrador, cargamos todas las conexiones
+      // Si es usuario regular, solo cargamos sus conexiones
+      const isAdmin = user?.role === 'admin';
+      const endpoint = isAdmin ? '/api/connections/all' : '/api/connections';
+      
+      const response = await fetch(endpoint);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch connections: ${response.statusText}`);
@@ -241,6 +247,38 @@ export default function ConnectionsPage() {
       toast({
         title: "Error",
         description: "Failed to update connection. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Function to delete a connection
+  const deleteConnection = async (id: number) => {
+    if (!confirm("¿Estás seguro de que deseas eliminar esta conexión? Esta acción no se puede deshacer.")) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/connections/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to delete connection: ${response.statusText}`);
+      }
+      
+      // Reload connections
+      await loadConnections();
+      
+      toast({
+        title: "Conexión eliminada",
+        description: "La conexión ha sido eliminada exitosamente.",
+      });
+    } catch (err) {
+      console.error("Error deleting connection:", err);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la conexión. Por favor, intenta de nuevo.",
         variant: "destructive",
       });
     }

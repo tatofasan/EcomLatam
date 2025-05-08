@@ -742,10 +742,15 @@ export default function ProductDetailDialog({
           </Button>
           
           {mode === "view" ? (
-            <Button>
-              <ShoppingCart className="h-4 w-4 mr-2" />
-              Add to My Shop
-            </Button>
+            <>
+              {/* Solo mostrar el botón "Add to My Shop" para usuarios regulares (no admins) */}
+              {!isAdmin && (
+                <Button>
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  Add to My Shop
+                </Button>
+              )}
+            </>
           ) : (
             <Button onClick={handleSave}>
               <Save className="h-4 w-4 mr-2" />
