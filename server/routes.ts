@@ -171,6 +171,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to create product" });
     }
   });
+  
+  // Bulk import products
+  app.post("/api/products/bulk-import", requireAdmin, async (req, res) => {
+    try {
+      const { products } = req.body;
+      
+      if (!Array.isArray(products) || products.length === 0) {
+        return res.status(400).json({ message: "No products provided for import" });
+      }
+      
+      console.log(`Attempting to import ${products.length} products`);
+      
+      // Validate all products
+      const validProducts = [];
+      const invalidProducts = [];
+      
+      for (const productData of products) {
+        const parseResult = productSchema.safeParse(productData);
+        if (parseResult.success) {
+          validProducts.push(parseResult.data);
+        } else {
+          invalidProducts.push({
+            data: productData,
+            errors: parseResult.error.format()
+          });
+        }
+      }
+      
+      console.log(`Valid products: ${validProducts.length}, Invalid products: ${invalidProducts.length}`);
+      
+      // Only proceed if we have valid products
+      if (validProducts.length === 0) {
+        return res.status(400).json({ 
+          message: "None of the products were valid for import",
+          invalidCount: invalidProducts.length,
+          errors: invalidProducts
+        });
+      }
+      
+      // Import valid products
+      const importedProducts = [];
+      
+      for (const productData of validProducts) {
+        try {
+          const product = await storage.createProduct(productData);
+          importedProducts.push(product);
+        } catch (error) {
+          console.error("Error importing product:", error);
+          invalidProducts.push({
+            data: productData,
+            errors: { _errors: [(error as Error).message] }
+          });
+        }
+      }
+      
+      res.status(200).json({
+        message: `Imported ${importedProducts.length} products successfully${invalidProducts.length > 0 ? `, ${invalidProducts.length} products failed validation` : ''}`,
+        success: importedProducts.length,
+        failed: invalidProducts.length,
+        importedProducts,
+        invalidProducts: invalidProducts.length > 0 ? invalidProducts : undefined
+      });
+    } catch (error) {
+      console.error("Error in bulk import:", error);
+      res.status(500).json({ message: "Failed to process bulk import" });
+    }
+  });
 
   // Update a product
   app.put("/api/products/:id", async (req, res) => {

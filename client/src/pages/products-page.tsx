@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Search, Plus } from "lucide-react";
+import { Loader2, Search, Plus, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ProductFilter from "@/components/product-filter";
 import ProductCard from "@/components/product-card";
 import ProductDetailDialog from "@/components/product-detail-dialog";
+import ProductImportDialog from "@/components/product-import-dialog";
 import Pagination from "@/components/pagination";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { useAuth } from "@/hooks/use-auth";
@@ -24,6 +25,7 @@ export default function ProductsPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortOption, setSortOption] = useState("newest");
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -192,13 +194,23 @@ export default function ProductsPage() {
           
           {/* Admin Add Product Button */}
           {isAdmin && (
-            <Button 
-              onClick={handleCreateClick}
-              className="whitespace-nowrap"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Product
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                onClick={() => setImportDialogOpen(true)}
+                className="whitespace-nowrap"
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Import Products
+              </Button>
+              <Button 
+                onClick={handleCreateClick}
+                className="whitespace-nowrap"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Product
+              </Button>
+            </div>
           )}
         </div>
         
@@ -249,6 +261,12 @@ export default function ProductsPage() {
         mode={dialogMode}
         onSave={handleSaveProduct}
         isAdmin={isAdmin}
+      />
+
+      {/* Product Import Dialog */}
+      <ProductImportDialog
+        isOpen={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
       />
     </DashboardLayout>
   );
