@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
   User, 
   Mail, 
@@ -15,7 +16,9 @@ import {
   Building, 
   CreditCard, 
   Lock, 
-  Save
+  Save,
+  Upload,
+  Trash2
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +53,8 @@ export default function AccountPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -165,6 +170,111 @@ export default function AccountPage() {
       setIsSubmitting(false);
     }
   };
+  
+  // Handler for triggering the file input click
+  const handleUploadClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+  
+  // Handler for when a file is selected
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    
+    // Validate the file
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid file",
+        description: "Please select an image file.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Check file size (limit to 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select an image smaller than 5MB.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsUploading(true);
+    
+    try {
+      // Create form data for the file upload
+      const formData = new FormData();
+      formData.append('avatar', file);
+      
+      // Upload the file
+      const response = await fetch('/api/user/avatar', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to upload avatar");
+      }
+      
+      // Success, refresh user data
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      
+      toast({
+        title: "Avatar updated",
+        description: "Your profile photo has been updated successfully.",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "There was a problem uploading your photo.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+  
+  // Handler for removing the avatar
+  const handleRemoveAvatar = async () => {
+    if (!user) return;
+    
+    try {
+      const response = await apiRequest("DELETE", '/api/user/avatar', undefined);
+      
+      if (response.ok) {
+        // Success, refresh user data
+        queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+        
+        toast({
+          title: "Avatar removed",
+          description: "Your profile photo has been removed.",
+          variant: "default"
+        });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to remove avatar");
+      }
+    } catch (error) {
+      console.error("Error removing avatar:", error);
+      toast({
+        title: "Failed to remove avatar",
+        description: error instanceof Error ? error.message : "There was a problem removing your photo.",
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <DashboardLayout activeItem="account">
@@ -190,21 +300,49 @@ export default function AccountPage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="flex items-center">
-                    <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center mr-6">
-                      <User className="h-12 w-12 text-gray-500" />
-                    </div>
+                    <Avatar className="w-24 h-24 mr-6">
+                      {user?.settings?.avatar ? (
+                        <AvatarImage src={user.settings.avatar} alt={user.fullName || user.username} />
+                      ) : null}
+                      <AvatarFallback className="bg-gray-200">
+                        <User className="h-12 w-12 text-gray-500" />
+                      </AvatarFallback>
+                    </Avatar>
                     <div>
                       <h3 className="font-medium">Profile Photo</h3>
                       <p className="text-sm text-gray-500 mt-1 mb-2">
                         This will be displayed on your profile and throughout the platform.
                       </p>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
-                          Upload Photo
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          type="button"
+                          onClick={handleUploadClick}
+                          disabled={isUploading}
+                          className="flex items-center gap-1"
+                        >
+                          <Upload className="h-4 w-4" />
+                          {isUploading ? 'Uploading...' : 'Upload Photo'}
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          type="button" 
+                          onClick={handleRemoveAvatar}
+                          disabled={isUploading || !user?.settings?.avatar}
+                          className="flex items-center gap-1"
+                        >
+                          <Trash2 className="h-4 w-4" />
                           Remove
                         </Button>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileChange}
+                          className="hidden"
+                        />
                       </div>
                     </div>
                   </div>
