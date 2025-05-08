@@ -122,7 +122,7 @@ export default function WalletPage() {
   
   // Create withdrawal mutation
   const withdrawMutation = useMutation({
-    mutationFn: (data: { amount: number, walletAddress: string }) => {
+    mutationFn: (data: { amount: number, walletAddress: string, walletId?: string, walletName?: string }) => {
       return apiRequest('POST', '/api/wallet/withdraw', data);
     },
     onSuccess: () => {
@@ -444,7 +444,9 @@ export default function WalletPage() {
     
     withdrawMutation.mutate({
       amount: Number(withdrawAmount),
-      walletAddress: selectedWallet.address
+      walletAddress: selectedWallet.address,
+      walletId: selectedWallet.id,
+      walletName: selectedWallet.name
     });
   };
   
