@@ -19,7 +19,7 @@ export default function VerifyEmailPage() {
 
     if (!token) {
       setStatus("error");
-      setMessage("No se ha proporcionado un token de verificación válido.");
+      setMessage("No valid verification token provided.");
       return;
     }
 
@@ -31,15 +31,15 @@ export default function VerifyEmailPage() {
 
         if (response.ok && data.success) {
           setStatus("success");
-          setMessage(data.message || "Tu email ha sido verificado correctamente.");
+          setMessage(data.message || "Your email has been successfully verified.");
         } else {
           setStatus("error");
-          setMessage(data.message || "Ha ocurrido un error al verificar tu email.");
+          setMessage(data.message || "An error occurred while verifying your email.");
         }
       } catch (error) {
-        console.error("Error al verificar email:", error);
+        console.error("Error verifying email:", error);
         setStatus("error");
-        setMessage("Ha ocurrido un error al comunicarse con el servidor.");
+        setMessage("An error occurred while communicating with the server.");
       }
     }
 
@@ -51,7 +51,7 @@ export default function VerifyEmailPage() {
   };
 
   const handleResendEmail = async () => {
-    const email = prompt("Por favor ingresa tu dirección de correo electrónico:");
+    const email = prompt("Please enter your email address:");
     
     if (!email) return;
     
@@ -67,15 +67,15 @@ export default function VerifyEmailPage() {
       const data = await response.json();
       
       toast({
-        title: data.success ? "Solicitud procesada" : "Error",
+        title: data.success ? "Request Processed" : "Error",
         description: data.message,
         variant: data.success ? "default" : "destructive"
       });
     } catch (error) {
-      console.error("Error al reenviar verificación:", error);
+      console.error("Error resending verification:", error);
       toast({
         title: "Error",
-        description: "Ha ocurrido un error al procesar tu solicitud.",
+        description: "An error occurred while processing your request.",
         variant: "destructive"
       });
     }
