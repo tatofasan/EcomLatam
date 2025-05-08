@@ -562,8 +562,16 @@ export default function WalletPage() {
     updateWalletsMutation.mutate(updatedWallets);
   };
   
-  // Calculate current balance from balanceData or balance history
+  // Calculate current balance from balanceData with fallback for regular users
+  // This ensures we're always displaying the user's own balance
   const currentBalance = balanceData?.balance ?? 0;
+  
+  // Reload balance when user changes to ensure we always have fresh data
+  useEffect(() => {
+    if (user) {
+      queryClient.invalidateQueries({ queryKey: ['/api/wallet/balance'] });
+    }
+  }, [user]);
 
   return (
     <DashboardLayout activeItem="wallet">
