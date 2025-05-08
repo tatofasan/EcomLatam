@@ -348,21 +348,19 @@ export class DatabaseStorage implements IStorage {
         eq(orders.status, "delivered")
       ));
     
-    // Obtener la suma de retiros (salidas)
-    const [withdrawalsResult] = await db
+    // Obtener la suma de todas las transacciones (bonos, descuentos y retiros)
+    const [transactionsResult] = await db
       .select({ total: sql`SUM(amount)` })
       .from(transactions)
-      .where(and(
-        eq(transactions.userId, userId),
-        eq(transactions.type, "withdrawal")
-      ));
+      .where(eq(transactions.userId, userId));
       
-    // Calcular el balance total (ingresos - retiros)
+    // Calcular el balance total (pedidos entregados + todas las transacciones)
     const ordersTotal = deliveredOrdersResult.total ? Number(deliveredOrdersResult.total) : 0;
-    const withdrawalsTotal = withdrawalsResult.total ? Number(withdrawalsResult.total) : 0;
+    const transactionsTotal = transactionsResult.total ? Number(transactionsResult.total) : 0;
     
-    // El balance es la suma de pedidos entregados menos los retiros
-    return ordersTotal + withdrawalsTotal; // withdrawalsTotal ya es negativo
+    // El balance es la suma de pedidos entregados + todas las transacciones
+    // (las transacciones de withdrawal tienen monto negativo, los bonus positivo, los descuentos negativo)
+    return ordersTotal + transactionsTotal;
   }
 
   // Function to seed demo products if needed
@@ -759,7 +757,13 @@ export class DatabaseStorage implements IStorage {
         }
       } else {
         // Si no hay órdenes, crear transacciones demo básicas
-        const demoTransactions = [
+        const demoTransactions: Array<{
+          type: "withdrawal" | "bonus" | "discount";
+          amount: number;
+          status: "pending" | "processing" | "paid" | "failed" | "cancelled";
+          description: string;
+          reference: string;
+        }> = [
           {
             type: "bonus",
             amount: 500.00,
