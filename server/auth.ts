@@ -22,13 +22,6 @@ export async function hashPassword(password: string) {
 }
 
 async function comparePasswords(supplied: string, stored: string) {
-  // Check if the password is stored in plain text (no dot separator)
-  if (!stored.includes(".")) {
-    // For plain text passwords, just compare them directly
-    return supplied === stored;
-  }
-  
-  // For hashed passwords, follow the normal procedure
   const [hashed, salt] = stored.split(".");
   const hashedBuf = Buffer.from(hashed, "hex");
   const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
