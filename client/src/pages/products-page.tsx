@@ -30,7 +30,8 @@ export default function ProductsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.role === "moderator";
+  const canCreateProducts = user?.role === "admin" || user?.role === "moderator"; // Finance users can't create products
   
   const handleProductClick = (product: Product) => {
     setSelectedProduct(product);
@@ -192,8 +193,8 @@ export default function ProductsPage() {
             onSortChange={setSortOption}
           />
           
-          {/* Admin Add Product Button */}
-          {isAdmin && (
+          {/* Product management buttons - hidden for finance users */}
+          {canCreateProducts && (
             <div className="flex flex-col gap-2">
               <Button 
                 onClick={handleCreateClick}
@@ -246,9 +247,11 @@ export default function ProductsPage() {
         ) : (
           <div className="flex flex-col items-center justify-center h-64">
             <p className="text-lg text-gray-500">No products found</p>
-            <Button variant="outline" className="mt-4">
-              Add Your First Product
-            </Button>
+            {canCreateProducts && (
+              <Button variant="outline" className="mt-4" onClick={handleCreateClick}>
+                Add Your First Product
+              </Button>
+            )}
           </div>
         )}
       </div>

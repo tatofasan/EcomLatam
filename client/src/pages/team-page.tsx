@@ -377,7 +377,7 @@ export default function TeamPage() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="admin" disabled={user?.role === 'finance'}>Admin</SelectItem>
                               <SelectItem value="moderator">Moderator</SelectItem>
                               <SelectItem value="finance">Finance</SelectItem>
                               <SelectItem value="user">User</SelectItem>
@@ -499,17 +499,23 @@ export default function TeamPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => {
-                              setSelectedUser(member);
-                              setIsEditDialogOpen(true);
-                            }}>
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                setSelectedUser(member);
+                                setIsEditDialogOpen(true);
+                              }}
+                              disabled={user?.role === 'finance' && member.role === 'admin'}
+                            >
                               <User className="mr-2 h-4 w-4" />
                               <span>Edit Profile</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => {
-                              setSelectedUser(member);
-                              setIsResetPasswordDialogOpen(true);
-                            }}>
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                setSelectedUser(member);
+                                setIsResetPasswordDialogOpen(true);
+                              }}
+                              disabled={user?.role === 'finance' && member.role === 'admin'}
+                            >
                               <Lock className="mr-2 h-4 w-4" />
                               <span>Reset Password</span>
                             </DropdownMenuItem>
@@ -519,6 +525,7 @@ export default function TeamPage() {
                                 setSelectedUser(member);
                                 setIsDeactivateDialogOpen(true);
                               }}
+                              disabled={user?.role === 'finance' && member.role === 'admin'}
                             >
                               {member.status === "active" ? (
                                 <><UserX className="mr-2 h-4 w-4" /><span>Deactivate</span></>
@@ -604,7 +611,7 @@ export default function TeamPage() {
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="admin" disabled={user?.role === 'finance'}>Admin</SelectItem>
                   <SelectItem value="moderator">Moderator</SelectItem>
                   <SelectItem value="finance">Finance</SelectItem>
                   <SelectItem value="user">User</SelectItem>
