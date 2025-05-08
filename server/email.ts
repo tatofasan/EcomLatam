@@ -1,37 +1,18 @@
 import nodemailer from 'nodemailer';
 import path from 'path';
 
-// Crear un transporter para enviar correos electrónicos
-// Nota: Para entornos de producción, necesitarás configurar un servicio SMTP real
+// Configuración del transporter para Gmail Suite
 let transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.ethereal.email', // Para pruebas, usamos Ethereal Email si no hay configuración
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_SECURE === 'true',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true, // true para puerto 465, false para otros puertos
   auth: {
-    user: process.env.SMTP_USER || '',
-    pass: process.env.SMTP_PASS || '',
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
   },
 });
 
-// Si estamos en desarrollo, configuramos una cuenta de prueba de Ethereal
-if (process.env.NODE_ENV !== 'production' && !process.env.SMTP_USER) {
-  console.log('Configurando cuenta de prueba para email...');
-  // Usamos la cuenta de Ethereal que ya fue creada y mostrada en consola
-  const etherealUser = 'riduuu24ti3jhukx@ethereal.email';
-  const etherealPass = 'j64MHUY7XsFdgGSC4n';
-  
-  transporter = nodemailer.createTransport({
-    host: 'smtp.ethereal.email',
-    port: 587,
-    secure: false,
-    auth: {
-      user: etherealUser,
-      pass: etherealPass,
-    },
-  });
-  
-  console.log('Servicio de email configurado con cuenta Ethereal para pruebas');
-}
+console.log('Servicio de email configurado con cuenta Gmail Suite');
 
 interface SendEmailOptions {
   to: string;
@@ -44,7 +25,7 @@ interface SendEmailOptions {
 export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
   try {
     const info = await transporter.sendMail({
-      from: process.env.EMAIL_FROM || '"EcomDrop" <noreply@ecomdrop.com>',
+      from: process.env.SMTP_USER,
       to: options.to,
       subject: options.subject,
       text: options.text,
@@ -67,7 +48,12 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
 
 // Función para enviar correo de verificación
 export async function sendVerificationEmail(email: string, token: string): Promise<boolean> {
-  const verificationUrl = `${process.env.APP_URL || 'http://localhost:5000'}/verify-email?token=${token}`;
+  // Construir la URL usando el host de Replit si está disponible
+  const baseUrl = process.env.REPL_SLUG 
+    ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` 
+    : (process.env.APP_URL || 'http://localhost:5000');
+  
+  const verificationUrl = `${baseUrl}/verify-email?token=${token}`;
   
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
