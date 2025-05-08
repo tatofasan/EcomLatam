@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -8,7 +8,6 @@ import {
   Loader2, 
   CalendarRange,
   Package2,
-  RefreshCw,
   Database,
   ChevronUp,
   ChevronDown
@@ -66,7 +65,6 @@ interface OrderForStats {
 export default function OrderStatisticsPage() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [statistics, setStatistics] = useState<OrderStatsByDay[]>([]);
   
   // Pagination
@@ -103,40 +101,7 @@ export default function OrderStatisticsPage() {
     return total > 0 ? (delivered / total * 100).toFixed(2) : "0.00";
   }, [calcTotalsByStatus]);
 
-  // Mutation to regenerate statistics data
-  const regenerateDataMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch('/api/seed/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Error regenerating data');
-      }
-      
-      return await response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Data regenerated successfully",
-        description: "New order statistics data has been created",
-        variant: "default",
-      });
-      // Refresh the data
-      queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error regenerating data",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  });
+  // Get user role - no data regeneration in production
 
   // Get user role
   const { user } = useAuth();
@@ -317,38 +282,22 @@ export default function OrderStatisticsPage() {
           </div>
         </div>
         
-        {isLoading || regenerateDataMutation.isPending ? (
+        {isLoading ? (
           <div className="flex justify-center items-center h-64">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
           <>
-            {/* Information and button to regenerate data */}
+            {/* Title area */}
             <div className="mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center mb-4">
+              <div className="grid grid-cols-1 gap-4 items-center mb-4">
                 <Alert>
                   <Database className="h-4 w-4" />
                   <AlertTitle>Statistics Visualization</AlertTitle>
                   <AlertDescription className="text-xs md:text-sm">
-                    This page shows order statistics over time. Generate test data for better visualization.
+                    This page shows order statistics over time based on your actual order data.
                   </AlertDescription>
                 </Alert>
-                
-                <div className="flex justify-center md:justify-end">
-                  <Button 
-                    variant="outline" 
-                    className="flex items-center gap-1 w-full md:w-auto"
-                    onClick={() => regenerateDataMutation.mutate()}
-                    disabled={regenerateDataMutation.isPending}
-                  >
-                    {regenerateDataMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4 mr-1" />
-                    )}
-                    Regenerate Test Data
-                  </Button>
-                </div>
               </div>
             </div>
             
