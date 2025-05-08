@@ -45,6 +45,11 @@ export default function TeamPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
+  const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<TeamMember | null>(null);
+  const [passwordReset, setPasswordReset] = useState<{password: string; confirmPassword: string} | null>(null);
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   
@@ -99,6 +104,78 @@ export default function TeamPage() {
     onError: (error: Error) => {
       toast({ 
         title: "Error adding team member",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Update user mutation
+  const updateUserMutation = useMutation({
+    mutationFn: async (data: { id: number, userData: Partial<UserFormValues> }) => {
+      const res = await apiRequest("PATCH", `/api/users/${data.id}`, data.userData);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ 
+        title: "Success",
+        description: "User updated successfully"
+      });
+      setIsEditDialogOpen(false);
+      setSelectedUser(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Error updating user",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Reset password mutation
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (data: { id: number, password: string }) => {
+      const res = await apiRequest("PATCH", `/api/users/${data.id}/reset-password`, { password: data.password });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ 
+        title: "Success",
+        description: "Password reset successfully"
+      });
+      setIsResetPasswordDialogOpen(false);
+      setSelectedUser(null);
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Error resetting password",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+  
+  // Deactivate/Activate user mutation
+  const toggleUserStatusMutation = useMutation({
+    mutationFn: async (data: { id: number, status: 'active' | 'inactive' }) => {
+      const res = await apiRequest("PATCH", `/api/users/${data.id}`, { status: data.status });
+      return res.json();
+    },
+    onSuccess: () => {
+      const newStatus = selectedUser?.status === 'active' ? 'inactive' : 'active';
+      toast({ 
+        title: "Success",
+        description: `User ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`
+      });
+      setIsDeactivateDialogOpen(false);
+      setSelectedUser(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: "Error updating user status",
         description: error.message,
         variant: "destructive"
       });
@@ -363,16 +440,32 @@ export default function TeamPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              setSelectedUser(member);
+                              setIsEditDialogOpen(true);
+                            }}>
                               <User className="mr-2 h-4 w-4" />
                               <span>Edit Profile</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              setSelectedUser(member);
+                              setIsResetPasswordDialogOpen(true);
+                            }}>
                               <Lock className="mr-2 h-4 w-4" />
                               <span>Reset Password</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-600">
-                              <span>Deactivate</span>
+                            <DropdownMenuItem 
+                              className={member.status === "active" ? "text-red-600" : "text-green-600"}
+                              onClick={() => {
+                                setSelectedUser(member);
+                                setIsDeactivateDialogOpen(true);
+                              }}
+                            >
+                              {member.status === "active" ? (
+                                <><UserX className="mr-2 h-4 w-4" /><span>Deactivate</span></>
+                              ) : (
+                                <><UserCheck className="mr-2 h-4 w-4" /><span>Activate</span></>
+                              )}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -385,6 +478,267 @@ export default function TeamPage() {
           </CardContent>
         </Card>
       </div>
+      
+      {/* Edit Profile Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+            <DialogDescription>
+              Update user information for {selectedUser?.username}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-fullname" className="text-right">
+                Full Name
+              </Label>
+              <Input
+                id="edit-fullname"
+                className="col-span-3"
+                defaultValue={selectedUser?.fullName || ""}
+                onChange={(e) => {
+                  if (selectedUser) {
+                    setSelectedUser({
+                      ...selectedUser,
+                      fullName: e.target.value
+                    });
+                  }
+                }}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-email" className="text-right">
+                Email
+              </Label>
+              <Input
+                id="edit-email"
+                type="email"
+                className="col-span-3"
+                defaultValue={selectedUser?.email || ""}
+                onChange={(e) => {
+                  if (selectedUser) {
+                    setSelectedUser({
+                      ...selectedUser,
+                      email: e.target.value
+                    });
+                  }
+                }}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-role" className="text-right">
+                Role
+              </Label>
+              <Select 
+                defaultValue={selectedUser?.role || "user"}
+                onValueChange={(value) => {
+                  if (selectedUser) {
+                    setSelectedUser({
+                      ...selectedUser,
+                      role: value
+                    });
+                  }
+                }}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="moderator">Moderator</SelectItem>
+                  <SelectItem value="finance">Finance</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsEditDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                if (selectedUser) {
+                  updateUserMutation.mutate({
+                    id: selectedUser.id,
+                    userData: {
+                      fullName: selectedUser.fullName,
+                      email: selectedUser.email,
+                      role: selectedUser.role
+                    }
+                  });
+                }
+              }} 
+              disabled={updateUserMutation.isPending}
+            >
+              {updateUserMutation.isPending ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Saving...
+                </span>
+              ) : (
+                'Save Changes'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={isResetPasswordDialogOpen} onOpenChange={setIsResetPasswordDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+            <DialogDescription>
+              Set a new password for {selectedUser?.username}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="new-password" className="text-right">
+                New Password
+              </Label>
+              <Input
+                id="new-password"
+                type="password"
+                className="col-span-3"
+                value={passwordReset?.password || ""}
+                onChange={(e) => {
+                  setPasswordReset({
+                    password: e.target.value,
+                    confirmPassword: passwordReset?.confirmPassword || ""
+                  });
+                }}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="confirm-password" className="text-right">
+                Confirm
+              </Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                className="col-span-3"
+                value={passwordReset?.confirmPassword || ""}
+                onChange={(e) => {
+                  setPasswordReset({
+                    password: passwordReset?.password || "",
+                    confirmPassword: e.target.value
+                  });
+                }}
+              />
+            </div>
+            {passwordReset?.password !== passwordReset?.confirmPassword && 
+              passwordReset?.confirmPassword && (
+              <p className="text-sm text-red-500 text-right">
+                Passwords don't match
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsResetPasswordDialogOpen(false);
+                setPasswordReset(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                if (selectedUser && passwordReset?.password && 
+                    passwordReset.password === passwordReset.confirmPassword) {
+                  resetPasswordMutation.mutate({
+                    id: selectedUser.id,
+                    password: passwordReset.password
+                  });
+                }
+              }} 
+              disabled={resetPasswordMutation.isPending || 
+                        !passwordReset?.password || 
+                        passwordReset.password !== passwordReset.confirmPassword}
+            >
+              {resetPasswordMutation.isPending ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Resetting...
+                </span>
+              ) : (
+                'Reset Password'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deactivate User Dialog */}
+      <Dialog open={isDeactivateDialogOpen} onOpenChange={setIsDeactivateDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedUser?.status === 'active' ? 'Deactivate' : 'Activate'} User
+            </DialogTitle>
+            <DialogDescription>
+              {selectedUser?.status === 'active' 
+                ? 'This will prevent the user from logging in.' 
+                : 'This will allow the user to log in again.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="mb-4">
+              Are you sure you want to {selectedUser?.status === 'active' ? 'deactivate' : 'activate'} {selectedUser?.username}?
+            </p>
+            {selectedUser?.status === 'active' && (
+              <p className="text-sm text-muted-foreground">
+                The user will not be able to access the system until reactivated.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsDeactivateDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant={selectedUser?.status === 'active' ? "destructive" : "default"}
+              onClick={() => {
+                if (selectedUser) {
+                  toggleUserStatusMutation.mutate({
+                    id: selectedUser.id,
+                    status: selectedUser.status === 'active' ? 'inactive' : 'active'
+                  });
+                }
+              }} 
+              disabled={toggleUserStatusMutation.isPending}
+            >
+              {toggleUserStatusMutation.isPending ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {selectedUser?.status === 'active' ? 'Deactivating...' : 'Activating...'}
+                </span>
+              ) : (
+                selectedUser?.status === 'active' ? 'Deactivate User' : 'Activate User'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
