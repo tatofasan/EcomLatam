@@ -712,7 +712,24 @@ export default function WalletPage() {
                         <td className="py-4 px-4">
                           {getTransactionBadge(transaction.type)}
                         </td>
-                        <td className="py-4 px-4 text-gray-500">{transaction.reference}</td>
+                        <td className="py-4 px-4 text-gray-500">
+                          {transaction.status === "paid" && 
+                           transaction.type === "withdrawal" && 
+                           transaction.settings?.paymentProof ? (
+                            <a 
+                              href={transaction.settings.paymentProof}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center text-blue-600 hover:underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              <span className="truncate">View on Tronscan</span>
+                            </a>
+                          ) : (
+                            transaction.reference
+                          )}
+                        </td>
                         <td className="py-4 px-4">
                           {getStatusBadge(transaction.status)}
                         </td>
