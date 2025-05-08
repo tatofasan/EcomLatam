@@ -566,6 +566,15 @@ export default function WalletPage() {
   // This ensures we're always displaying the user's own balance
   const currentBalance = balanceData?.balance ?? 0;
   
+  // Calculate total pending withdrawals
+  const pendingWithdrawals = useMemo(() => {
+    if (!transactions || !Array.isArray(transactions)) return 0;
+    
+    return transactions
+      .filter((tx: any) => tx.type === 'withdrawal' && (tx.status === 'pending' || tx.status === 'processing'))
+      .reduce((sum: number, tx: any) => sum + Math.abs(tx.amount), 0);
+  }, [transactions]);
+  
   // Reload balance when user changes to ensure we always have fresh data
   useEffect(() => {
     if (user) {
@@ -751,15 +760,23 @@ export default function WalletPage() {
             <CardFooter className="border-t pt-4 flex justify-between">
               {/* Only show withdraw button for regular users */}
               {user?.role !== "admin" && (
-                <Button 
-                  variant="outline" 
-                  className="flex items-center gap-2"
-                  onClick={() => setWithdrawDialogOpen(true)}
-                  disabled={wallets.length === 0 || currentBalance <= 0}
-                >
-                  <ArrowUp className="h-4 w-4" />
-                  Withdraw
-                </Button>
+                <div className="flex flex-col">
+                  <Button 
+                    variant="outline" 
+                    className="flex items-center gap-2"
+                    onClick={() => setWithdrawDialogOpen(true)}
+                    disabled={wallets.length === 0 || currentBalance <= 0}
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                    Withdraw
+                  </Button>
+                  
+                  {pendingWithdrawals > 0 && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      Pending withdrawals: ${pendingWithdrawals.toFixed(2)}
+                    </p>
+                  )}
+                </div>
               )}
               
               {/* Display info message if no wallet address is set */}
