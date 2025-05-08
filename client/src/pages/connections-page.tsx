@@ -538,7 +538,7 @@ export default function ConnectionsPage() {
             <div className="flex gap-2 items-start">
               <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
               <div>
-                <h3 className="font-medium text-destructive">Error cargando las conexiones</h3>
+                <h3 className="font-medium text-destructive">Error loading connections</h3>
                 <p className="text-destructive/80 text-sm">{error}</p>
                 <Button 
                   variant="outline" 
@@ -546,7 +546,7 @@ export default function ConnectionsPage() {
                   className="mt-2"
                   onClick={() => loadConnections()}
                 >
-                  Intentar de nuevo
+                  Try again
                 </Button>
               </div>
             </div>
@@ -575,9 +575,9 @@ export default function ConnectionsPage() {
                       <CardTitle>{connection.name}</CardTitle>
                       <CardDescription className="mt-1">
                         Last sync: {connection.lastSync}
-                        {/* Mostrar el nombre de usuario para administradores */}
+                        {/* Display username for administrators */}
                         {user?.role === 'admin' && (
-                          <> • Usuario: {connection.userName || `User-${connection.userId}`}</>
+                          <> • User: {connection.userName || `User-${connection.userId}`}</>
                         )}
                       </CardDescription>
                     </div>
@@ -608,7 +608,7 @@ export default function ConnectionsPage() {
                   </div>
                 </CardContent>
                 <CardFooter className="flex justify-between">
-                  {/* Mostrar botón para desactivar/activar la conexión */}
+                  {/* Show button to activate/deactivate the connection */}
                   <Button 
                     variant="outline" 
                     size="sm"
@@ -621,7 +621,7 @@ export default function ConnectionsPage() {
                     {connection.status === "active" ? "Deactivate" : "Activate"}
                   </Button>
                   
-                  {/* Mostrar el botón de sincronización o borrado según el rol */}
+                  {/* Show synchronization or delete button based on user role */}
                   {user?.role === 'admin' ? (
                     <Button 
                       variant="outline"
@@ -649,23 +649,23 @@ export default function ConnectionsPage() {
         )}
       </div>
       
-      {/* AlertDialog para confirmar la eliminación de conexiones */}
+      {/* AlertDialog to confirm connection deletion */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. Al eliminar esta conexión, 
-              se perderá la sincronización de todos los productos y pedidos asociados.
+              This action cannot be undone. Deleting this connection will
+              lose the synchronization of all associated products and orders.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={deleteConnection}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Eliminar
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
