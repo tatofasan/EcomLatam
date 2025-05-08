@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,29 +15,55 @@ import {
   Building, 
   CreditCard, 
   Lock, 
-  Bell, 
-  Globe,
-  Save,
-  Clock
+  Save
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+// Define validation schemas for forms
+const profileSchema = z.object({
+  fullName: z.string().min(1, "Full name is required"),
+  email: z.string().email("Invalid email address").optional(),
+  username: z.string().min(1, "Username is required"),
+  phone: z.string().optional(),
+  company: z.string().optional(),
+});
+
+const passwordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(1, "Please confirm your password"),
+}).refine(data => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+type ProfileFormValues = z.infer<typeof profileSchema>;
+type PasswordFormValues = z.infer<typeof passwordSchema>;
 
 export default function AccountPage() {
   const { user } = useAuth();
-  
-  const profileForm = useForm({
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const profileForm = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileSchema),
     defaultValues: {
       fullName: user?.fullName || "",
       email: user?.email || "",
       username: user?.username || "",
-      phone: "",
-      company: ""
+      phone: user?.settings?.phone || "",
+      company: user?.settings?.company || ""
     }
   });
 
-  const passwordForm = useForm({
+  const passwordForm = useForm<PasswordFormValues>({
+    resolver: zodResolver(passwordSchema),
     defaultValues: {
       currentPassword: "",
       newPassword: "",
@@ -45,14 +71,101 @@ export default function AccountPage() {
     }
   });
 
-  const onProfileSubmit = (data: any) => {
-    console.log("Profile data", data);
-    // Here you would update the user profile
+  // Update form when user data changes
+  useEffect(() => {
+    if (user) {
+      profileForm.reset({
+        fullName: user.fullName || "",
+        email: user.email || "",
+        username: user.username || "",
+        phone: user.settings?.phone || "",
+        company: user.settings?.company || ""
+      });
+    }
+  }, [user, profileForm]);
+
+  const onProfileSubmit = async (data: ProfileFormValues) => {
+    if (!user) return;
+    
+    setIsSubmitting(true);
+    try {
+      // Create settings object with the updated values
+      const settings = {
+        ...(user.settings || {}),
+        phone: data.phone,
+        company: data.company
+      };
+
+      // Only update fields that can be modified (not username or email)
+      const userData = {
+        fullName: data.fullName,
+        settings
+      };
+
+      const response = await apiRequest(`/api/users/${user.id}`, {
+        method: "PATCH",
+        body: JSON.stringify(userData)
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Profile updated",
+          description: "Your profile has been successfully updated.",
+          variant: "default"
+        });
+      } else {
+        throw new Error("Failed to update profile");
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast({
+        title: "Update failed",
+        description: "There was a problem updating your profile.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const onPasswordSubmit = (data: any) => {
-    console.log("Password data", data);
-    // Here you would update the user password
+  const onPasswordSubmit = async (data: PasswordFormValues) => {
+    if (!user) return;
+    
+    setIsSubmitting(true);
+    try {
+      const response = await apiRequest(`/api/users/${user.id}/change-password`, {
+        method: "POST",
+        body: JSON.stringify({
+          currentPassword: data.currentPassword,
+          newPassword: data.newPassword
+        })
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Password updated",
+          description: "Your password has been successfully changed.",
+          variant: "default"
+        });
+        passwordForm.reset({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: ""
+        });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update password");
+      }
+    } catch (error) {
+      console.error("Error updating password:", error);
+      toast({
+        title: "Update failed",
+        description: error instanceof Error ? error.message : "There was a problem updating your password.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -64,10 +177,9 @@ export default function AccountPage() {
         </div>
         
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
-            <TabsTrigger value="preferences">Preferences</TabsTrigger>
           </TabsList>
           
           {/* Profile Tab */}
@@ -256,104 +368,6 @@ export default function AccountPage() {
                     Add Payment Method
                   </Button>
                 </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-          
-          {/* Preferences Tab */}
-          <TabsContent value="preferences">
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Notifications</CardTitle>
-                  <CardDescription>Manage your notification preferences.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <Bell className="h-5 w-5 text-gray-500" />
-                        <div>
-                          <p className="font-medium">Email Notifications</p>
-                          <p className="text-sm text-gray-500">Receive order updates via email</p>
-                        </div>
-                      </div>
-                      <Switch />
-                    </div>
-                    <Separator />
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <Bell className="h-5 w-5 text-gray-500" />
-                        <div>
-                          <p className="font-medium">Product Updates</p>
-                          <p className="text-sm text-gray-500">Get notified about new products</p>
-                        </div>
-                      </div>
-                      <Switch defaultChecked />
-                    </div>
-                    <Separator />
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <Bell className="h-5 w-5 text-gray-500" />
-                        <div>
-                          <p className="font-medium">Marketing Emails</p>
-                          <p className="text-sm text-gray-500">Receive promotional emails</p>
-                        </div>
-                      </div>
-                      <Switch />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Regional Settings</CardTitle>
-                  <CardDescription>Configure your regional preferences.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="language">
-                        <div className="flex items-center gap-2">
-                          <Globe className="h-4 w-4 text-gray-500" />
-                          Language
-                        </div>
-                      </Label>
-                      <Select defaultValue="en">
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select Language" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="en">English</SelectItem>
-                          <SelectItem value="es">Español</SelectItem>
-                          <SelectItem value="pt">Português</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="timezone">
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-gray-500" />
-                          Time Zone
-                        </div>
-                      </Label>
-                      <Select defaultValue="utc-3">
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select Time Zone" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="utc-3">Argentina (UTC-3)</SelectItem>
-                          <SelectItem value="utc-5">Eastern Time (UTC-5)</SelectItem>
-                          <SelectItem value="utc+0">Greenwich Mean Time (UTC+0)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button className="ml-auto">Save Preferences</Button>
-                </CardFooter>
               </Card>
             </div>
           </TabsContent>
