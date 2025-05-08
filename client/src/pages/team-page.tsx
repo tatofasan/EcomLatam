@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import { insertUserSchema } from "@shared/schema";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 // Form validation schema
 const userFormSchema = insertUserSchema.extend({
@@ -45,6 +46,19 @@ export default function TeamPage() {
   const { toast } = useToast();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+  
+  // Si el usuario no es administrador o moderador, redirigir al dashboard
+  React.useEffect(() => {
+    if (user && user.role !== 'admin' && user.role !== 'moderator') {
+      toast({
+        title: "Acceso denegado",
+        description: "No tienes permisos para acceder a esta página",
+        variant: "destructive"
+      });
+      setLocation('/');
+    }
+  }, [user, setLocation, toast]);
   
   // Fetch team members
   const { data: teamMembers = [], isLoading } = useQuery<TeamMember[]>({
@@ -68,6 +82,7 @@ export default function TeamPage() {
   // Add member mutation
   const addMemberMutation = useMutation({
     mutationFn: async (values: UserFormValues) => {
+      // Eliminar el campo confirmPassword que no debe enviarse al servidor
       const { confirmPassword, ...userData } = values;
       const res = await apiRequest("POST", "/api/users", userData);
       return res.json();
@@ -92,8 +107,7 @@ export default function TeamPage() {
   
   // Handle form submission
   const onSubmit = (values: UserFormValues) => {
-    const { confirmPassword, ...userData } = values;
-    addMemberMutation.mutate(userData);
+    addMemberMutation.mutate(values);
   };
   
   const getRoleBadge = (role: string) => {

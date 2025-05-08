@@ -124,12 +124,15 @@ export default function SidebarNav({
       icon: <Wallet className="h-5 w-5" />,
       key: "wallet"
     },
-    {
-      title: "Team",
-      href: "/team",
-      icon: <Users className="h-5 w-5" />,
-      key: "team"
-    },
+    // Only show Team management for admin users
+    ...(user?.role === 'admin' || user?.role === 'moderator' ? [
+      {
+        title: "Team",
+        href: "/team",
+        icon: <Users className="h-5 w-5" />,
+        key: "team"
+      }
+    ] : []),
     {
       title: "My Account",
       href: "/account",
