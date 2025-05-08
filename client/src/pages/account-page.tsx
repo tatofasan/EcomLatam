@@ -20,7 +20,12 @@ import {
   Save,
   Upload,
   Trash2,
-  Wallet
+  Wallet,
+  KeyRound,
+  Copy,
+  RefreshCw,
+  AlertCircle,
+  ExternalLink
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -517,6 +522,16 @@ export default function AccountPage() {
     }
   };
   
+  // Handler for copying text to clipboard
+  const copyToClipboard = (text: string, message = "Copied to clipboard") => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied!",
+      description: message,
+      variant: "default"
+    });
+  };
+  
   // Handle wallet delete
   const handleDeleteWallet = async (walletId: string) => {
     if (!user) return;
@@ -732,6 +747,89 @@ export default function AccountPage() {
           {/* Security Tab */}
           <TabsContent value="security">
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {/* API Key Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <KeyRound className="h-5 w-5" />
+                    API Key
+                  </CardTitle>
+                  <CardDescription>
+                    Your API key is used to authenticate requests to the API.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {isLoadingApiKey ? (
+                    <div className="flex justify-center py-4">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-900"></div>
+                    </div>
+                  ) : apiKey ? (
+                    <div className="space-y-4">
+                      <div className="p-3 bg-gray-50 rounded-md border relative">
+                        <div className="font-mono text-sm break-all pr-8">{apiKey}</div>
+                        <button 
+                          onClick={() => copyToClipboard(apiKey, "API key copied to clipboard")}
+                          className="absolute right-2 top-2 text-gray-500 hover:text-gray-700"
+                          type="button"
+                        >
+                          <Copy className="h-5 w-5" />
+                        </button>
+                      </div>
+                      
+                      <div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={generateApiKey}
+                          disabled={isGeneratingApiKey}
+                          className="flex items-center gap-1"
+                          type="button"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                          {isGeneratingApiKey ? "Regenerating..." : "Regenerate API Key"}
+                        </Button>
+                        <p className="text-sm text-gray-500 mt-2">
+                          <AlertCircle className="h-4 w-4 inline-block mr-1" />
+                          Warning: Regenerating your API key will invalidate your current key.
+                        </p>
+                      </div>
+                      
+                      <div className="mt-4 bg-blue-50 p-3 rounded-md border border-blue-200">
+                        <h4 className="font-medium flex items-center text-blue-700">
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          API Documentation
+                        </h4>
+                        <p className="text-sm text-blue-700 mt-1">
+                          Learn how to use the API by visiting our 
+                          <a 
+                            href="/api-docs" 
+                            className="underline ml-1 font-medium"
+                            target="_blank"
+                          >
+                            API documentation
+                          </a>.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <KeyRound className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                      <p className="text-gray-500 mb-4">You don't have an API key yet</p>
+                      <Button 
+                        onClick={generateApiKey} 
+                        disabled={isGeneratingApiKey}
+                        variant="outline"
+                        className="mx-auto"
+                        type="button"
+                      >
+                        {isGeneratingApiKey ? "Generating..." : "Generate API Key"}
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              
+              {/* Password Change Form */}
               <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)}>
                 <Card>
                   <CardHeader>
