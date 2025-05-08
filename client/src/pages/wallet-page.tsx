@@ -47,11 +47,18 @@ export default function WalletPage() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [walletAddress, setWalletAddress] = useState("");
+  const [wallets, setWallets] = useState<Array<{id: string; name: string; address: string; isDefault?: boolean}>>([]);
+  const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
   const [withdrawAmount, setWithdrawAmount] = useState<number | "">("");
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
   const [walletAddressDialogOpen, setWalletAddressDialogOpen] = useState(false);
-  const [newWalletAddress, setNewWalletAddress] = useState("");
+  const [newWalletData, setNewWalletData] = useState<{id: string; name: string; address: string; isDefault?: boolean}>({
+    id: "",
+    name: "",
+    address: "",
+    isDefault: false
+  });
+  const [editingWalletId, setEditingWalletId] = useState<string | null>(null);
   
   // Admin - Gestión de retiros
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
@@ -72,18 +79,43 @@ export default function WalletPage() {
     enabled: !!user
   });
   
-  // Fetch wallet address
-  const { data: walletAddressData } = useQuery({
-    queryKey: ['/api/user/wallet-address'],
+  // Fetch wallet addresses from user data
+  const { data: userData } = useQuery({
+    queryKey: ['/api/user'],
     enabled: !!user
   });
-  
-  // Update wallet address when data is loaded
+
+  // Load wallet addresses when user data is available
   useEffect(() => {
-    if (walletAddressData?.walletAddress) {
-      setWalletAddress(walletAddressData.walletAddress);
+    if (userData) {
+      // Initialize default wallets array
+      let userWallets: {id: string; name: string; address: string; isDefault?: boolean}[] = [];
+      
+      // Try to get wallets from settings
+      if (userData?.settings?.wallets && Array.isArray(userData.settings.wallets)) {
+        userWallets = userData.settings.wallets;
+      } 
+      // If no wallets array found but there's a legacy walletAddress
+      else if (userData?.settings?.walletAddress) {
+        userWallets = [{
+          id: "default",
+          name: "Principal",
+          address: userData.settings.walletAddress,
+          isDefault: true
+        }];
+      }
+      
+      setWallets(userWallets);
+      
+      // Set selected wallet to the default one
+      const defaultWallet = userWallets.find(w => w.isDefault);
+      if (defaultWallet) {
+        setSelectedWalletId(defaultWallet.id);
+      } else if (userWallets.length > 0) {
+        setSelectedWalletId(userWallets[0].id);
+      }
     }
-  }, [walletAddressData]);
+  }, [userData]);
   
   // Create withdrawal mutation
   const withdrawMutation = useMutation({
@@ -110,25 +142,29 @@ export default function WalletPage() {
     }
   });
   
-  // Update wallet address mutation
-  const updateWalletAddressMutation = useMutation({
-    mutationFn: (walletAddress: string) => {
-      return apiRequest('PATCH', '/api/user/wallet-address', { walletAddress });
+  // Update wallet addresses through user settings
+  const updateWalletsMutation = useMutation({
+    mutationFn: (updatedWallets: Array<{id: string; name: string; address: string; isDefault?: boolean}>) => {
+      // Update in user settings
+      return apiRequest('PATCH', '/api/user/profile', {
+        settings: {
+          wallets: updatedWallets
+        }
+      });
     },
-    onSuccess: (data: any) => {
+    onSuccess: () => {
       toast({
-        title: "Wallet Address Updated",
-        description: "Your virtual wallet address has been updated successfully.",
+        title: "Wallet Addresses Updated",
+        description: "Your wallet addresses have been updated successfully.",
         variant: "default"
       });
-      setWalletAddress(data?.walletAddress || "");
       setWalletAddressDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['/api/user/wallet-address'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
     },
     onError: (error: Error) => {
       toast({
         title: "Update Failed",
-        description: error.message || "Failed to update your wallet address. Please try again.",
+        description: error.message || "Failed to update your wallet addresses. Please try again.",
         variant: "destructive"
       });
     }

@@ -817,37 +817,57 @@ export default function AccountPage() {
               <Dialog open={showAddWalletDialog} onOpenChange={setShowAddWalletDialog}>
                 <DialogContent className="sm:max-w-[425px]">
                   <DialogHeader>
-                    <DialogTitle>{walletAddress ? "Update Wallet Address" : "Add Wallet Address"}</DialogTitle>
+                    <DialogTitle>{editingWalletId ? "Editar Cartera" : "Añadir Nueva Cartera"}</DialogTitle>
                     <DialogDescription>
-                      {walletAddress 
-                        ? "Update your wallet address for withdrawals." 
-                        : "Add a wallet address to receive your withdrawals."}
+                      {editingWalletId 
+                        ? "Actualiza los detalles de tu cartera para retiros." 
+                        : "Agrega una nueva dirección de cartera para recibir tus retiros."}
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="space-y-2">
-                      <Label htmlFor="walletAddress">Wallet Address</Label>
+                      <Label htmlFor="walletName">Nombre de la Cartera</Label>
                       <Input 
-                        id="walletAddress" 
-                        value={newWalletAddress} 
-                        onChange={(e) => setNewWalletAddress(e.target.value)}
-                        placeholder="Enter your wallet address" 
+                        id="walletName" 
+                        value={newWalletData.name} 
+                        onChange={(e) => setNewWalletData({...newWalletData, name: e.target.value})}
+                        placeholder="Ej: Binance, Metamask, etc." 
                       />
                       <p className="text-xs text-gray-500">
-                        This address will be used for all withdrawals from your account.
+                        Un nombre descriptivo para identificar esta cartera
                       </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="walletAddress">Dirección de la Cartera</Label>
+                      <Input 
+                        id="walletAddress" 
+                        value={newWalletData.address} 
+                        onChange={(e) => setNewWalletData({...newWalletData, address: e.target.value})}
+                        placeholder="Introduce la dirección de tu cartera" 
+                      />
+                      <p className="text-xs text-gray-500">
+                        Dirección donde recibirás los fondos retirados
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2 pt-2">
+                      <Switch 
+                        id="default-wallet" 
+                        checked={newWalletData.isDefault} 
+                        onCheckedChange={(checked) => setNewWalletData({...newWalletData, isDefault: checked})}
+                      />
+                      <Label htmlFor="default-wallet">Establecer como cartera predeterminada</Label>
                     </div>
                   </div>
                   <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setShowAddWalletDialog(false)}>
-                      Cancel
+                      Cancelar
                     </Button>
                     <Button 
                       type="button" 
-                      onClick={handleUpdateWalletAddress} 
-                      disabled={!newWalletAddress}
+                      onClick={handleSaveWallet} 
+                      disabled={!newWalletData.name || !newWalletData.address}
                     >
-                      Save
+                      Guardar
                     </Button>
                   </DialogFooter>
                 </DialogContent>
