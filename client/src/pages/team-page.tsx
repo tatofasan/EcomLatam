@@ -113,21 +113,36 @@ export default function TeamPage() {
   // Update user mutation
   const updateUserMutation = useMutation({
     mutationFn: async (data: { id: number, userData: Partial<UserFormValues> }) => {
-      const res = await apiRequest("PATCH", `/api/users/${data.id}`, data.userData);
-      return res.json();
+      console.log("Sending user update:", {
+        userId: data.id,
+        userData: data.userData
+      });
+      try {
+        const res = await apiRequest("PATCH", `/api/users/${data.id}`, data.userData);
+        if (!res.ok) {
+          // Intentar obtener detalles del error desde la respuesta
+          const errorData = await res.json().catch(() => ({ message: "Unknown server error" }));
+          throw new Error(errorData.message || `Server responded with status ${res.status}`);
+        }
+        return await res.json();
+      } catch (err) {
+        console.error("Error updating user:", err);
+        throw err; // Re-lanzar para que onError lo capture
+      }
     },
     onSuccess: () => {
       toast({ 
-        title: "Success",
-        description: "User updated successfully"
+        title: "Éxito", // Cambiado a español
+        description: "Usuario actualizado correctamente"
       });
       setIsEditDialogOpen(false);
       setSelectedUser(null);
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
     },
     onError: (error: Error) => {
+      console.error("Failed to update user:", error);
       toast({ 
-        title: "Error updating user",
+        title: "Error al actualizar usuario", // Cambiado a español
         description: error.message,
         variant: "destructive"
       });
@@ -137,20 +152,33 @@ export default function TeamPage() {
   // Reset password mutation
   const resetPasswordMutation = useMutation({
     mutationFn: async (data: { id: number, password: string }) => {
-      const res = await apiRequest("PATCH", `/api/users/${data.id}/reset-password`, { password: data.password });
-      return res.json();
+      console.log("Sending password reset request for user ID:", data.id);
+      try {
+        const res = await apiRequest("PATCH", `/api/users/${data.id}/reset-password`, { password: data.password });
+        if (!res.ok) {
+          // Intentar obtener detalles del error desde la respuesta
+          const errorData = await res.json().catch(() => ({ message: "Unknown server error" }));
+          throw new Error(errorData.message || `Server responded with status ${res.status}`);
+        }
+        return await res.json();
+      } catch (err) {
+        console.error("Error resetting password:", err);
+        throw err; // Re-lanzar para que onError lo capture
+      }
     },
     onSuccess: () => {
       toast({ 
-        title: "Success",
-        description: "Password reset successfully"
+        title: "Éxito", // Cambiado a español
+        description: "Contraseña restablecida correctamente"
       });
       setIsResetPasswordDialogOpen(false);
       setSelectedUser(null);
+      setPasswordReset(null); // Limpiar los campos del formulario
     },
     onError: (error: Error) => {
+      console.error("Failed to reset password:", error);
       toast({ 
-        title: "Error resetting password",
+        title: "Error al restablecer contraseña", // Cambiado a español
         description: error.message,
         variant: "destructive"
       });
@@ -160,22 +188,34 @@ export default function TeamPage() {
   // Deactivate/Activate user mutation
   const toggleUserStatusMutation = useMutation({
     mutationFn: async (data: { id: number, status: 'active' | 'inactive' }) => {
-      const res = await apiRequest("PATCH", `/api/users/${data.id}`, { status: data.status });
-      return res.json();
+      console.log("Sending user status update:", data);
+      try {
+        const res = await apiRequest("PATCH", `/api/users/${data.id}`, { status: data.status });
+        if (!res.ok) {
+          // Intentar obtener detalles del error desde la respuesta
+          const errorData = await res.json().catch(() => ({ message: "Unknown server error" }));
+          throw new Error(errorData.message || `Server responded with status ${res.status}`);
+        }
+        return await res.json();
+      } catch (err) {
+        console.error("Error toggling user status:", err);
+        throw err; // Re-lanzar para que onError lo capture
+      }
     },
     onSuccess: () => {
       const newStatus = selectedUser?.status === 'active' ? 'inactive' : 'active';
       toast({ 
-        title: "Success",
-        description: `User ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`
+        title: "Éxito", // Cambiado a español para mantener consistencia
+        description: `Usuario ${newStatus === 'active' ? 'activado' : 'desactivado'} correctamente`
       });
       setIsDeactivateDialogOpen(false);
       setSelectedUser(null);
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
     },
     onError: (error: Error) => {
+      console.error("Failed to update user status:", error);
       toast({ 
-        title: "Error updating user status",
+        title: "Error al actualizar estado del usuario", // Cambiado a español
         description: error.message,
         variant: "destructive"
       });

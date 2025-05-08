@@ -1108,23 +1108,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = parseInt(req.params.id);
       const userData = req.body;
       
-      console.log("PATCH /api/users/:id received with data:", userData);
+      console.log("PATCH /api/users/:id received:", {
+        userId,
+        userData,
+        userDataType: typeof userData,
+        userDataKeys: Object.keys(userData)
+      });
+      
+      // Validar que userData sea un objeto y tenga propiedades
+      if (!userData || typeof userData !== 'object' || Object.keys(userData).length === 0) {
+        console.error("Invalid userData received:", userData);
+        return res.status(400).json({ 
+          message: "Invalid request data", 
+          details: "Request body must contain at least one field to update"
+        });
+      }
       
       // Prevent non-admin from changing an admin role
       const user = await storage.getUser(userId);
-      if (user?.role === "admin" && userData.role !== "admin" && req.user?.role !== "admin") {
-        return res.status(403).json({ message: "Only admins can change admin roles" });
-      }
-      
-      const updatedUser = await storage.updateUser(userId, userData);
-      if (!updatedUser) {
+      if (!user) {
+        console.error(`User with ID ${userId} not found`);
         return res.status(404).json({ message: "User not found" });
       }
       
+      console.log("Original user:", user);
+      
+      if (user.role === "admin" && userData.role && userData.role !== "admin" && req.user?.role !== "admin") {
+        console.error("Attempt to change admin role by non-admin");
+        return res.status(403).json({ message: "Only admins can change admin roles" });
+      }
+      
+      // Actualizar el usuario
+      const updatedUser = await storage.updateUser(userId, userData);
+      if (!updatedUser) {
+        console.error(`Failed to update user with ID ${userId}`);
+        return res.status(500).json({ message: "Failed to update user" });
+      }
+      
+      console.log("Updated user:", updatedUser);
       res.json(updatedUser);
     } catch (error) {
       console.error("Error updating user:", error);
-      res.status(500).json({ message: "Error updating user", error: error.message });
+      // Con TypeScript error es de tipo unknown, hacer error.message puede causar problemas
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ message: "Error updating user", error: errorMessage });
     }
   });
   
@@ -1134,31 +1161,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = parseInt(req.params.id);
       const { password } = req.body;
       
-      console.log(`PATCH /api/users/${userId}/reset-password received`);
+      console.log(`PATCH /api/users/${userId}/reset-password received:`, {
+        hasPassword: !!password,
+        passwordLength: password ? password.length : 0,
+        bodyKeys: Object.keys(req.body)
+      });
       
       if (!password) {
+        console.error("No password provided in request");
         return res.status(400).json({ message: "Password is required" });
       }
       
       // Get user to check if exists
       const user = await storage.getUser(userId);
       if (!user) {
+        console.error(`User with ID ${userId} not found for password reset`);
         return res.status(404).json({ message: "User not found" });
       }
       
+      console.log(`Resetting password for user: ${user.username} (${userId})`);
+      
       // Hash password before saving to database
-      const hashedPassword = await hashPassword(password);
-      
-      // Update user with new password
-      const updatedUser = await storage.updateUser(userId, { password: hashedPassword });
-      if (!updatedUser) {
-        return res.status(500).json({ message: "Failed to update user password" });
+      try {
+        const hashedPassword = await hashPassword(password);
+        console.log("Password hashed successfully");
+        
+        // Update user with new password
+        const updatedUser = await storage.updateUser(userId, { password: hashedPassword });
+        if (!updatedUser) {
+          console.error(`Failed to update password for user ${userId}`);
+          return res.status(500).json({ message: "Failed to update user password" });
+        }
+        
+        console.log(`Password reset successful for user ${userId}`);
+        res.json({ message: "Password reset successfully" });
+      } catch (hashError) {
+        console.error("Error hashing password:", hashError);
+        res.status(500).json({ 
+          message: "Error hashing password", 
+          error: hashError instanceof Error ? hashError.message : String(hashError)
+        });
       }
-      
-      res.json({ message: "Password reset successfully" });
     } catch (error) {
       console.error("Error resetting password:", error);
-      res.status(500).json({ message: "Error resetting password", error: error.message });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ message: "Error resetting password", error: errorMessage });
     }
   });
   
