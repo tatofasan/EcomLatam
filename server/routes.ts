@@ -194,7 +194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Bulk import products
-  app.post("/api/products/bulk-import", requireAdmin, async (req, res) => {
+  app.post("/api/products/bulk-import", requireModerator, async (req, res) => {
     try {
       // Registro de debugging para ver cómo llega la solicitud
       console.log('Bulk import request received:', 
@@ -1300,8 +1300,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Finance and Moderator users cannot reset admin user passwords
-      if (req.user.role === 'finance' && user.role === 'admin') {
-        return res.status(403).json({ message: "Forbidden: Finance users cannot reset admin user passwords" });
+      if (req.user.role === "finance" || req.user.role === "moderator" && user.role === 'admin') {
+        return res.status(403).json({ message: "Forbidden: Only admins cannot reset admin user passwords" });
       }
       
       console.log(`Resetting password for user: ${user.username} (${userId})`);
