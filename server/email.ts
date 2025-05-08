@@ -1,18 +1,41 @@
 import nodemailer from 'nodemailer';
 import path from 'path';
 
-// Configuración del transporter para Gmail Suite
-let transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, // true para puerto 465, false para otros puertos
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+// Crear un transporter para pruebas con Ethereal
+let transporter: nodemailer.Transporter;
 
-console.log('Servicio de email configurado con cuenta Gmail Suite');
+// Función asíncrona para configurar el transporter
+async function setupEmailTransporter() {
+  try {
+    // Crear cuenta de prueba de Ethereal
+    const testAccount = await nodemailer.createTestAccount();
+    
+    console.log('Cuenta de prueba Ethereal creada:', {
+      user: testAccount.user,
+      pass: testAccount.pass,
+      previewURL: `https://ethereal.email/login`
+    });
+    
+    // Crear el transporter con la cuenta de prueba
+    transporter = nodemailer.createTransport({
+      host: 'smtp.ethereal.email',
+      port: 587,
+      secure: false,
+      auth: {
+        user: testAccount.user,
+        pass: testAccount.pass,
+      },
+    });
+    
+    console.log('Servicio de email configurado con cuenta Ethereal para pruebas');
+  } catch (error) {
+    console.error('Error al configurar email:', error);
+    throw error;
+  }
+}
+
+// Inicializar el servicio de email
+setupEmailTransporter();
 
 interface SendEmailOptions {
   to: string;
@@ -24,8 +47,13 @@ interface SendEmailOptions {
 // Función para enviar un correo electrónico
 export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
   try {
+    if (!transporter) {
+      console.log('Transporter no inicializado, inicializando...');
+      await setupEmailTransporter();
+    }
+    
     const info = await transporter.sendMail({
-      from: process.env.SMTP_USER,
+      from: '"EcomDrop" <no-reply@ecomdrop.com>',
       to: options.to,
       subject: options.subject,
       text: options.text,
