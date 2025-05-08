@@ -1,16 +1,42 @@
 import nodemailer from 'nodemailer';
 import path from 'path';
 
-// Configuración del transporter para Gmail
-let transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: 'fvgv ixwp pqzq bkt', // Contraseña de aplicación proporcionada
-  },
-});
+// Variable para almacenar el transporter
+let transporter: nodemailer.Transporter;
 
-console.log('Servicio de email configurado con cuenta Gmail (contraseña de aplicación)');
+// Función para configurar el transporter con Ethereal
+async function setupEtherealTransporter() {
+  try {
+    // Crear cuenta de prueba de Ethereal
+    const testAccount = await nodemailer.createTestAccount();
+    
+    console.log('Cuenta Ethereal creada para pruebas:', {
+      user: testAccount.user,
+      pass: testAccount.pass,
+      previewURL: 'https://ethereal.email/login'
+    });
+    
+    // Crear transporter con la cuenta de prueba
+    transporter = nodemailer.createTransport({
+      host: 'smtp.ethereal.email',
+      port: 587,
+      secure: false,
+      auth: {
+        user: testAccount.user,
+        pass: testAccount.pass,
+      },
+    });
+    
+    console.log('Servicio de email configurado con Ethereal para entorno de desarrollo');
+    return true;
+  } catch (error) {
+    console.error('Error al configurar Ethereal:', error);
+    return false;
+  }
+}
+
+// Inicializar transporter
+setupEtherealTransporter();
 
 interface SendEmailOptions {
   to: string;
