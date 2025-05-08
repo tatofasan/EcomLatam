@@ -73,7 +73,7 @@ export default function ConnectionsPage() {
       // Si el usuario es administrador, cargamos todas las conexiones
       // Si es usuario regular, solo cargamos sus conexiones
       const isAdmin = user?.role === 'admin';
-      const endpoint = isAdmin ? '/api/connections/all' : '/api/connections';
+      const endpoint = isAdmin ? '/api/connections?all=true' : '/api/connections';
       
       const response = await fetch(endpoint);
       
@@ -355,21 +355,30 @@ export default function ConnectionsPage() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-2xl font-bold text-primary">Conexiones</h1>
-            <p className="text-muted-foreground mt-1">Gestiona las conexiones con tus plataformas de e-commerce</p>
+            <p className="text-muted-foreground mt-1">
+              {user?.role === 'admin' 
+                ? "Administra las conexiones de todos los usuarios"
+                : "Gestiona las conexiones con tus plataformas de e-commerce"
+              }
+            </p>
           </div>
+          
+          {/* Solo mostrar el botón de agregar conexión para usuarios regulares, no para administradores */}
+          {user?.role !== 'admin' && (
+            <Button 
+              className="flex items-center gap-2"
+              onClick={() => {
+                setStep('platforms');
+                setIsDialogOpen(true);
+              }}
+            >
+              <PlusCircle className="h-4 w-4" />
+              Add Connection
+            </Button>
+          )}
+          
+          {/* Dialog para crear nuevas conexiones */}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                className="flex items-center gap-2"
-                onClick={() => {
-                  setStep('platforms');
-                  setIsDialogOpen(true);
-                }}
-              >
-                <PlusCircle className="h-4 w-4" />
-                Add Connection
-              </Button>
-            </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
                 <DialogTitle>Conectar plataforma</DialogTitle>
@@ -549,7 +558,13 @@ export default function ConnectionsPage() {
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle>{connection.name}</CardTitle>
-                      <CardDescription className="mt-1">Last sync: {connection.lastSync}</CardDescription>
+                      <CardDescription className="mt-1">
+                        Last sync: {connection.lastSync}
+                        {/* Mostrar el ID del usuario para administradores */}
+                        {user?.role === 'admin' && (
+                          <> • Usuario ID: {connection.userId}</>
+                        )}
+                      </CardDescription>
                     </div>
                     <div>
                       {getPlatformIcon(connection.platform)}
@@ -578,6 +593,7 @@ export default function ConnectionsPage() {
                   </div>
                 </CardContent>
                 <CardFooter className="flex justify-between">
+                  {/* Mostrar botón para desactivar/activar la conexión */}
                   <Button 
                     variant="outline" 
                     size="sm"
@@ -589,14 +605,28 @@ export default function ConnectionsPage() {
                   >
                     {connection.status === "active" ? "Deactivate" : "Activate"}
                   </Button>
-                  <Button 
-                    variant={connection.status === "active" ? "default" : "outline"}
-                    size="sm" 
-                    className={connection.status !== "active" ? "opacity-50 cursor-not-allowed" : ""}
-                    disabled={connection.status !== "active"}
-                  >
-                    Synchronize
-                  </Button>
+                  
+                  {/* Mostrar el botón de sincronización o borrado según el rol */}
+                  {user?.role === 'admin' ? (
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"
+                      onClick={() => deleteConnection(connection.id)}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant={connection.status === "active" ? "default" : "outline"}
+                      size="sm" 
+                      className={connection.status !== "active" ? "opacity-50 cursor-not-allowed" : ""}
+                      disabled={connection.status !== "active"}
+                    >
+                      Synchronize
+                    </Button>
+                  )}
                 </CardFooter>
               </Card>
             ))}
