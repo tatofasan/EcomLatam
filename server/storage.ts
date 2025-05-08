@@ -98,7 +98,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async updateUser(id: number, userData: Partial<InsertUser>): Promise<User | undefined> {
+  async updateUser(id: number, userData: Partial<InsertUser> | { lastLogin?: Date }): Promise<User | undefined> {
     const [user] = await db
       .select()
       .from(users)

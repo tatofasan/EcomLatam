@@ -11,19 +11,22 @@ export const users = pgTable("users", {
   fullName: text("full_name"),
   email: text("email"),
   role: text("role").default("user"), // admin, user, moderator, finance
+  status: text("status").default("active"), // active, inactive
   createdAt: timestamp("created_at").defaultNow(),
   lastLogin: timestamp("last_login"),
   settings: jsonb("settings"),
 });
 
 export const insertUserSchema = createInsertSchema(users, {
-  role: z.enum(["admin", "user", "moderator", "finance"])
+  role: z.enum(["admin", "user", "moderator", "finance"]),
+  status: z.enum(["active", "inactive"]).default("active")
 }).pick({
   username: true,
   password: true,
   fullName: true,
   email: true,
   role: true,
+  status: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

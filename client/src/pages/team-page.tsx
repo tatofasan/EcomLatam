@@ -352,7 +352,9 @@ export default function TeamPage() {
                       <td className="py-3 px-4">
                         {getStatusBadge(member.status)}
                       </td>
-                      <td className="py-3 px-4">{member.lastLogin}</td>
+                      <td className="py-3 px-4">
+                        {member.lastLogin ? new Date(member.lastLogin).toLocaleString() : 'Never'}
+                      </td>
                       <td className="py-3 px-4 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
