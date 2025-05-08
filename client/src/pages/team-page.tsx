@@ -37,8 +37,9 @@ interface TeamMember {
   fullName: string | null;
   email: string | null;
   role: "user" | "admin" | "moderator" | "finance";
-  status: "active" | "inactive";
+  status: "active" | "inactive" | "pending" | "email_verification";
   lastLogin: string | null;
+  isEmailVerified?: boolean;
 }
 
 export default function TeamPage() {
@@ -203,7 +204,7 @@ export default function TeamPage() {
   
   // Deactivate/Activate user mutation
   const toggleUserStatusMutation = useMutation({
-    mutationFn: async (data: { id: number, status: 'active' | 'inactive' }) => {
+    mutationFn: async (data: { id: number, status: 'active' | 'inactive' | 'pending' }) => {
       console.log("Sending user status update:", data);
       try {
         const res = await apiRequest("PATCH", `/api/users/${data.id}`, { status: data.status });
@@ -219,10 +220,17 @@ export default function TeamPage() {
       }
     },
     onSuccess: () => {
-      const newStatus = selectedUser?.status === 'active' ? 'inactive' : 'active';
+      let message = "";
+      if (selectedUser?.status === 'pending') {
+        message = "Usuario aprobado correctamente";
+      } else {
+        const newStatus = selectedUser?.status === 'active' ? 'inactive' : 'active';
+        message = `Usuario ${newStatus === 'active' ? 'activado' : 'desactivado'} correctamente`;
+      }
+      
       toast({ 
         title: "Éxito", // Cambiado a español para mantener consistencia
-        description: `Usuario ${newStatus === 'active' ? 'activado' : 'desactivado'} correctamente`
+        description: message
       });
       setIsDeactivateDialogOpen(false);
       setSelectedUser(null);
@@ -274,18 +282,44 @@ export default function TeamPage() {
     }
   };
 
-  const getStatusBadge = (status: "active" | "inactive") => {
-    return status === "active" ? (
-      <span className="flex items-center">
-        <span className="h-2 w-2 rounded-full bg-green-500 mr-2"></span>
-        Active
-      </span>
-    ) : (
-      <span className="flex items-center">
-        <span className="h-2 w-2 rounded-full bg-gray-300 mr-2"></span>
-        Inactive
-      </span>
-    );
+  const getStatusBadge = (status: "active" | "inactive" | "pending" | "email_verification") => {
+    switch (status) {
+      case "active":
+        return (
+          <span className="flex items-center">
+            <span className="h-2 w-2 rounded-full bg-green-500 mr-2"></span>
+            Active
+          </span>
+        );
+      case "inactive":
+        return (
+          <span className="flex items-center">
+            <span className="h-2 w-2 rounded-full bg-gray-300 mr-2"></span>
+            Inactive
+          </span>
+        );
+      case "pending":
+        return (
+          <span className="flex items-center">
+            <span className="h-2 w-2 rounded-full bg-amber-500 mr-2"></span>
+            Pending Approval
+          </span>
+        );
+      case "email_verification":
+        return (
+          <span className="flex items-center">
+            <span className="h-2 w-2 rounded-full bg-blue-500 mr-2"></span>
+            Email Verification
+          </span>
+        );
+      default:
+        return (
+          <span className="flex items-center">
+            <span className="h-2 w-2 rounded-full bg-gray-300 mr-2"></span>
+            Unknown
+          </span>
+        );
+    }
   };
 
   return (
@@ -519,20 +553,37 @@ export default function TeamPage() {
                               <Lock className="mr-2 h-4 w-4" />
                               <span>Reset Password</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              className={member.status === "active" ? "text-red-600" : "text-green-600"}
-                              onClick={() => {
-                                setSelectedUser(member);
-                                setIsDeactivateDialogOpen(true);
-                              }}
-                              disabled={user?.role === 'finance' && member.role === 'admin'}
-                            >
-                              {member.status === "active" ? (
-                                <><UserX className="mr-2 h-4 w-4" /><span>Deactivate</span></>
-                              ) : (
-                                <><UserCheck className="mr-2 h-4 w-4" /><span>Activate</span></>
-                              )}
-                            </DropdownMenuItem>
+                            {member.status === "pending" ? (
+                              <DropdownMenuItem 
+                                className="text-green-600"
+                                onClick={() => {
+                                  setSelectedUser(member);
+                                  toggleUserStatusMutation.mutate({
+                                    id: member.id,
+                                    status: 'active'
+                                  });
+                                }}
+                                disabled={user?.role === 'finance' && member.role === 'admin'}
+                              >
+                                <UserCheck className="mr-2 h-4 w-4" />
+                                <span>Approve User</span>
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem 
+                                className={member.status === "active" ? "text-red-600" : "text-green-600"}
+                                onClick={() => {
+                                  setSelectedUser(member);
+                                  setIsDeactivateDialogOpen(true);
+                                }}
+                                disabled={user?.role === 'finance' && member.role === 'admin' || member.status === "email_verification"}
+                              >
+                                {member.status === "active" ? (
+                                  <><UserX className="mr-2 h-4 w-4" /><span>Deactivate</span></>
+                                ) : (
+                                  <><UserCheck className="mr-2 h-4 w-4" /><span>Activate</span></>
+                                )}
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>
@@ -758,7 +809,9 @@ export default function TeamPage() {
             <DialogDescription>
               {selectedUser?.status === 'active' 
                 ? 'This will prevent the user from logging in.' 
-                : 'This will allow the user to log in again.'}
+                : selectedUser?.status === 'inactive'
+                  ? 'This will allow the user to log in again.'
+                  : 'This will activate the user account.'}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
