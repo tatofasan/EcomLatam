@@ -57,33 +57,61 @@ export default function AccountPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [walletAddress, setWalletAddress] = useState("");
+  // Wallet management - support for multiple wallets with names
+  const [wallets, setWallets] = useState<{id: string; name: string; address: string; isDefault?: boolean}[]>([]);
   const [showAddWalletDialog, setShowAddWalletDialog] = useState(false);
-  const [newWalletAddress, setNewWalletAddress] = useState("");
+  const [newWalletData, setNewWalletData] = useState({
+    id: "",
+    name: "",
+    address: "",
+    isDefault: false
+  });
   const [activeTab, setActiveTab] = useState("profile");
+  const [editingWalletId, setEditingWalletId] = useState<string | null>(null);
 
-  // Fetch wallet address from user settings or API
+  // Fetch wallet addresses from user settings or API
   useEffect(() => {
-    if (user?.settings?.walletAddress) {
-      setWalletAddress(user.settings.walletAddress);
-    } else {
-      // If not in user settings, you might fetch it from the API
-      const fetchWalletAddress = async () => {
-        try {
+    const fetchWalletAddresses = async () => {
+      try {
+        // Initialize default wallets array
+        let userWallets: {id: string; name: string; address: string; isDefault?: boolean}[] = [];
+        
+        // Try to get wallets from settings
+        if (user?.settings?.wallets && Array.isArray(user.settings.wallets)) {
+          userWallets = user.settings.wallets;
+        } 
+        // If no wallets array found but there's a legacy walletAddress
+        else if (user?.settings?.walletAddress) {
+          userWallets = [{
+            id: "default",
+            name: "Principal",
+            address: user.settings.walletAddress,
+            isDefault: true
+          }];
+        } 
+        // If nothing in settings, try API
+        else {
           const response = await apiRequest("GET", '/api/user/wallet-address');
           if (response.ok) {
             const data = await response.json();
             if (data.walletAddress) {
-              setWalletAddress(data.walletAddress);
+              userWallets = [{
+                id: "default",
+                name: "Principal",
+                address: data.walletAddress,
+                isDefault: true
+              }];
             }
           }
-        } catch (error) {
-          console.error("Error fetching wallet address:", error);
         }
-      };
-      
-      fetchWalletAddress();
-    }
+        
+        setWallets(userWallets);
+      } catch (error) {
+        console.error("Error fetching wallet addresses:", error);
+      }
+    };
+    
+    fetchWalletAddresses();
   }, [user]);
 
   const profileForm = useForm<ProfileFormValues>({
@@ -311,56 +339,157 @@ export default function AccountPage() {
     setActiveTab("security");
   };
   
-  // Handle wallet address update
-  const handleUpdateWalletAddress = async () => {
-    if (!newWalletAddress || !user) return;
+  // Handle opening wallet dialog for adding a new wallet or editing existing one
+  const handleOpenWalletDialog = (walletId: string | null = null) => {
+    if (walletId) {
+      // Edit mode
+      const walletToEdit = wallets.find(w => w.id === walletId);
+      if (walletToEdit) {
+        setNewWalletData({...walletToEdit});
+        setEditingWalletId(walletId);
+      }
+    } else {
+      // Add mode - create a new wallet with a unique ID
+      setNewWalletData({
+        id: `wallet_${Date.now()}`,
+        name: "",
+        address: "",
+        isDefault: wallets.length === 0 // Make it default if it's the first one
+      });
+      setEditingWalletId(null);
+    }
+    setShowAddWalletDialog(true);
+  };
+  
+  // Handle wallet save (add or update)
+  const handleSaveWallet = async () => {
+    if (!newWalletData.name || !newWalletData.address || !user) return;
+    
+    // Validation - max 3 wallets
+    if (!editingWalletId && wallets.length >= 3) {
+      toast({
+        title: "Límite alcanzado",
+        description: "Solo puedes tener un máximo de 3 carteras.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     try {
-      // First, let's try to update through a dedicated endpoint
-      const response = await apiRequest('PATCH', '/api/user/wallet-address', { 
-        walletAddress: newWalletAddress 
+      // Create updated wallets array
+      let updatedWallets = [...wallets];
+      
+      if (editingWalletId) {
+        // Update existing wallet
+        updatedWallets = updatedWallets.map(w => 
+          w.id === editingWalletId ? {...newWalletData} : 
+          // If this wallet is marked as default, remove default from others
+          newWalletData.isDefault ? {...w, isDefault: false} : w
+        );
+      } else {
+        // Add new wallet
+        if (newWalletData.isDefault) {
+          // If new wallet is default, remove default from others
+          updatedWallets = updatedWallets.map(w => ({...w, isDefault: false}));
+        }
+        updatedWallets.push(newWalletData);
+      }
+      
+      // Ensure at least one wallet is marked as default
+      if (!updatedWallets.some(w => w.isDefault) && updatedWallets.length > 0) {
+        updatedWallets[0].isDefault = true;
+      }
+      
+      // Update in user settings
+      const settings = {
+        ...(user.settings || {}),
+        wallets: updatedWallets
+      };
+      
+      const response = await apiRequest("PATCH", '/api/user/profile', {
+        settings
       });
       
-      // If the endpoint doesn't exist, fall back to updating user profile with settings
-      if (!response.ok && response.status === 404) {
-        // Create settings object with the updated values
-        const settings = {
-          ...(user.settings || {}),
-          walletAddress: newWalletAddress
-        };
-        
-        // Update through profile endpoint
-        const profileResponse = await apiRequest("PATCH", '/api/user/profile', {
-          settings
-        });
-        
-        if (!profileResponse.ok) {
-          const errorData = await profileResponse.json();
-          throw new Error(errorData.message || "Failed to update wallet address");
-        }
-      } else if (!response.ok) {
+      if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to update wallet address");
+        throw new Error(errorData.message || "Failed to update wallet addresses");
       }
       
       // Success
-      setWalletAddress(newWalletAddress);
+      setWallets(updatedWallets);
       setShowAddWalletDialog(false);
-      setNewWalletAddress("");
+      setNewWalletData({
+        id: "",
+        name: "",
+        address: "",
+        isDefault: false
+      });
+      setEditingWalletId(null);
       
       // Refresh user data
       queryClient.invalidateQueries({ queryKey: ['/api/user'] });
       
       toast({
-        title: "Wallet address updated",
-        description: "Your wallet address has been updated successfully.",
+        title: editingWalletId ? "Cartera actualizada" : "Cartera agregada",
+        description: editingWalletId 
+          ? "Tu cartera ha sido actualizada correctamente." 
+          : "Tu nueva cartera ha sido agregada correctamente.",
         variant: "default"
       });
     } catch (error) {
-      console.error("Error updating wallet address:", error);
+      console.error("Error updating wallet:", error);
       toast({
-        title: "Update failed",
-        description: error instanceof Error ? error.message : "There was a problem updating your wallet address.",
+        title: "Error al guardar",
+        description: error instanceof Error ? error.message : "Hubo un problema al guardar la cartera.",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Handle wallet delete
+  const handleDeleteWallet = async (walletId: string) => {
+    if (!user) return;
+    
+    try {
+      // Remove wallet from array
+      let updatedWallets = wallets.filter(w => w.id !== walletId);
+      
+      // If deleted wallet was default, make another one default
+      if (wallets.find(w => w.id === walletId)?.isDefault && updatedWallets.length > 0) {
+        updatedWallets[0].isDefault = true;
+      }
+      
+      // Update in user settings
+      const settings = {
+        ...(user.settings || {}),
+        wallets: updatedWallets
+      };
+      
+      const response = await apiRequest("PATCH", '/api/user/profile', {
+        settings
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete wallet");
+      }
+      
+      // Success
+      setWallets(updatedWallets);
+      
+      // Refresh user data
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      
+      toast({
+        title: "Cartera eliminada",
+        description: "La cartera ha sido eliminada correctamente.",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error("Error deleting wallet:", error);
+      toast({
+        title: "Error al eliminar",
+        description: error instanceof Error ? error.message : "Hubo un problema al eliminar la cartera.",
         variant: "destructive"
       });
     }
@@ -610,40 +739,77 @@ export default function AccountPage() {
               </form>
               
               <Card>
-                <CardHeader>
-                  <CardTitle>Wallet Address</CardTitle>
-                  <CardDescription>Manage your wallet address for withdrawals</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {walletAddress ? (
-                    <div className="flex items-center justify-between p-4 border rounded-md mb-4">
-                      <div className="flex items-center">
-                        <Wallet className="h-6 w-6 text-gray-500 mr-4" />
-                        <div>
-                          <p className="font-medium">Wallet Address</p>
-                          <p className="text-sm text-gray-500 truncate max-w-[220px]">
-                            {walletAddress}
-                          </p>
-                        </div>
-                      </div>
-                      <Badge>Default</Badge>
-                    </div>
-                  ) : (
-                    <div className="p-4 border rounded-md mb-4 bg-gray-50">
-                      <p className="text-center text-gray-500">No wallet address configured</p>
-                    </div>
-                  )}
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Wallet Addresses</CardTitle>
+                    <CardDescription>Manage your wallet addresses for withdrawals</CardDescription>
+                  </div>
                   <Button 
                     variant="outline" 
-                    className="w-full"
-                    onClick={() => {
-                      setNewWalletAddress(walletAddress);
-                      setShowAddWalletDialog(true);
-                    }}
+                    onClick={() => handleOpenWalletDialog()}
+                    disabled={wallets.length >= 3}
                   >
                     <Wallet className="mr-2 h-4 w-4" />
-                    {walletAddress ? "Edit Wallet Address" : "Add Wallet Address"}
+                    Add Wallet
                   </Button>
+                </CardHeader>
+                <CardContent>
+                  {wallets.length === 0 ? (
+                    <div className="p-4 border rounded-md mb-4 bg-gray-50 text-center">
+                      <Wallet className="h-10 w-10 mx-auto mb-2 text-gray-300" />
+                      <p className="text-gray-500">No wallet addresses configured</p>
+                      <p className="text-xs text-gray-400 mt-1">You can add up to 3 wallet addresses</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {wallets.map(wallet => (
+                        <div key={wallet.id} className="flex items-center justify-between p-4 border rounded-md">
+                          <div className="flex items-center overflow-hidden">
+                            <Wallet className="h-6 w-6 text-gray-500 mr-4 flex-shrink-0" />
+                            <div className="overflow-hidden">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">{wallet.name}</p>
+                                {wallet.isDefault && (
+                                  <Badge variant="secondary" className="text-xs">Default</Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-500 truncate max-w-[220px]">
+                                {wallet.address}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleOpenWalletDialog(wallet.id)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil">
+                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                                <path d="m15 5 4 4"/>
+                              </svg>
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleDeleteWallet(wallet.id)}
+                              className="h-8 w-8 p-0 text-red-500"
+                              disabled={wallets.length === 1 && wallet.isDefault}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-trash-2">
+                                <path d="M3 6h18"/>
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                                <line x1="10" x2="10" y1="11" y2="17"/>
+                                <line x1="14" x2="14" y1="11" y2="17"/>
+                              </svg>
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
               
