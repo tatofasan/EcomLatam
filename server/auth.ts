@@ -92,20 +92,30 @@ export function setupAuth(app: Express) {
   app.post("/api/register", async (req, res, next) => {
     try {
       // Verificar si el usuario ya existe
-      const existingUser = await storage.getUserByUsername(req.body.username);
-      if (existingUser) {
-        return res.status(400).json({ message: "El nombre de usuario ya existe" });
+      try {
+        const existingUser = await storage.getUserByUsername(req.body.username);
+        if (existingUser) {
+          return res.status(400).json({ message: "El nombre de usuario ya existe" });
+        }
+      } catch (err) {
+        console.error("Error al verificar usuario existente:", err);
+        return res.status(500).json({ message: "Error al verificar disponibilidad de usuario" });
       }
       
       // Verificar si el email ya existe
       if (req.body.email) {
-        const [userWithEmail] = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, req.body.email));
-          
-        if (userWithEmail) {
-          return res.status(400).json({ message: "El correo electrónico ya está registrado" });
+        try {
+          const [userWithEmail] = await db
+            .select()
+            .from(users)
+            .where(eq(users.email, req.body.email));
+            
+          if (userWithEmail) {
+            return res.status(400).json({ message: "El correo electrónico ya está registrado" });
+          }
+        } catch (err) {
+          console.error("Error al verificar email existente:", err);
+          return res.status(500).json({ message: "Error al verificar disponibilidad de correo" });
         }
       }
 
@@ -117,15 +127,25 @@ export function setupAuth(app: Express) {
       const verificationData = createVerificationData();
       
       // Crear el usuario con estado inicial en verificación de email
-      const user = await storage.createUser({
-        ...req.body,
-        role: "user", // Siempre asignar rol de usuario normal
-        password: await hashPassword(req.body.password),
-        status: "email_verification",
-        verificationToken: verificationData.token,
-        verificationExpires: verificationData.expires,
-        isEmailVerified: false
-      });
+      let user;
+      try {
+        const hashedPassword = await hashPassword(req.body.password);
+        user = await storage.createUser({
+          ...req.body,
+          role: "user", // Siempre asignar rol de usuario normal
+          password: hashedPassword,
+          status: "email_verification",
+          verificationToken: verificationData.token,
+          verificationExpires: verificationData.expires,
+          isEmailVerified: false
+        });
+      } catch (err) {
+        console.error("Error al crear usuario:", err);
+        return res.status(500).json({ 
+          success: false, 
+          message: "Error al crear usuario. Por favor, intenta nuevamente."
+        });
+      }
 
       // Enviar email de verificación
       if (req.body.email) {
@@ -141,7 +161,11 @@ export function setupAuth(app: Express) {
           console.error("Error al enviar correo de verificación:", emailError);
           
           // Si hay error al enviar el correo, eliminamos el usuario
-          await db.delete(users).where(eq(users.id, user.id));
+          try {
+            await db.delete(users).where(eq(users.id, user.id));
+          } catch (deleteErr) {
+            console.error("Error al eliminar usuario tras fallo de email:", deleteErr);
+          }
           
           return res.status(500).json({ 
             success: false, 
