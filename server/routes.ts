@@ -761,7 +761,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const userId = req.user.id;
-      const { amount, walletAddress } = req.body;
+      const { amount, walletAddress, walletId, walletName } = req.body;
       
       // Validate request
       if (!amount || typeof amount !== 'number' || amount <= 0) {
@@ -779,13 +779,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Insufficient balance for withdrawal" });
       }
       
+      // Format wallet description
+      const walletDescription = walletName ? `${walletName} (${walletAddress.substring(0, 8)}...)` : walletAddress;
+      
       // Create withdrawal transaction (negative amount)
       const withdrawal: InsertTransaction = {
         type: "withdrawal",
         amount: -Math.abs(amount), // Ensure amount is negative
         status: "pending",
-        description: `Withdrawal to ${walletAddress}`,
-        reference: `WIT${Date.now().toString().slice(-6)}`
+        description: `Withdrawal to ${walletDescription}`,
+        reference: `WIT${Date.now().toString().slice(-6)}`,
+        settings: {
+          walletAddress,
+          walletId,
+          walletName
+        }
       };
       
       const transaction = await storage.createTransaction(withdrawal, userId);

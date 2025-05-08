@@ -138,8 +138,9 @@ export const transactions = pgTable("transactions", {
 
 export const insertTransactionSchema = createInsertSchema(transactions, {
   type: z.enum(["withdrawal", "bonus", "discount"]),
-  status: z.enum(["pending", "processing", "paid", "failed", "cancelled"])
-}).omit({ id: true, userId: true, createdAt: true, settings: true });
+  status: z.enum(["pending", "processing", "paid", "failed", "cancelled"]),
+  settings: z.record(z.any()).optional()
+}).omit({ id: true, userId: true, createdAt: true });
 
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type Transaction = typeof transactions.$inferSelect;

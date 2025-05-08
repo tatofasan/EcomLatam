@@ -1142,6 +1142,23 @@ export default function WalletPage() {
                   <p className="font-medium">{selectedTransaction.description || 'No description'}</p>
                 </div>
                 
+                {/* Wallet info section for withdrawals - display wallet information */}
+                {selectedTransaction.type === "withdrawal" && selectedTransaction.settings?.walletAddress && (
+                  <div className="space-y-2 mt-2 border-t pt-2">
+                    <p className="text-sm text-gray-500 font-medium">Wallet Information</p>
+                    {selectedTransaction.settings.walletName && (
+                      <div className="space-y-1">
+                        <p className="text-sm text-gray-500">Wallet Name</p>
+                        <p className="font-medium">{selectedTransaction.settings.walletName}</p>
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      <p className="text-sm text-gray-500">Wallet Address</p>
+                      <p className="font-medium break-all text-xs">{selectedTransaction.settings.walletAddress}</p>
+                    </div>
+                  </div>
+                )}
+                
                 {/* Payment Proof section - only show if available */}
                 {selectedTransaction.status === "paid" && 
                  selectedTransaction.type === "withdrawal" && 
