@@ -17,6 +17,7 @@ import { pool } from "./db";
 
 export interface IStorage {
   // User methods
+  getAllUsers(): Promise<User[]>;
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
@@ -75,6 +76,10 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users).orderBy(asc(users.id));
+  }
+  
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;

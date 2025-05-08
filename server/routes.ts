@@ -1047,6 +1047,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Team management endpoints - Only accessible to admin users
+  app.get("/api/users", requireAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).send("Error fetching users");
+    }
+  });
+  
+  app.post("/api/users", requireAdmin, async (req, res) => {
+    try {
+      const userData = req.body;
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(userData.username);
+      if (existingUser) {
+        return res.status(400).send("Username already exists");
+      }
+      
+      const newUser = await storage.createUser(userData);
+      res.status(201).json(newUser);
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).send("Error creating user");
+    }
+  });
+  
+  app.put("/api/users/:id", requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const userData = req.body;
+      
+      // Prevent non-admin from changing an admin role
+      const user = await storage.getUser(userId);
+      if (user?.role === "admin" && userData.role !== "admin" && req.user?.role !== "admin") {
+        return res.status(403).send("Only admins can change admin roles");
+      }
+      
+      const updatedUser = await storage.updateUser(userId, userData);
+      if (!updatedUser) {
+        return res.status(404).send("User not found");
+      }
+      
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).send("Error updating user");
+    }
+  });
+  
   const httpServer = createServer(app);
 
   return httpServer;
