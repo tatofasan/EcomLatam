@@ -370,9 +370,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const userId = req.user.id;
       const isAdmin = req.user.role === 'admin';
+      const isModerator = req.user.role === 'moderator';
+      const hasAdminAccess = isAdmin || isModerator;
       
-      // If admin and specifically requests all orders, don't filter by userId
-      const orders = isAdmin ? await storage.getAllOrders() : await storage.getAllOrders(userId);
+      // If admin/moderator and specifically requests all orders, don't filter by userId
+      const orders = hasAdminAccess ? await storage.getAllOrders() : await storage.getAllOrders(userId);
       res.json(orders);
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -394,9 +396,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Order not found" });
       }
       
-      // Check if this order belongs to the authenticated user (or if user is admin)
+      // Check if this order belongs to the authenticated user (or if user is admin/moderator)
       const isAdmin = req.user.role === 'admin';
-      if (order.userId !== req.user.id && !isAdmin) {
+      const isModerator = req.user.role === 'moderator';
+      const hasAdminAccess = isAdmin || isModerator;
+      if (order.userId !== req.user.id && !hasAdminAccess) {
         return res.status(403).json({ message: "Forbidden" });
       }
       
@@ -478,13 +482,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Order not found" });
       }
       
-      // Check if user has admin or finance role
+      // Check if user has admin, moderator, or finance role
       const isAdmin = req.user.role === 'admin';
       const isFinance = req.user.role === 'finance';
+      const isModerator = req.user.role === 'moderator';
       
-      // Only admin or finance users can update order status
-      if (!isAdmin && !isFinance) {
-        return res.status(403).json({ message: "Forbidden: Only admin or finance users can update order status" });
+      // Only admin, moderator, or finance users can update order status
+      if (!isAdmin && !isFinance && !isModerator) {
+        return res.status(403).json({ message: "Forbidden: Only admin, moderator, or finance users can update order status" });
       }
       
       const updatedOrder = await storage.updateOrderStatus(orderId, status);
@@ -506,7 +511,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const isAdmin = req.user.role === 'admin';
       const isFinance = req.user.role === 'finance';
-      const hasSupervisorAccess = isAdmin || isFinance;
+      const isModerator = req.user.role === "moderator";
+      const hasSupervisorAccess = isAdmin || isFinance || isModerator;
       
       console.log(`Fetching dashboard metrics for user ID ${userId}, isAdmin: ${isAdmin}, isFinance: ${isFinance}`);
       
@@ -687,6 +693,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const isAdmin = req.user.role === 'admin';
       const isFinance = req.user.role === 'finance';
+      const isModerator = req.user.role === "moderator";
+      // Los moderadores no tienen acceso a las transacciones del wallet
       const hasSupervisorAccess = isAdmin || isFinance;
       
       let userTransactions = [];
@@ -1081,8 +1089,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Connection not found" });
       }
       
-      // Check if this connection belongs to the authenticated user or if user is an admin
-      if (connection.userId !== req.user.id && req.user.role !== 'admin') {
+      // Check if this connection belongs to the authenticated user or if user is an admin/moderator
+      const isModerator = req.user.role === 'moderator';
+      const isAdmin = req.user.role === 'admin';
+      const hasAdminAccess = isAdmin || isModerator;
+      
+      if (connection.userId !== req.user.id && !hasAdminAccess) {
         return res.status(403).json({ message: "Forbidden" });
       }
       
