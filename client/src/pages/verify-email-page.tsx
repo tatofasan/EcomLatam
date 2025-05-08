@@ -87,28 +87,28 @@ export default function VerifyEmailPage() {
         <CardHeader className="space-y-1 flex flex-col items-center">
           <EcomdropLogo className="h-12 mb-4" />
           <CardTitle className="text-2xl font-bold text-center">
-            Verificación de Email
+            Email Verification
           </CardTitle>
           <CardDescription className="text-center">
             {status === "verifying" 
-              ? "Verificando tu dirección de correo electrónico..." 
+              ? "Verifying your email address..." 
               : status === "success" 
-                ? "¡Verificación completada!" 
-                : "Error de verificación"}
+                ? "Verification Complete!" 
+                : "Verification Error"}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center space-y-4">
           {status === "verifying" ? (
             <div className="flex flex-col items-center space-y-4">
               <Loader2 className="h-16 w-16 text-primary animate-spin" />
-              <p className="text-center">Estamos verificando tu dirección de correo electrónico. Por favor espera un momento...</p>
+              <p className="text-center">We are verifying your email address. Please wait a moment...</p>
             </div>
           ) : status === "success" ? (
             <div className="flex flex-col items-center space-y-4">
               <CheckCircle className="h-16 w-16 text-green-500" />
               <p className="text-center">{message}</p>
               <Button className="w-full" onClick={handleReturn}>
-                Ir a Iniciar Sesión
+                Go to Login
               </Button>
             </div>
           ) : (
@@ -116,10 +116,10 @@ export default function VerifyEmailPage() {
               <XCircle className="h-16 w-16 text-red-500" />
               <p className="text-center">{message}</p>
               <Button variant="outline" className="w-full" onClick={handleResendEmail}>
-                Reenviar Email de Verificación
+                Resend Verification Email
               </Button>
               <Button className="w-full" onClick={handleReturn}>
-                Volver a Iniciar Sesión
+                Return to Login
               </Button>
             </div>
           )}
