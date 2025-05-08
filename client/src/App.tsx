@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider } from "@/hooks/use-sidebar";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
+import VerifyEmailPage from "@/pages/verify-email-page";
 import HomePage from "@/pages/home-page";
 import ProductsPage from "@/pages/products-page";
 import OrdersPage from "@/pages/orders-page";
@@ -18,6 +19,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
+      <Route path="/verify-email" component={VerifyEmailPage} />
       <ProtectedRoute path="/" component={HomePage} />
       <ProtectedRoute path="/products" component={ProductsPage} />
       <ProtectedRoute path="/orders" component={OrdersPage} />
