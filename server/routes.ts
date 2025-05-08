@@ -341,6 +341,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Delete a product
   app.delete("/api/products/:id", requireAuth, async (req, res) => {
+    // Finance users cannot delete products (only admin and regular users)
+    if (req.user?.role === 'finance') {
+      return res.status(403).json({ message: "Forbidden: Finance users cannot delete products" });
+    }
+    
     try {
       const productId = parseInt(req.params.id);
       const success = await storage.deleteProduct(productId);
