@@ -122,7 +122,7 @@ export type Connection = typeof connections.$inferSelect;
 export const transactions = pgTable("transactions", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
-  type: text("type").notNull(), // deposit, withdrawal, payment, refund
+  type: text("type").notNull(), // withdrawal, bonus, discount
   amount: doublePrecision("amount").notNull(),
   status: text("status").notNull().default("pending"), // pending, processing, paid, failed, cancelled
   description: text("description"),
@@ -132,7 +132,7 @@ export const transactions = pgTable("transactions", {
 });
 
 export const insertTransactionSchema = createInsertSchema(transactions, {
-  type: z.enum(["deposit", "withdrawal", "payment", "refund"]),
+  type: z.enum(["withdrawal", "bonus", "discount"]),
   status: z.enum(["pending", "processing", "paid", "failed", "cancelled"])
 }).omit({ id: true, userId: true, createdAt: true, settings: true });
 

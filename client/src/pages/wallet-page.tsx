@@ -279,32 +279,30 @@ export default function WalletPage() {
 
   const getTransactionBadge = (type: string) => {
     switch (type) {
-      case "deposit":
-        return (
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-            Deposit
-          </Badge>
-        );
       case "withdrawal":
         return (
           <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
             Withdrawal
           </Badge>
         );
-      case "payment":
+      case "bonus":
         return (
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-            Payment
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+            Bonus
           </Badge>
         );
-      case "refund":
+      case "discount":
         return (
-          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-            Refund
+          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+            Discount
           </Badge>
         );
       default:
-        return null;
+        return (
+          <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+            {type.charAt(0).toUpperCase() + type.slice(1)}
+          </Badge>
+        );
     }
   };
 
@@ -364,32 +362,30 @@ export default function WalletPage() {
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
-      case "deposit":
-        return (
-          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-            <ArrowDown className="h-4 w-4 text-green-600" />
-          </div>
-        );
       case "withdrawal":
         return (
           <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
             <ArrowUp className="h-4 w-4 text-amber-600" />
           </div>
         );
-      case "payment":
+      case "bonus":
         return (
-          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-            <CreditCard className="h-4 w-4 text-blue-600" />
+          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+            <Plus className="h-4 w-4 text-green-600" />
           </div>
         );
-      case "refund":
+      case "discount":
         return (
-          <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-            <Banknote className="h-4 w-4 text-purple-600" />
+          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+            <Banknote className="h-4 w-4 text-blue-600" />
           </div>
         );
       default:
-        return null;
+        return (
+          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+            <CreditCard className="h-4 w-4 text-gray-600" />
+          </div>
+        );
     }
   };
   
@@ -657,10 +653,9 @@ export default function WalletPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All types</SelectItem>
-                    <SelectItem value="deposit">Deposits</SelectItem>
                     <SelectItem value="withdrawal">Withdrawals</SelectItem>
-                    <SelectItem value="payment">Payments</SelectItem>
-                    <SelectItem value="refund">Refunds</SelectItem>
+                    <SelectItem value="bonus">Bonus</SelectItem>
+                    <SelectItem value="discount">Discount</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
