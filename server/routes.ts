@@ -11,11 +11,14 @@ import {
   insertOrderItemSchema, 
   insertConnectionSchema,
   insertTransactionSchema,
+  apiOrderSchema,
+  apiOrderStatusSchema,
   products,
   orders,
   orderItems,
   transactions,
-  type InsertTransaction
+  type InsertTransaction,
+  type ApiOrder
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, sql, inArray } from "drizzle-orm";
@@ -1145,6 +1148,178 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching transaction:", error);
       res.status(500).json({ message: "Failed to fetch transaction" });
+    }
+  });
+  
+  // -----------------------------------------------
+  // API KEY MANAGEMENT AND API ENDPOINTS
+  // -----------------------------------------------
+  
+  // Get current user's API key
+  app.get("/api/user/api-key", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const userId = req.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json({ apiKey: user.apiKey || null });
+    } catch (error) {
+      console.error("Error fetching API key:", error);
+      res.status(500).json({ message: "Failed to fetch API key" });
+    }
+  });
+  
+  // Generate new API key for current user
+  app.post("/api/user/api-key", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const userId = req.user.id;
+      const apiKey = await storage.generateApiKey(userId);
+      
+      res.json({ apiKey });
+    } catch (error) {
+      console.error("Error generating API key:", error);
+      res.status(500).json({ message: "Failed to generate API key" });
+    }
+  });
+  
+  // API endpoint for order ingestion (requires API key)
+  app.post("/api/external/orders", requireApiKey, async (req, res) => {
+    try {
+      // Validate the request body against the API order schema
+      const parseResult = apiOrderSchema.safeParse(req.body);
+      
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          success: false,
+          message: "Invalid order data", 
+          errors: parseResult.error.format() 
+        });
+      }
+      
+      const orderData = parseResult.data;
+      
+      // Check if the product exists
+      const product = await storage.getProduct(orderData.productId);
+      
+      if (!product) {
+        return res.status(404).json({ 
+          success: false,
+          message: "Product not found" 
+        });
+      }
+      
+      // Create order with user ID from API key
+      const userId = req.user.id;
+      
+      // Generate a unique order number with timestamp
+      const orderNumber = `ORD-${Date.now()}-${userId}`;
+      
+      // Create the order using storage
+      const order = await storage.createOrder({
+        customerName: orderData.customerName,
+        customerEmail: orderData.customerEmail || null,
+        customerPhone: orderData.customerPhone,
+        shippingAddress: orderData.shippingAddress || "No shipping address provided",
+        status: "pending",
+        totalAmount: orderData.price * orderData.quantity,
+        notes: orderData.notes || null,
+        orderNumber: orderNumber
+      }, userId);
+      
+      // Add order item
+      await storage.addOrderItem({
+        orderId: order.id,
+        productId: orderData.productId,
+        quantity: orderData.quantity,
+        price: orderData.price,  // Use the price from the API request
+        subtotal: orderData.price * orderData.quantity
+      });
+      
+      res.status(201).json({ 
+        success: true,
+        message: "Order created successfully",
+        order: {
+          id: order.id,
+          orderNumber: order.orderNumber,
+          status: order.status,
+          totalAmount: order.totalAmount,
+          createdAt: order.createdAt
+        }
+      });
+    } catch (error) {
+      console.error("Error creating order via API:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to create order" 
+      });
+    }
+  });
+  
+  // API endpoint for order status (requires API key)
+  app.get("/api/external/orders/:orderNumber/status", requireApiKey, async (req, res) => {
+    try {
+      const { orderNumber } = req.params;
+      const userId = req.user.id;
+      
+      // Query the database for the order
+      const [order] = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.orderNumber, orderNumber))
+        .limit(1);
+      
+      if (!order) {
+        return res.status(404).json({ 
+          success: false,
+          message: "Order not found" 
+        });
+      }
+      
+      // Check if the order belongs to the user associated with the API key
+      if (order.userId !== userId) {
+        return res.status(403).json({ 
+          success: false,
+          message: "You do not have permission to access this order" 
+        });
+      }
+      
+      // Get order items
+      const orderItems = await storage.getOrderItems(order.id);
+      
+      res.json({ 
+        success: true,
+        order: {
+          orderNumber: order.orderNumber,
+          status: order.status,
+          customerName: order.customerName,
+          totalAmount: order.totalAmount,
+          createdAt: order.createdAt,
+          updatedAt: order.updatedAt,
+          items: orderItems.map(item => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.price,
+            subtotal: item.subtotal
+          }))
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching order status via API:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to fetch order status" 
+      });
     }
   });
   
