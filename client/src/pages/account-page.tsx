@@ -102,9 +102,7 @@ export default function AccountPage() {
         settings
       };
 
-      const response = await apiRequest('/api/user/profile', "PATCH", {
-        body: JSON.stringify(userData)
-      });
+      const response = await apiRequest("PATCH", '/api/user/profile', userData);
 
       if (response.ok) {
         toast({
@@ -136,11 +134,9 @@ export default function AccountPage() {
     
     setIsSubmitting(true);
     try {
-      const response = await apiRequest('/api/user/change-password', "POST", {
-        body: JSON.stringify({
-          currentPassword: data.currentPassword,
-          newPassword: data.newPassword
-        })
+      const response = await apiRequest("POST", '/api/user/change-password', {
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword
       });
 
       if (response.ok) {
