@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Wallet, 
   ArrowUp, 
@@ -24,7 +25,9 @@ import {
   Plus,
   Upload,
   FileCheck,
-  Eye
+  Eye,
+  Edit as EditIcon,
+  Trash2 as Trash2Icon
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -427,19 +430,134 @@ export default function WalletPage() {
   
   // Function to handle withdrawal
   const handleWithdraw = () => {
-    if (!withdrawAmount || !walletAddress) return;
+    if (!withdrawAmount || !selectedWalletId) return;
+    
+    const selectedWallet = wallets.find(w => w.id === selectedWalletId);
+    if (!selectedWallet) {
+      toast({
+        title: "Wallet not found",
+        description: "Please select a valid wallet address for the withdrawal.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     withdrawMutation.mutate({
       amount: Number(withdrawAmount),
-      walletAddress
+      walletAddress: selectedWallet.address
     });
   };
   
-  // Function to handle wallet address update
-  const handleUpdateWalletAddress = () => {
-    if (!newWalletAddress) return;
+  // Function to handle wallet address management
+  const handleSaveWallet = () => {
+    if (!newWalletData.name || !newWalletData.address) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide both a name and address for the wallet.",
+        variant: "destructive"
+      });
+      return;
+    }
     
-    updateWalletAddressMutation.mutate(newWalletAddress);
+    // Check if we've reached the limit of 3 wallets when adding new one
+    if (!editingWalletId && wallets.length >= 3) {
+      toast({
+        title: "Wallet Limit Reached",
+        description: "You can have a maximum of 3 wallet addresses. Please delete one to add a new address.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Create updated wallets array
+    let updatedWallets = [...wallets];
+    
+    // If editing existing wallet
+    if (editingWalletId) {
+      updatedWallets = updatedWallets.map(wallet => 
+        wallet.id === editingWalletId ? 
+          { ...newWalletData, isDefault: newWalletData.isDefault || wallet.isDefault } : 
+          wallet
+      );
+      
+      // If making this wallet default, make sure others are not default
+      if (newWalletData.isDefault) {
+        updatedWallets = updatedWallets.map(wallet =>
+          wallet.id === editingWalletId ? 
+            { ...wallet, isDefault: true } : 
+            { ...wallet, isDefault: false }
+        );
+      }
+    } 
+    // Adding new wallet
+    else {
+      // Generate unique ID for new wallet
+      const newId = `wallet_${Date.now()}`;
+      
+      // If this is the first wallet or set as default, make sure it's the only default
+      if (newWalletData.isDefault || updatedWallets.length === 0) {
+        // First, set isDefault: false for all existing wallets
+        updatedWallets = updatedWallets.map(wallet => ({ ...wallet, isDefault: false }));
+        
+        // Then add the new wallet with isDefault: true
+        updatedWallets.push({ 
+          ...newWalletData, 
+          id: newId, 
+          isDefault: true 
+        });
+      } else {
+        // Add non-default wallet
+        updatedWallets.push({ 
+          ...newWalletData, 
+          id: newId,
+          isDefault: newWalletData.isDefault || false
+        });
+      }
+    }
+    
+    // Ensure at least one wallet is marked as default
+    if (!updatedWallets.some(w => w.isDefault) && updatedWallets.length > 0) {
+      updatedWallets[0] = { ...updatedWallets[0], isDefault: true };
+    }
+    
+    // Update wallets in user settings
+    updateWalletsMutation.mutate(updatedWallets);
+    
+    // Reset form state
+    setEditingWalletId(null);
+    setNewWalletData({
+      id: "",
+      name: "",
+      address: "",
+      isDefault: false
+    });
+  };
+  
+  // Function to edit a wallet
+  const handleEditWallet = (wallet: {id: string; name: string; address: string; isDefault?: boolean}) => {
+    setEditingWalletId(wallet.id);
+    setNewWalletData({
+      ...wallet,
+      isDefault: !!wallet.isDefault
+    });
+    setWalletAddressDialogOpen(true);
+  };
+  
+  // Function to delete a wallet
+  const handleDeleteWallet = (walletId: string) => {
+    const walletToDelete = wallets.find(w => w.id === walletId);
+    if (!walletToDelete) return;
+    
+    // Create updated wallets array without the deleted wallet
+    let updatedWallets = wallets.filter(w => w.id !== walletId);
+    
+    // If deleting the default wallet, make another one default
+    if (walletToDelete.isDefault && updatedWallets.length > 0) {
+      updatedWallets[0] = { ...updatedWallets[0], isDefault: true };
+    }
+    
+    // Update wallets in user settings
+    updateWalletsMutation.mutate(updatedWallets);
   };
   
   // Calculate current balance from balanceData or balance history
@@ -454,49 +572,140 @@ export default function WalletPage() {
             <p className="text-gray-500 mt-1">Manage your balance and transactions</p>
           </div>
           
-          {/* Wallet Address Setup Button - Only for non-admin users */}
+          {/* Wallet Management Button - Only for non-admin users */}
           {user?.role !== "admin" && (
             <Button 
               variant="outline" 
               className="flex items-center gap-2"
               onClick={() => setWalletAddressDialogOpen(true)}
             >
-              {walletAddress ? "Change Wallet Address" : "Set Wallet Address"}
+              <Wallet className="h-4 w-4 mr-1" />
+              {wallets.length > 0 ? "Manage Wallets" : "Add Wallet Address"}
             </Button>
           )}
         </div>
         
-        {/* Wallet Address Dialog - Only for non-admin users */}
+        {/* Wallet Address Management Dialog - Only for non-admin users */}
         {user?.role !== "admin" && (
-          <Dialog open={walletAddressDialogOpen} onOpenChange={setWalletAddressDialogOpen}>
+          <Dialog open={walletAddressDialogOpen} onOpenChange={(open) => {
+            if (!open) {
+              // Reset form state when closing
+              setEditingWalletId(null);
+              setNewWalletData({
+                id: "",
+                name: "",
+                address: "",
+                isDefault: false
+              });
+            }
+            setWalletAddressDialogOpen(open);
+          }}>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>{walletAddress ? "Change Wallet Address" : "Set Wallet Address"}</DialogTitle>
+                <DialogTitle>{editingWalletId ? "Edit Wallet" : "Add Wallet Address"}</DialogTitle>
                 <DialogDescription>
-                  {walletAddress 
-                    ? "Update your virtual wallet address for withdrawals." 
-                    : "Set up a virtual wallet address to receive your funds."
+                  {editingWalletId 
+                    ? "Update your wallet information." 
+                    : `Add a wallet address to receive your funds. You can add up to ${3 - wallets.length} more wallet(s).`
                   }
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
+                  <Label htmlFor="walletName">Wallet Name</Label>
+                  <Input 
+                    id="walletName" 
+                    placeholder="e.g. My Main Wallet" 
+                    value={newWalletData.name} 
+                    onChange={(e) => setNewWalletData({...newWalletData, name: e.target.value})} 
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="walletAddress">Wallet Address</Label>
                   <Input 
                     id="walletAddress" 
-                    placeholder="Enter your wallet address" 
-                    value={newWalletAddress} 
-                    onChange={(e) => setNewWalletAddress(e.target.value)} 
+                    placeholder="Enter wallet address" 
+                    value={newWalletData.address} 
+                    onChange={(e) => setNewWalletData({...newWalletData, address: e.target.value})} 
                   />
                 </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="isDefault"
+                    checked={newWalletData.isDefault}
+                    onCheckedChange={(checked) => 
+                      setNewWalletData({...newWalletData, isDefault: !!checked})
+                    }
+                  />
+                  <Label htmlFor="isDefault" className="cursor-pointer">Set as default wallet for withdrawals</Label>
+                </div>
               </div>
+
+              {/* List existing wallets */}
+              {wallets.length > 0 && !editingWalletId && (
+                <div className="border-t pt-4">
+                  <h3 className="text-sm font-medium mb-2">Your Wallets</h3>
+                  <div className="space-y-3">
+                    {wallets.map((wallet) => (
+                      <div key={wallet.id} className="flex items-center justify-between rounded-md border p-2">
+                        <div className="overflow-hidden mr-2">
+                          <div className="font-medium flex items-center">
+                            {wallet.name}
+                            {wallet.isDefault && (
+                              <Badge variant="outline" className="ml-2 text-xs">Default</Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500 truncate">{wallet.address}</div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleEditWallet(wallet)}
+                          >
+                            <EditIcon className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleDeleteWallet(wallet.id)}
+                            disabled={wallets.length <= 1 && wallet.isDefault}
+                          >
+                            <Trash2Icon className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <DialogFooter>
+                {editingWalletId && (
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => {
+                      setEditingWalletId(null);
+                      setNewWalletData({
+                        id: "",
+                        name: "",
+                        address: "",
+                        isDefault: false
+                      });
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                )}
                 <Button 
                   type="submit" 
-                  onClick={handleUpdateWalletAddress} 
-                  disabled={!newWalletAddress || updateWalletAddressMutation.isPending}
+                  onClick={handleSaveWallet}
+                  disabled={!newWalletData.address || !newWalletData.name || updateWalletsMutation.isPending}
                 >
-                  {updateWalletAddressMutation.isPending ? "Saving..." : "Save"}
+                  {updateWalletsMutation.isPending ? "Saving..." : "Save"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -536,15 +745,15 @@ export default function WalletPage() {
                   variant="outline" 
                   className="flex items-center gap-2"
                   onClick={() => setWithdrawDialogOpen(true)}
-                  disabled={!walletAddress || currentBalance <= 0}
+                  disabled={wallets.length === 0 || currentBalance <= 0}
                 >
                   <ArrowUp className="h-4 w-4" />
                   Withdraw
                 </Button>
               )}
               
-              {/* Display info message if wallet address is not set */}
-              {!walletAddress && user?.role !== "admin" && (
+              {/* Display info message if no wallet address is set */}
+              {wallets.length === 0 && user?.role !== "admin" && (
                 <div className="flex items-center gap-2 text-amber-600">
                   <AlertCircle className="h-4 w-4" />
                   <span className="text-sm">Set up a wallet address to enable withdrawals</span>
@@ -618,28 +827,35 @@ export default function WalletPage() {
                   <p className="text-xs text-gray-500">Available balance: ${currentBalance.toFixed(2)}</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="walletAddressSelect">Wallet Address</Label>
-                  {walletAddress ? (
+                  <Label htmlFor="walletAddressSelect">Select Wallet</Label>
+                  {wallets.length > 0 ? (
                     <Select 
-                      defaultValue={walletAddress}
+                      value={selectedWalletId || undefined}
                       onValueChange={(value) => {
                         if (value === "add_new") {
                           setWithdrawDialogOpen(false);
                           setWalletAddressDialogOpen(true);
+                        } else {
+                          setSelectedWalletId(value);
                         }
                       }}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a wallet address" />
+                        <SelectValue placeholder="Select a wallet" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={walletAddress}>
-                          <div className="truncate max-w-[300px]">{walletAddress}</div>
-                        </SelectItem>
+                        {wallets.map(wallet => (
+                          <SelectItem key={wallet.id} value={wallet.id}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{wallet.name}</span>
+                              <span className="text-xs text-gray-500 truncate max-w-[300px]">{wallet.address}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
                         <SelectItem value="add_new">
                           <div className="flex items-center text-blue-600">
                             <Plus className="h-4 w-4 mr-2" />
-                            Add new wallet address
+                            Add new wallet
                           </div>
                         </SelectItem>
                       </SelectContent>
@@ -660,7 +876,7 @@ export default function WalletPage() {
                     </div>
                   )}
                   <p className="text-xs text-gray-500">
-                    Funds will be sent to this wallet address.
+                    Funds will be sent to the selected wallet.
                   </p>
                 </div>
               </div>
@@ -668,7 +884,7 @@ export default function WalletPage() {
                 <Button 
                   type="submit" 
                   onClick={handleWithdraw} 
-                  disabled={!withdrawAmount || Number(withdrawAmount) <= 0 || Number(withdrawAmount) > currentBalance || !walletAddress || withdrawMutation.isPending}
+                  disabled={!withdrawAmount || Number(withdrawAmount) <= 0 || Number(withdrawAmount) > currentBalance || !selectedWalletId || withdrawMutation.isPending}
                 >
                   {withdrawMutation.isPending ? "Processing..." : "Request Withdrawal"}
                 </Button>
