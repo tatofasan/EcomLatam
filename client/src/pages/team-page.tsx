@@ -89,21 +89,37 @@ export default function TeamPage() {
     mutationFn: async (values: UserFormValues) => {
       // Eliminar el campo confirmPassword que no debe enviarse al servidor
       const { confirmPassword, ...userData } = values;
-      const res = await apiRequest("POST", "/api/users", userData);
-      return res.json();
+      console.log("Sending new user data:", {
+        ...userData,
+        password: userData.password ? "[REDACTED]" : undefined // Para no mostrar contraseñas en el log
+      });
+      
+      try {
+        const res = await apiRequest("POST", "/api/users", userData);
+        if (!res.ok) {
+          // Intentar obtener detalles del error desde la respuesta
+          const errorData = await res.json().catch(() => ({ message: "Unknown server error" }));
+          throw new Error(errorData.message || `Server responded with status ${res.status}`);
+        }
+        return await res.json();
+      } catch (err) {
+        console.error("Error adding team member:", err);
+        throw err; // Re-lanzar para que onError lo capture
+      }
     },
     onSuccess: () => {
       toast({ 
-        title: "Success",
-        description: "Team member added successfully"
+        title: "Éxito", // Cambiado a español
+        description: "Miembro del equipo añadido correctamente"
       });
       setIsAddDialogOpen(false);
       form.reset();
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
     },
     onError: (error: Error) => {
+      console.error("Failed to add team member:", error);
       toast({ 
-        title: "Error adding team member",
+        title: "Error al añadir miembro del equipo", // Cambiado a español
         description: error.message,
         variant: "destructive"
       });
@@ -320,7 +336,7 @@ export default function TeamPage() {
                         <FormLabel className="text-right">Full Name</FormLabel>
                         <div className="col-span-3">
                           <FormControl>
-                            <Input placeholder="Full name" {...field} />
+                            <Input placeholder="Full name" {...field} value={field.value || ''} />
                           </FormControl>
                           <FormMessage />
                         </div>
@@ -336,7 +352,7 @@ export default function TeamPage() {
                         <FormLabel className="text-right">Email</FormLabel>
                         <div className="col-span-3">
                           <FormControl>
-                            <Input type="email" placeholder="email@example.com" {...field} />
+                            <Input type="email" placeholder="email@example.com" {...field} value={field.value || ''} />
                           </FormControl>
                           <FormMessage />
                         </div>
