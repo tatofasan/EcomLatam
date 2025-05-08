@@ -904,7 +904,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // De lo contrario, solo mostrar las conexiones del usuario
       let connections;
       if (showAll) {
+        // Obtener todas las conexiones
         connections = await storage.getAllConnections();
+        
+        // Agregar nombres de usuario a cada conexión
+        const userIds = new Set(connections.map(conn => conn.userId));
+        const usersMap = new Map();
+        
+        // Buscar información de todos los usuarios involucrados
+        for (const id of userIds) {
+          const user = await storage.getUser(id);
+          if (user) {
+            usersMap.set(id, user.username);
+          }
+        }
+        
+        // Añadir la información de nombre de usuario a cada conexión
+        connections = connections.map(conn => ({
+          ...conn,
+          userName: usersMap.get(conn.userId) || `User-${conn.userId}`
+        }));
       } else {
         connections = await storage.getUserConnections(userId);
       }

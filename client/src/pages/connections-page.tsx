@@ -43,6 +43,7 @@ interface ConnectionWithStats extends ConnectionType {
   lastSync?: string;
   products?: number;
   orders?: number;
+  userName?: string; // Nombre de usuario (para vista de administrador)
 }
 
 export default function ConnectionsPage() {
@@ -560,9 +561,9 @@ export default function ConnectionsPage() {
                       <CardTitle>{connection.name}</CardTitle>
                       <CardDescription className="mt-1">
                         Last sync: {connection.lastSync}
-                        {/* Mostrar el ID del usuario para administradores */}
+                        {/* Mostrar el nombre de usuario para administradores */}
                         {user?.role === 'admin' && (
-                          <> • Usuario ID: {connection.userId}</>
+                          <> • Usuario: {connection.userName || `User-${connection.userId}`}</>
                         )}
                       </CardDescription>
                     </div>
