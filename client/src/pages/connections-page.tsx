@@ -67,7 +67,7 @@ export default function ConnectionsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [step, setStep] = useState<'platforms' | 'details' | 'authenticating'>('platforms');
   
-  // Estado para el diálogo de confirmación de eliminación
+  // State for the deletion confirmation dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [connectionToDelete, setConnectionToDelete] = useState<number | null>(null);
 
@@ -76,8 +76,8 @@ export default function ConnectionsPage() {
     try {
       setIsLoading(true);
       
-      // Si el usuario es administrador, cargamos todas las conexiones
-      // Si es usuario regular, solo cargamos sus conexiones
+      // If the user is an administrator, load all connections
+      // If regular user, only load their connections
       const isAdmin = user?.role === 'admin';
       const endpoint = isAdmin ? '/api/connections?all=true' : '/api/connections';
       
@@ -378,7 +378,7 @@ export default function ConnectionsPage() {
             </p>
           </div>
           
-          {/* Solo mostrar el botón de agregar conexión para usuarios regulares, no para administradores */}
+          {/* Only show add connection button for regular users, not for administrators */}
           {user?.role !== 'admin' && (
             <Button 
               className="flex items-center gap-2"
@@ -392,15 +392,15 @@ export default function ConnectionsPage() {
             </Button>
           )}
           
-          {/* Dialog para crear nuevas conexiones */}
+          {/* Dialog for creating new connections */}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
-                <DialogTitle>Conectar plataforma</DialogTitle>
+                <DialogTitle>Connect Platform</DialogTitle>
                 <DialogDescription>
-                  {step === 'platforms' && "Selecciona la plataforma de e-commerce que deseas conectar."}
-                  {step === 'details' && "Ingresa los detalles de tu tienda Shopify para conectarla."}
-                  {step === 'authenticating' && "Autorizando la conexión con Shopify..."}
+                  {step === 'platforms' && "Select the e-commerce platform you want to connect."}
+                  {step === 'details' && "Enter your Shopify store details to connect it."}
+                  {step === 'authenticating' && "Authorizing connection with Shopify..."}
                 </DialogDescription>
               </DialogHeader>
               
@@ -436,19 +436,19 @@ export default function ConnectionsPage() {
               {step === 'details' && (
                 <div className="grid gap-4 py-4">
                   <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Información de tu tienda Shopify</h3>
+                    <h3 className="text-sm font-medium">Shopify Store Information</h3>
                     <p className="text-sm text-muted-foreground">
-                      Conectar con Shopify permite importar productos y sincronizar pedidos automáticamente.
+                      Connecting with Shopify allows you to import products and synchronize orders automatically.
                     </p>
                   </div>
                   
                   <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="name" className="text-right">
-                      Nombre de la tienda
+                      Store Name
                     </Label>
                     <Input 
                       id="name" 
-                      placeholder="mi-tienda" 
+                      placeholder="my-store" 
                       className="col-span-3"
                       value={formData.name}
                       onChange={handleInputChange}
@@ -458,8 +458,8 @@ export default function ConnectionsPage() {
                   <div className="grid grid-cols-1 gap-2 mt-4">
                     <div className="bg-blue-50 p-3 rounded-md text-sm border border-blue-100">
                       <p className="text-blue-700">
-                        Se abrirá una ventana de Shopify para autorizar la conexión.
-                        Una vez autorizada, podrás gestionar tus productos y pedidos desde aquí.
+                        A Shopify window will open to authorize the connection.
+                        Once authorized, you'll be able to manage your products and orders from here.
                       </p>
                     </div>
                   </div>
@@ -470,21 +470,21 @@ export default function ConnectionsPage() {
                 <div className="flex items-center justify-center py-10">
                   <div className="text-center">
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
-                    <p>Autorizando conexión con Shopify...</p>
-                    <p className="text-sm text-muted-foreground mt-2">Esto puede tomar unos segundos.</p>
+                    <p>Authorizing connection with Shopify...</p>
+                    <p className="text-sm text-muted-foreground mt-2">This may take a few seconds.</p>
                   </div>
                 </div>
               )}
               
               <DialogFooter>
                 {step === 'platforms' && (
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
                 )}
                 
                 {step === 'details' && (
                   <>
-                    <Button variant="outline" onClick={() => setStep('platforms')}>Volver</Button>
-                    <Button onClick={handleShopifyAuth}>Conectar con Shopify</Button>
+                    <Button variant="outline" onClick={() => setStep('platforms')}>Back</Button>
+                    <Button onClick={handleShopifyAuth}>Connect with Shopify</Button>
                   </>
                 )}
               </DialogFooter>
