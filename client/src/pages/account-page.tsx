@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   User, 
   Mail, 
@@ -18,7 +19,8 @@ import {
   Lock, 
   Save,
   Upload,
-  Trash2
+  Trash2,
+  Wallet
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +60,30 @@ export default function AccountPage() {
   const [walletAddress, setWalletAddress] = useState("");
   const [showAddWalletDialog, setShowAddWalletDialog] = useState(false);
   const [newWalletAddress, setNewWalletAddress] = useState("");
+
+  // Fetch wallet address from user settings or API
+  useEffect(() => {
+    if (user?.settings?.walletAddress) {
+      setWalletAddress(user.settings.walletAddress);
+    } else {
+      // If not in user settings, you might fetch it from the API
+      const fetchWalletAddress = async () => {
+        try {
+          const response = await apiRequest("GET", '/api/user/wallet-address');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.walletAddress) {
+              setWalletAddress(data.walletAddress);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching wallet address:", error);
+        }
+      };
+      
+      fetchWalletAddress();
+    }
+  }, [user]);
 
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -278,6 +304,61 @@ export default function AccountPage() {
       });
     }
   };
+  
+  // Handle wallet address update
+  const handleUpdateWalletAddress = async () => {
+    if (!newWalletAddress || !user) return;
+    
+    try {
+      // First, let's try to update through a dedicated endpoint
+      const response = await apiRequest('PATCH', '/api/user/wallet-address', { 
+        walletAddress: newWalletAddress 
+      });
+      
+      // If the endpoint doesn't exist, fall back to updating user profile with settings
+      if (!response.ok && response.status === 404) {
+        // Create settings object with the updated values
+        const settings = {
+          ...(user.settings || {}),
+          walletAddress: newWalletAddress
+        };
+        
+        // Update through profile endpoint
+        const profileResponse = await apiRequest("PATCH", '/api/user/profile', {
+          settings
+        });
+        
+        if (!profileResponse.ok) {
+          const errorData = await profileResponse.json();
+          throw new Error(errorData.message || "Failed to update wallet address");
+        }
+      } else if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update wallet address");
+      }
+      
+      // Success
+      setWalletAddress(newWalletAddress);
+      setShowAddWalletDialog(false);
+      setNewWalletAddress("");
+      
+      // Refresh user data
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      
+      toast({
+        title: "Wallet address updated",
+        description: "Your wallet address has been updated successfully.",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error("Error updating wallet address:", error);
+      toast({
+        title: "Update failed",
+        description: error instanceof Error ? error.message : "There was a problem updating your wallet address.",
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <DashboardLayout activeItem="account">
@@ -488,26 +569,81 @@ export default function AccountPage() {
               
               <Card>
                 <CardHeader>
-                  <CardTitle>Payment Methods</CardTitle>
-                  <CardDescription>Manage your payment methods.</CardDescription>
+                  <CardTitle>Wallet Address</CardTitle>
+                  <CardDescription>Manage your wallet address for withdrawals</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex items-center justify-between p-4 border rounded-md mb-4">
-                    <div className="flex items-center">
-                      <CreditCard className="h-6 w-6 text-gray-500 mr-4" />
-                      <div>
-                        <p className="font-medium">Visa ending in 4242</p>
-                        <p className="text-sm text-gray-500">Expires 12/25</p>
+                  {walletAddress ? (
+                    <div className="flex items-center justify-between p-4 border rounded-md mb-4">
+                      <div className="flex items-center">
+                        <Wallet className="h-6 w-6 text-gray-500 mr-4" />
+                        <div>
+                          <p className="font-medium">Wallet Address</p>
+                          <p className="text-sm text-gray-500 truncate max-w-[220px]">
+                            {walletAddress}
+                          </p>
+                        </div>
                       </div>
+                      <Badge>Default</Badge>
                     </div>
-                    <Badge>Default</Badge>
-                  </div>
-                  <Button variant="outline" className="w-full">
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    Add Payment Method
+                  ) : (
+                    <div className="p-4 border rounded-md mb-4 bg-gray-50">
+                      <p className="text-center text-gray-500">No wallet address configured</p>
+                    </div>
+                  )}
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => {
+                      setNewWalletAddress(walletAddress);
+                      setShowAddWalletDialog(true);
+                    }}
+                  >
+                    <Wallet className="mr-2 h-4 w-4" />
+                    {walletAddress ? "Edit Wallet Address" : "Add Wallet Address"}
                   </Button>
                 </CardContent>
               </Card>
+              
+              {/* Wallet Address Dialog */}
+              <Dialog open={showAddWalletDialog} onOpenChange={setShowAddWalletDialog}>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>{walletAddress ? "Update Wallet Address" : "Add Wallet Address"}</DialogTitle>
+                    <DialogDescription>
+                      {walletAddress 
+                        ? "Update your wallet address for withdrawals." 
+                        : "Add a wallet address to receive your withdrawals."}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="walletAddress">Wallet Address</Label>
+                      <Input 
+                        id="walletAddress" 
+                        value={newWalletAddress} 
+                        onChange={(e) => setNewWalletAddress(e.target.value)}
+                        placeholder="Enter your wallet address" 
+                      />
+                      <p className="text-xs text-gray-500">
+                        This address will be used for all withdrawals from your account.
+                      </p>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setShowAddWalletDialog(false)}>
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="button" 
+                      onClick={handleUpdateWalletAddress} 
+                      disabled={!newWalletAddress}
+                    >
+                      Save
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           </TabsContent>
         </Tabs>
