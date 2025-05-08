@@ -54,7 +54,9 @@ export interface IStorage {
   updateTransactionStatus(id: number, status: string, paymentProof?: string): Promise<Transaction | undefined>;
   getUserBalance(userId: number): Promise<number>;
   
-  // These methods are deprecated and will be removed in production
+  // WARNING: These methods are for development purposes only.
+  // They are deprecated and will be removed in the final production version.
+  // DO NOT USE IN PRODUCTION.
   seedDemoProducts(): Promise<void>;
   seedDemoOrders(userId: number): Promise<void>;
   seedDemoConnections(userId: number): Promise<void>;
