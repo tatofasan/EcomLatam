@@ -550,7 +550,13 @@ export default function AccountPage() {
                         id="currentPassword"
                         type="password"
                         {...passwordForm.register("currentPassword")}
+                        className={passwordForm.formState.errors.currentPassword ? "border-red-500" : ""}
                       />
+                      {passwordForm.formState.errors.currentPassword && (
+                        <p className="text-sm text-red-500">
+                          {passwordForm.formState.errors.currentPassword.message}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="newPassword">
@@ -563,7 +569,13 @@ export default function AccountPage() {
                         id="newPassword"
                         type="password"
                         {...passwordForm.register("newPassword")}
+                        className={passwordForm.formState.errors.newPassword ? "border-red-500" : ""}
                       />
+                      {passwordForm.formState.errors.newPassword && (
+                        <p className="text-sm text-red-500">
+                          {passwordForm.formState.errors.newPassword.message}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="confirmPassword">
@@ -576,11 +588,23 @@ export default function AccountPage() {
                         id="confirmPassword"
                         type="password"
                         {...passwordForm.register("confirmPassword")}
+                        className={passwordForm.formState.errors.confirmPassword ? "border-red-500" : ""}
                       />
+                      {passwordForm.formState.errors.confirmPassword && (
+                        <p className="text-sm text-red-500">
+                          {passwordForm.formState.errors.confirmPassword.message}
+                        </p>
+                      )}
                     </div>
                   </CardContent>
                   <CardFooter>
-                    <Button type="submit" className="ml-auto">Update Password</Button>
+                    <Button 
+                      type="submit" 
+                      className="ml-auto"
+                      disabled={isSubmitting || !passwordForm.formState.isValid && passwordForm.formState.isDirty}
+                    >
+                      {isSubmitting ? "Updating..." : "Update Password"}
+                    </Button>
                   </CardFooter>
                 </Card>
               </form>
