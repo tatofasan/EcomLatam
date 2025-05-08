@@ -16,25 +16,21 @@ let transporter = nodemailer.createTransport({
 // Si estamos en desarrollo, configuramos una cuenta de prueba de Ethereal
 if (process.env.NODE_ENV !== 'production' && !process.env.SMTP_USER) {
   console.log('Configurando cuenta de prueba para email...');
-  nodemailer.createTestAccount()
-    .then(testAccount => {
-      console.log('Cuenta de prueba creada:', testAccount);
-      
-      transporter = nodemailer.createTransport({
-        host: 'smtp.ethereal.email',
-        port: 587,
-        secure: false,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-      });
-      
-      console.log('Servicio de email configurado con cuenta Ethereal para pruebas');
-    })
-    .catch(error => {
-      console.error('Error creando cuenta de prueba:', error);
-    });
+  // Usamos la cuenta de Ethereal que ya fue creada y mostrada en consola
+  const etherealUser = 'riduuu24ti3jhukx@ethereal.email';
+  const etherealPass = 'j64MHUY7XsFdgGSC4n';
+  
+  transporter = nodemailer.createTransport({
+    host: 'smtp.ethereal.email',
+    port: 587,
+    secure: false,
+    auth: {
+      user: etherealUser,
+      pass: etherealPass,
+    },
+  });
+  
+  console.log('Servicio de email configurado con cuenta Ethereal para pruebas');
 }
 
 interface SendEmailOptions {
