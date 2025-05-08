@@ -34,11 +34,11 @@ type UserFormValues = z.infer<typeof userFormSchema>;
 interface TeamMember {
   id: number;
   username: string;
-  fullName?: string;
-  email?: string;
-  role: string;
-  status: string;
-  lastLogin?: string;
+  fullName: string | null;
+  email: string | null;
+  role: "user" | "admin" | "moderator" | "finance";
+  status: "active" | "inactive";
+  lastLogin: string | null;
 }
 
 export default function TeamPage() {
@@ -187,7 +187,7 @@ export default function TeamPage() {
     addMemberMutation.mutate(values);
   };
   
-  const getRoleBadge = (role: string) => {
+  const getRoleBadge = (role: "user" | "admin" | "moderator" | "finance") => {
     switch (role) {
       case "admin":
         return (
@@ -218,7 +218,7 @@ export default function TeamPage() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: "active" | "inactive") => {
     return status === "active" ? (
       <span className="flex items-center">
         <span className="h-2 w-2 rounded-full bg-green-500 mr-2"></span>
@@ -532,7 +532,7 @@ export default function TeamPage() {
               </Label>
               <Select 
                 defaultValue={selectedUser?.role || "user"}
-                onValueChange={(value) => {
+                onValueChange={(value: "user" | "admin" | "moderator" | "finance") => {
                   if (selectedUser) {
                     setSelectedUser({
                       ...selectedUser,
@@ -568,7 +568,7 @@ export default function TeamPage() {
                     userData: {
                       fullName: selectedUser.fullName,
                       email: selectedUser.email,
-                      role: selectedUser.role
+                      role: selectedUser.role as "user" | "admin" | "moderator" | "finance"
                     }
                   });
                 }
