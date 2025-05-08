@@ -783,20 +783,23 @@ export default function OrdersPage() {
               
               <DialogFooter className="flex gap-2">
                 <Button variant="outline">Print Invoice</Button>
-                <Select 
-                  onValueChange={(value) => updateOrderStatus(selectedOrder.id, value)}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Update Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="processing">Processing</SelectItem>
-                    <SelectItem value="shipped">Shipped</SelectItem>
-                    <SelectItem value="delivered">Delivered</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
+                {/* Only show status update dropdown for admin or finance users */}
+                {user && (user.role === 'admin' || user.role === 'finance') && (
+                  <Select 
+                    onValueChange={(value) => updateOrderStatus(selectedOrder.id, value)}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Update Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="processing">Processing</SelectItem>
+                      <SelectItem value="shipped">Shipped</SelectItem>
+                      <SelectItem value="delivered">Delivered</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
               </DialogFooter>
             </DialogContent>
           </Dialog>

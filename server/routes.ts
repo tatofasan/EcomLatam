@@ -438,7 +438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update order status
+  // Update order status - only admin or finance users can update
   app.patch("/api/orders/:id/status", requireAuth, async (req, res) => {
     try {
       if (!req.user) {
@@ -463,10 +463,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Order not found" });
       }
       
-      // Check if this order belongs to the authenticated user (or if user is admin)
+      // Check if user has admin or finance role
       const isAdmin = req.user.role === 'admin';
-      if (order.userId !== req.user.id && !isAdmin) {
-        return res.status(403).json({ message: "Forbidden" });
+      const isFinance = req.user.role === 'finance';
+      
+      // Only admin or finance users can update order status
+      if (!isAdmin && !isFinance) {
+        return res.status(403).json({ message: "Forbidden: Only admin or finance users can update order status" });
       }
       
       const updatedOrder = await storage.updateOrderStatus(orderId, status);
