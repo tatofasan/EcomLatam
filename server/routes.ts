@@ -925,6 +925,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
+      // Finance users cannot access connections
+      if (req.user.role === 'finance') {
+        return res.status(403).json({ message: "Forbidden: Finance users cannot access connections" });
+      }
+      
       const userId = req.user.id;
       const isAdmin = req.user.role === 'admin';
       const showAll = req.query.all === 'true' && isAdmin;
@@ -971,6 +976,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
+      // Finance users cannot create connections
+      if (req.user.role === 'finance') {
+        return res.status(403).json({ message: "Forbidden: Finance users cannot manage connections" });
+      }
+      
       const parseResult = insertConnectionSchema.safeParse(req.body);
       
       if (!parseResult.success) {
@@ -994,6 +1004,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Finance users cannot update connections
+      if (req.user.role === 'finance') {
+        return res.status(403).json({ message: "Forbidden: Finance users cannot manage connections" });
       }
       
       const connectionId = parseInt(req.params.id);
@@ -1035,6 +1050,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
+      // Finance users cannot delete connections
+      if (req.user.role === 'finance') {
+        return res.status(403).json({ message: "Forbidden: Finance users cannot manage connections" });
+      }
+      
       const connectionId = parseInt(req.params.id);
       const connection = await storage.getConnection(connectionId);
       
@@ -1060,9 +1080,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Team management endpoints - Only accessible to admin users
-  app.get("/api/users", requireAdmin, async (req, res) => {
+  // Team management endpoints - Accessible to admin and finance users
+  app.get("/api/users", requireAuth, async (req, res) => {
     try {
+      // Ensure user is admin or finance
+      if (req.user?.role !== 'admin' && req.user?.role !== 'finance') {
+        return res.status(403).json({ message: "Forbidden: Admin or Finance access required" });
+      }
+      
       const users = await storage.getAllUsers();
       res.json(users);
     } catch (error) {
@@ -1071,14 +1096,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/users", requireAdmin, async (req, res) => {
+  app.post("/api/users", requireAuth, async (req, res) => {
     try {
+      // Ensure user is admin or finance
+      if (req.user?.role !== 'admin' && req.user?.role !== 'finance') {
+        return res.status(403).json({ message: "Forbidden: Admin or Finance access required" });
+      }
+      
       const userData = req.body;
       
       // Check if user already exists
       const existingUser = await storage.getUserByUsername(userData.username);
       if (existingUser) {
         return res.status(400).send("Username already exists");
+      }
+      
+      // Finance users cannot create admin users
+      if (req.user.role === 'finance' && userData.role === 'admin') {
+        return res.status(403).json({ message: "Forbidden: Finance users cannot create admin users" });
       }
       
       const newUser = await storage.createUser(userData);
@@ -1090,15 +1125,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // PUT endpoint for updating users
-  app.put("/api/users/:id", requireAdmin, async (req, res) => {
+  app.put("/api/users/:id", requireAuth, async (req, res) => {
     try {
+      // Ensure user is admin or finance
+      if (req.user?.role !== 'admin' && req.user?.role !== 'finance') {
+        return res.status(403).json({ message: "Forbidden: Admin or Finance access required" });
+      }
+      
       const userId = parseInt(req.params.id);
       const userData = req.body;
       
       console.log("PUT /api/users/:id received with data:", userData);
       
-      // Prevent non-admin from changing an admin role
+      // Get the user to be updated
       const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Finance users cannot modify admin users
+      if (req.user.role === 'finance' && user.role === 'admin') {
+        return res.status(403).json({ message: "Forbidden: Finance users cannot modify admin users" });
+      }
+      
+      // Prevent finance from changing a user to admin role
+      if (req.user.role === 'finance' && userData.role === 'admin') {
+        return res.status(403).json({ message: "Forbidden: Finance users cannot create or modify admin users" });
+      }
+      
+      // Prevent non-admin from changing an admin role
       if (user?.role === "admin" && userData.role !== "admin" && req.user?.role !== "admin") {
         return res.status(403).send("Only admins can change admin roles");
       }
@@ -1116,8 +1171,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // PATCH endpoint for updating users (same logic as PUT)
-  app.patch("/api/users/:id", requireAdmin, async (req, res) => {
+  app.patch("/api/users/:id", requireAuth, async (req, res) => {
     try {
+      // Ensure user is admin or finance
+      if (req.user?.role !== 'admin' && req.user?.role !== 'finance') {
+        return res.status(403).json({ message: "Forbidden: Admin or Finance access required" });
+      }
+      
       const userId = parseInt(req.params.id);
       const userData = req.body;
       
@@ -1137,7 +1197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Prevent non-admin from changing an admin role
+      // Get the user to be updated
       const user = await storage.getUser(userId);
       if (!user) {
         console.error(`User with ID ${userId} not found`);
@@ -1146,6 +1206,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("Original user:", user);
       
+      // Finance users cannot modify admin users
+      if (req.user.role === 'finance' && user.role === 'admin') {
+        return res.status(403).json({ message: "Forbidden: Finance users cannot modify admin users" });
+      }
+      
+      // Prevent finance from changing a user to admin role
+      if (req.user.role === 'finance' && userData.role === 'admin') {
+        return res.status(403).json({ message: "Forbidden: Finance users cannot create or modify admin users" });
+      }
+      
+      // Prevent non-admin from changing an admin role
       if (user.role === "admin" && userData.role && userData.role !== "admin" && req.user?.role !== "admin") {
         console.error("Attempt to change admin role by non-admin");
         return res.status(403).json({ message: "Only admins can change admin roles" });
@@ -1169,8 +1240,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Endpoint for resetting user password
-  app.patch("/api/users/:id/reset-password", requireAdmin, async (req, res) => {
+  app.patch("/api/users/:id/reset-password", requireAuth, async (req, res) => {
     try {
+      // Ensure user is admin or finance
+      if (req.user?.role !== 'admin' && req.user?.role !== 'finance') {
+        return res.status(403).json({ message: "Forbidden: Admin or Finance access required" });
+      }
+      
       const userId = parseInt(req.params.id);
       const { password } = req.body;
       
@@ -1190,6 +1266,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         console.error(`User with ID ${userId} not found for password reset`);
         return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Finance users cannot reset admin user passwords
+      if (req.user.role === 'finance' && user.role === 'admin') {
+        return res.status(403).json({ message: "Forbidden: Finance users cannot reset admin user passwords" });
       }
       
       console.log(`Resetting password for user: ${user.username} (${userId})`);
