@@ -86,7 +86,7 @@ export default function ModernAuthLayout({ children, title, description }: Moder
           <Card className="border-0 shadow-2xl bg-white/80 backdrop-blur-sm">
             <CardHeader className="text-center pb-6">
               <div className="lg:hidden mb-4">
-                <EcomdropLogo className="w-16 h-16 mx-auto text-blue-600" />
+                <EcomdropLogo className="w-24 h-24 mx-auto text-blue-600" />
               </div>
               <CardTitle className="text-2xl font-bold text-gray-900">{title}</CardTitle>
               <CardDescription className="text-gray-600 mt-2">
