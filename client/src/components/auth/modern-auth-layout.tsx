@@ -62,14 +62,11 @@ export default function ModernAuthLayout({ children, title, description }: Moder
         {/* Features */}
         <div className="relative z-10 space-y-6">
           {features.map((feature, index) => (
-            <div key={index} className="flex items-start space-x-4">
+            <div key={index} className="flex items-center space-x-4">
               <div className="flex-shrink-0 w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center backdrop-blur-sm">
                 {feature.icon}
               </div>
-              <div>
-                <h3 className="font-semibold text-white mb-1">{feature.title}</h3>
-                <p className="text-blue-100 text-sm leading-relaxed">{feature.description}</p>
-              </div>
+              <h3 className="font-semibold text-white">{feature.title}</h3>
             </div>
           ))}
         </div>
@@ -105,10 +102,7 @@ export default function ModernAuthLayout({ children, title, description }: Moder
                 <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
                   {feature.icon}
                 </div>
-                <div>
-                  <h4 className="font-medium text-gray-900 text-sm">{feature.title}</h4>
-                  <p className="text-gray-600 text-xs">{feature.description}</p>
-                </div>
+                <h4 className="font-medium text-gray-900 text-sm">{feature.title}</h4>
               </div>
             ))}
           </div>
