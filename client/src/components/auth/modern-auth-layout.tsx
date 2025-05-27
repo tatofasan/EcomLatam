@@ -95,17 +95,7 @@ export default function ModernAuthLayout({ children, title, description }: Moder
             </CardContent>
           </Card>
           
-          {/* Mobile Features */}
-          <div className="lg:hidden mt-8 grid gap-4">
-            {features.map((feature, index) => (
-              <div key={index} className="flex items-center space-x-3 p-4 bg-white/60 rounded-lg backdrop-blur-sm">
-                <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                  {feature.icon}
-                </div>
-                <h4 className="font-medium text-gray-900 text-sm">{feature.title}</h4>
-              </div>
-            ))}
-          </div>
+          
         </div>
       </div>
     </div>
