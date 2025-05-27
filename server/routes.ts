@@ -1997,6 +1997,197 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // -----------------------------------------------
+  // MODERN AUTHENTICATION AND USER APPROVAL SYSTEM
+  // -----------------------------------------------
+
+  // Get pending users for approval (moderator/admin only)
+  app.get("/api/users/pending", requireModerator, async (req, res) => {
+    try {
+      const pendingUsers = await db
+        .select({
+          id: users.id,
+          fullName: users.fullName,
+          email: users.email,
+          username: users.username,
+          provider: users.provider,
+          avatar: users.avatar,
+          createdAt: users.createdAt,
+          status: users.status
+        })
+        .from(users)
+        .where(eq(users.status, "pending_approval"))
+        .orderBy(desc(users.createdAt));
+
+      res.json(pendingUsers);
+    } catch (error) {
+      console.error("Error fetching pending users:", error);
+      res.status(500).json({ message: "Failed to fetch pending users" });
+    }
+  });
+
+  // Approve or reject user registration (moderator/admin only)
+  app.post("/api/users/:id/approval", requireModerator, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = parseInt(req.params.id);
+      const { action, reason } = req.body;
+      const moderatorId = req.user.id;
+
+      if (!action || !["approve", "reject"].includes(action)) {
+        return res.status(400).json({ message: "Invalid action. Must be 'approve' or 'reject'" });
+      }
+
+      // Get the user to be approved/rejected
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId));
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (user.status !== "pending_approval") {
+        return res.status(400).json({ message: "User is not pending approval" });
+      }
+
+      if (action === "approve") {
+        // Approve user
+        await db
+          .update(users)
+          .set({
+            status: "active",
+            approvedBy: moderatorId,
+            approvedAt: new Date(),
+          })
+          .where(eq(users.id, userId));
+
+        // Send approval email (opcional - implementar más tarde)
+        // await sendApprovalEmail(user.email, user.fullName);
+
+        res.json({ 
+          message: "User approved successfully",
+          user: { ...user, status: "active" }
+        });
+      } else {
+        // Reject user
+        await db
+          .update(users)
+          .set({
+            status: "suspended",
+            rejectedBy: moderatorId,
+            rejectedAt: new Date(),
+            rejectionReason: reason || "No reason provided",
+          })
+          .where(eq(users.id, userId));
+
+        // Send rejection email (opcional - implementar más tarde)
+        // await sendRejectionEmail(user.email, user.fullName, reason);
+
+        res.json({ 
+          message: "User rejected successfully",
+          user: { ...user, status: "suspended", rejectionReason: reason }
+        });
+      }
+    } catch (error) {
+      console.error("Error processing user approval:", error);
+      res.status(500).json({ message: "Failed to process user approval" });
+    }
+  });
+
+  // Social authentication endpoints (placeholder for future implementation)
+  app.post("/api/auth/google", async (req, res) => {
+    try {
+      // Para implementar Google OAuth, necesitaremos:
+      // 1. Google Client ID y Secret
+      // 2. Configurar Google OAuth 2.0
+      // 3. Verificar el token de Google
+      
+      res.status(501).json({ 
+        message: "Google authentication not yet implemented",
+        note: "This will require Google OAuth credentials to be configured"
+      });
+    } catch (error) {
+      console.error("Error with Google auth:", error);
+      res.status(500).json({ message: "Google authentication error" });
+    }
+  });
+
+  app.post("/api/auth/github", async (req, res) => {
+    try {
+      // Para implementar GitHub OAuth, necesitaremos:
+      // 1. GitHub Client ID y Secret
+      // 2. Configurar GitHub OAuth App
+      // 3. Verificar el token de GitHub
+      
+      res.status(501).json({ 
+        message: "GitHub authentication not yet implemented",
+        note: "This will require GitHub OAuth App credentials to be configured"
+      });
+    } catch (error) {
+      console.error("Error with GitHub auth:", error);
+      res.status(500).json({ message: "GitHub authentication error" });
+    }
+  });
+
+  app.post("/api/auth/facebook", async (req, res) => {
+    try {
+      // Para implementar Facebook OAuth, necesitaremos:
+      // 1. Facebook App ID y Secret
+      // 2. Configurar Facebook App
+      // 3. Verificar el token de Facebook
+      
+      res.status(501).json({ 
+        message: "Facebook authentication not yet implemented",
+        note: "This will require Facebook App credentials to be configured"
+      });
+    } catch (error) {
+      console.error("Error with Facebook auth:", error);
+      res.status(500).json({ message: "Facebook authentication error" });
+    }
+  });
+
+  // Get user approval statistics (admin/moderator only)
+  app.get("/api/users/approval-stats", requireModerator, async (req, res) => {
+    try {
+      const stats = await db
+        .select({
+          status: users.status,
+          count: sql<number>`count(*)`.as('count')
+        })
+        .from(users)
+        .groupBy(users.status);
+
+      const formattedStats = {
+        pending: 0,
+        active: 0,
+        suspended: 0,
+        total: 0
+      };
+
+      stats.forEach(stat => {
+        const count = Number(stat.count);
+        if (stat.status === "pending_approval") {
+          formattedStats.pending = count;
+        } else if (stat.status === "active") {
+          formattedStats.active = count;
+        } else if (stat.status === "suspended") {
+          formattedStats.suspended = count;
+        }
+        formattedStats.total += count;
+      });
+
+      res.json(formattedStats);
+    } catch (error) {
+      console.error("Error fetching approval stats:", error);
+      res.status(500).json({ message: "Failed to fetch approval statistics" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
