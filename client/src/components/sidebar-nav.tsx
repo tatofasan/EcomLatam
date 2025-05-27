@@ -136,15 +136,6 @@ export default function SidebarNav({
         key: "team"
       }
     ] : []),
-    // Show User Approval for admin and moderator users only
-    ...(user?.role === 'admin' || user?.role === 'moderator' ? [
-      {
-        title: "User Approval",
-        href: "/users/approval",
-        icon: <UserCheck className="h-5 w-5" />,
-        key: "user-approval"
-      }
-    ] : []),
     {
       title: "My Account",
       href: "/account",

@@ -6,13 +6,12 @@ import { relations } from "drizzle-orm";
 // User Schema
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  username: text("username").unique(),
-  password: text("password"), // Optional for social auth
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
   fullName: text("full_name"),
-  email: text("email").notNull().unique(),
-  avatar: text("avatar"), // Profile picture URL
+  email: text("email"),
   role: text("role").default("user"), // admin, user, moderator, finance
-  status: text("status").default("pending_approval"), // active, inactive, pending_approval, suspended, email_verification
+  status: text("status").default("pending"), // active, inactive, pending, email_verification
   apiKey: text("api_key").unique(), // API key for order ingestion
   createdAt: timestamp("created_at").defaultNow(),
   lastLogin: timestamp("last_login"),
@@ -20,68 +19,25 @@ export const users = pgTable("users", {
   verificationToken: text("verification_token"),
   verificationExpires: timestamp("verification_expires"),
   isEmailVerified: boolean("is_email_verified").default(false),
-  // Social auth fields
-  provider: text("provider").default("local"), // local, google, github, facebook, etc.
-  providerId: text("provider_id"), // ID from social provider
-  // Approval system
-  approvedBy: integer("approved_by").references(() => users.id),
-  approvedAt: timestamp("approved_at"),
-  rejectedBy: integer("rejected_by").references(() => users.id),
-  rejectedAt: timestamp("rejected_at"),
-  rejectionReason: text("rejection_reason"),
 });
 
 export const insertUserSchema = createInsertSchema(users, {
   role: z.enum(["admin", "user", "moderator", "finance"]).default("user"),
-  status: z.enum(["active", "inactive", "pending_approval", "suspended", "email_verification"]).default("pending_approval"),
+  status: z.enum(["active", "inactive", "pending", "email_verification"]).default("email_verification"),
   email: z.string().email("Por favor ingresa un correo electrónico válido"),
-  provider: z.enum(["local", "google", "github", "facebook"]).default("local"),
   isEmailVerified: z.boolean().default(false),
   verificationToken: z.string().optional(),
-  verificationExpires: z.date().optional(),
-  username: z.string().optional(),
-  password: z.string().optional(),
+  verificationExpires: z.date().optional()
 }).pick({
   username: true,
   password: true,
   fullName: true,
   email: true,
-  avatar: true,
   role: true,
   status: true,
-  provider: true,
-  providerId: true,
   isEmailVerified: true,
   verificationToken: true,
   verificationExpires: true,
-});
-
-// Schema for social authentication registration
-export const socialRegisterSchema = z.object({
-  email: z.string().email("Por favor ingresa un correo electrónico válido"),
-  fullName: z.string().min(2, "El nombre completo es requerido"),
-  avatar: z.string().optional(),
-  provider: z.enum(["google", "github", "facebook"]),
-  providerId: z.string(),
-});
-
-// Schema for local registration
-export const localRegisterSchema = z.object({
-  username: z.string().min(3, "El nombre de usuario debe tener al menos 3 caracteres"),
-  password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
-  confirmPassword: z.string(),
-  fullName: z.string().min(2, "El nombre completo es requerido"),
-  email: z.string().email("Por favor ingresa un correo electrónico válido"),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Las contraseñas no coinciden",
-  path: ["confirmPassword"],
-});
-
-// Schema for approval actions
-export const userApprovalSchema = z.object({
-  userId: z.number(),
-  action: z.enum(["approve", "reject"]),
-  reason: z.string().optional(),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -256,21 +212,6 @@ export const connectionsRelations = relations(connections, ({ one }) => ({
 export const transactionsRelations = relations(transactions, ({ one }) => ({
   user: one(users, {
     fields: [transactions.userId],
-    references: [users.id]
-  })
-}));
-
-export const usersRelations = relations(users, ({ one, many }) => ({
-  products: many(products),
-  orders: many(orders),
-  connections: many(connections),
-  transactions: many(transactions),
-  approvedBy: one(users, {
-    fields: [users.approvedBy],
-    references: [users.id]
-  }),
-  rejectedBy: one(users, {
-    fields: [users.rejectedBy],
     references: [users.id]
   })
 }));
