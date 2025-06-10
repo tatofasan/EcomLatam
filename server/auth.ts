@@ -185,24 +185,39 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", passport.authenticate("local"), async (req, res) => {
-    try {
-      // Actualizar la fecha de último inicio de sesión
-      const userId = req.user?.id;
-      if (userId) {
-        await storage.updateUser(userId, {
-          lastLogin: new Date()
-        });
-        // Obtener el usuario actualizado
-        const updatedUser = await storage.getUser(userId);
-        res.status(200).json(updatedUser);
-      } else {
-        res.status(200).json(req.user);
+  app.post("/api/login", (req, res, next) => {
+    passport.authenticate("local", (err: any, user: any, info: any) => {
+      if (err) {
+        console.error("Authentication error:", err);
+        return res.status(500).json({ message: "Error interno del servidor" });
       }
-    } catch (error) {
-      console.error("Error updating last login:", error);
-      res.status(200).json(req.user);
-    }
+      
+      if (!user) {
+        console.log("Authentication failed:", info?.message || "Credenciales inválidas");
+        return res.status(401).json({ message: info?.message || "Credenciales inválidas" });
+      }
+      
+      req.logIn(user, async (err: any) => {
+        if (err) {
+          console.error("Login error:", err);
+          return res.status(500).json({ message: "Error al iniciar sesión" });
+        }
+        
+        try {
+          // Actualizar la fecha de último inicio de sesión
+          await storage.updateUser(user.id, {
+            lastLogin: new Date()
+          });
+          
+          // Obtener el usuario actualizado
+          const updatedUser = await storage.getUser(user.id);
+          res.status(200).json(updatedUser || user);
+        } catch (error) {
+          console.error("Error updating last login:", error);
+          res.status(200).json(user);
+        }
+      });
+    })(req, res, next);
   });
 
   app.post("/api/logout", (req, res, next) => {
