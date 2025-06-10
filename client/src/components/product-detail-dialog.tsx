@@ -115,13 +115,13 @@ export default function ProductDetailDialog({
   const getStatusText = (status: string) => {
     switch (status) {
       case "active":
-        return "Activo";
+        return "Active";
       case "inactive":
-        return "Inactivo";
+        return "Inactive";
       case "draft":
-        return "Borrador";
+        return "Draft";
       case "low":
-        return "Poco Stock";
+        return "Low Stock";
       default:
         return status;
     }
