@@ -51,25 +51,25 @@ export function setupAuth(app: Express) {
       try {
         const user = await storage.getUserByUsername(username);
         
-        // Verificar si el usuario existe y la contraseña es correcta
+        // Check if user exists and password is correct
         if (!user || !(await comparePasswords(password, user.password))) {
-          return done(null, false, { message: "Usuario o contraseña incorrectos" });
+          return done(null, false, { message: "Invalid username or password" });
         }
         
-        // Verificar estado del usuario
+        // Check user status
         if (user.status === 'email_verification') {
-          return done(null, false, { message: "Por favor, verifica tu correo electrónico para activar tu cuenta" });
+          return done(null, false, { message: "Please verify your email to activate your account" });
         }
         
         if (user.status === 'pending') {
-          return done(null, false, { message: "Tu cuenta está pendiente de aprobación por un administrador" });
+          return done(null, false, { message: "Your account is pending approval by an administrator" });
         }
         
         if (user.status === 'inactive') {
-          return done(null, false, { message: "Tu cuenta está inactiva. Contacta con soporte." });
+          return done(null, false, { message: "Your account is inactive. Please contact support." });
         }
 
-        // Si todo está bien, actualizar última fecha de login
+        // If everything is ok, update last login date
         await storage.updateUser(user.id, { lastLogin: new Date() });
         
         return done(null, user);
@@ -91,18 +91,18 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
-      // Verificar si el usuario ya existe
+      // Check if user already exists
       try {
         const existingUser = await storage.getUserByUsername(req.body.username);
         if (existingUser) {
-          return res.status(400).json({ message: "El nombre de usuario ya existe" });
+          return res.status(400).json({ message: "Username already exists" });
         }
       } catch (err) {
-        console.error("Error al verificar usuario existente:", err);
-        return res.status(500).json({ message: "Error al verificar disponibilidad de usuario" });
+        console.error("Error checking existing user:", err);
+        return res.status(500).json({ message: "Error checking username availability" });
       }
       
-      // Verificar si el email ya existe
+      // Check if email already exists
       if (req.body.email) {
         try {
           const [userWithEmail] = await db
@@ -111,28 +111,28 @@ export function setupAuth(app: Express) {
             .where(eq(users.email, req.body.email));
             
           if (userWithEmail) {
-            return res.status(400).json({ message: "El correo electrónico ya está registrado" });
+            return res.status(400).json({ message: "Email is already registered" });
           }
         } catch (err) {
-          console.error("Error al verificar email existente:", err);
-          return res.status(500).json({ message: "Error al verificar disponibilidad de correo" });
+          console.error("Error checking existing email:", err);
+          return res.status(500).json({ message: "Error checking email availability" });
         }
       }
 
-      // Importar funciones necesarias
+      // Import necessary functions
       const { createVerificationData } = await import('./verification');
       const { sendVerificationEmail } = await import('./email');
       
-      // Generar datos de verificación
+      // Generate verification data
       const verificationData = createVerificationData();
       
-      // Crear el usuario con estado inicial en verificación de email
+      // Create user with initial email verification status
       let user;
       try {
         const hashedPassword = await hashPassword(req.body.password);
         user = await storage.createUser({
           ...req.body,
-          role: "user", // Siempre asignar rol de usuario normal
+          role: "user", // Always assign normal user role
           password: hashedPassword,
           status: "email_verification",
           verificationToken: verificationData.token,
@@ -140,47 +140,47 @@ export function setupAuth(app: Express) {
           isEmailVerified: false
         });
       } catch (err) {
-        console.error("Error al crear usuario:", err);
+        console.error("Error creating user:", err);
         return res.status(500).json({ 
           success: false, 
-          message: "Error al crear usuario. Por favor, intenta nuevamente."
+          message: "Error creating user. Please try again."
         });
       }
 
-      // Enviar email de verificación
+      // Send verification email
       if (req.body.email) {
         try {
           await sendVerificationEmail(req.body.email, verificationData.token);
           
-          // Responder al cliente (sin iniciar sesión)
+          // Respond to client (without logging in)
           return res.status(201).json({ 
             success: true, 
-            message: "Usuario registrado. Por favor verifica tu correo electrónico."
+            message: "User registered. Please verify your email."
           });
         } catch (emailError) {
-          console.error("Error al enviar correo de verificación:", emailError);
+          console.error("Error sending verification email:", emailError);
           
-          // Si hay error al enviar el correo, eliminamos el usuario
+          // If there's an error sending email, delete the user
           try {
             await db.delete(users).where(eq(users.id, user.id));
           } catch (deleteErr) {
-            console.error("Error al eliminar usuario tras fallo de email:", deleteErr);
+            console.error("Error deleting user after email failure:", deleteErr);
           }
           
           return res.status(500).json({ 
             success: false, 
-            message: "Error al enviar correo de verificación. Por favor, intenta nuevamente."
+            message: "Error sending verification email. Please try again."
           });
         }
       }
       
-      // En caso de que no se proporcione un email (no debería ocurrir por validación frontend)
+      // In case no email is provided (shouldn't happen due to frontend validation)
       return res.status(400).json({ 
         success: false, 
-        message: "El correo electrónico es obligatorio para el registro"
+        message: "Email is required for registration"
       });
     } catch (err) {
-      console.error("Error en el registro:", err);
+      console.error("Registration error:", err);
       next(err);
     }
   });

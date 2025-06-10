@@ -218,8 +218,8 @@ export default function ProductDetailDialog({
   const handleDownloadImages = async () => {
     if (images.length === 0) {
       toast({
-        title: "No hay imágenes",
-        description: "Este producto no tiene imágenes para descargar",
+        title: "No images available",
+        description: "This product has no images to download",
         variant: "destructive",
       });
       return;
@@ -227,53 +227,53 @@ export default function ProductDetailDialog({
 
     try {
       const zip = new JSZip();
-      const imgFolder = zip.folder("imagenes-producto");
+      const imgFolder = zip.folder("product-images");
       
       if (!imgFolder) {
-        throw new Error("No se pudo crear carpeta en el archivo ZIP");
+        throw new Error("Could not create folder in ZIP file");
       }
       
-      // Añadir imagen principal
-      const mainImageName = `imagen-principal.${getImageExtension(productData.imageUrl)}`;
+      // Add main image
+      const mainImageName = `main-image.${getImageExtension(productData.imageUrl)}`;
       await addImageToZip(productData.imageUrl, imgFolder, mainImageName);
       
-      // Añadir imágenes adicionales
+      // Add additional images
       if (productData.additionalImages && productData.additionalImages.length > 0) {
         for (let i = 0; i < productData.additionalImages.length; i++) {
           const imgUrl = productData.additionalImages[i];
-          const imgName = `imagen-adicional-${i+1}.${getImageExtension(imgUrl)}`;
+          const imgName = `additional-image-${i+1}.${getImageExtension(imgUrl)}`;
           await addImageToZip(imgUrl, imgFolder, imgName);
         }
       }
       
-      // Generar y descargar el archivo ZIP
+      // Generate and download ZIP file
       const zipBlob = await zip.generateAsync({type: "blob"});
-      saveAs(zipBlob, `imagenes-${productData.name.replace(/[^a-zA-Z0-9]/g, "-")}.zip`);
+      saveAs(zipBlob, `images-${productData.name.replace(/[^a-zA-Z0-9]/g, "-")}.zip`);
       
       toast({
-        title: "Imágenes descargadas",
-        description: "Las imágenes se han descargado correctamente",
+        title: "Images downloaded",
+        description: "Images have been downloaded successfully",
       });
     } catch (error) {
       toast({
         title: "Error",
-        description: "No se pudieron descargar las imágenes",
+        description: "Could not download images",
         variant: "destructive",
       });
-      console.error("Error al descargar imágenes:", error);
+      console.error("Error downloading images:", error);
     }
   };
 
-  // Función auxiliar para determinar la extensión de la imagen
+  // Helper function to determine image extension
   const getImageExtension = (url: string) => {
     if (url.includes(";base64,")) {
       const mimeType = url.split(";base64,")[0].split("data:")[1];
       return mimeType === 'image/jpeg' ? 'jpg' : mimeType.split('/')[1];
     }
-    return "jpg"; // Por defecto
+    return "jpg"; // Default
   };
 
-  // Función para convertir URL de imagen a blob y añadirla al ZIP
+  // Function to convert image URL to blob and add to ZIP
   const addImageToZip = async (url: string, folder: JSZip, fileName: string) => {
     if (!folder) return;
     
@@ -282,8 +282,8 @@ export default function ProductDetailDialog({
       const blob = await response.blob();
       folder.file(fileName, blob);
     } catch (error) {
-      console.error(`Error al añadir imagen ${fileName}:`, error);
-      // Si la imagen es base64, añadirla directamente
+      console.error(`Error adding image ${fileName}:`, error);
+      // If the image is base64, add it directly
       if (url.includes(";base64,")) {
         const base64Data = url.split(";base64,")[1];
         folder.file(fileName, base64Data, {base64: true});
@@ -293,17 +293,17 @@ export default function ProductDetailDialog({
 
   const handleSave = () => {
     if (onSave && formData) {
-      // Validar el formulario antes de guardar
+      // Validate form before saving
       if (!validateForm()) {
         toast({
-          title: "Error de validación",
-          description: "Por favor complete todos los campos obligatorios",
+          title: "Validation error",
+          description: "Please complete all required fields",
           variant: "destructive",
         });
         return;
       }
       
-      // Clean formData - no defaults, todos los campos deben estar completos
+      // Clean formData - no defaults, all fields must be complete
       const cleanedData = {
         name: formData.name,
         description: formData.description,
