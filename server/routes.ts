@@ -6,20 +6,20 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { 
-  productSchema, 
-  insertOrderSchema, 
-  insertOrderItemSchema, 
-  insertConnectionSchema,
+  insertOfferSchema, 
+  insertLeadSchema, 
+  insertLeadItemSchema, 
+  insertCampaignSchema,
   insertTransactionSchema,
-  apiOrderSchema,
-  apiOrderStatusSchema,
-  products,
-  orders,
-  orderItems,
+  apiLeadSchema,
+  apiLeadStatusSchema,
+  offers,
+  leads,
+  leadItems,
   transactions,
   users,
   type InsertTransaction,
-  type ApiOrder
+  type ApiLead
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, sql, inArray } from "drizzle-orm";
@@ -213,22 +213,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      console.log("Product data received:", JSON.stringify(req.body, null, 2));
-      const parseResult = productSchema.safeParse(req.body);
+      console.log("Offer data received:", JSON.stringify(req.body, null, 2));
+      const parseResult = insertOfferSchema.safeParse(req.body);
       
       if (!parseResult.success) {
-        console.error("Product validation error:", JSON.stringify(parseResult.error.format(), null, 2));
+        console.error("Offer validation error:", JSON.stringify(parseResult.error.format(), null, 2));
         return res.status(400).json({ 
-          message: "Invalid product data", 
+          message: "Invalid offer data", 
           errors: parseResult.error.format() 
         });
       }
       
-      const product = await storage.createProduct(parseResult.data);
-      res.status(201).json(product);
+      const offer = await storage.createOffer(parseResult.data);
+      res.status(201).json(offer);
     } catch (error) {
-      console.error("Error creating product:", error);
-      res.status(500).json({ message: "Failed to create product" });
+      console.error("Error creating offer:", error);
+      res.status(500).json({ message: "Failed to create offer" });
     }
   });
   
@@ -255,7 +255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const invalidProducts = [];
       
       for (const productData of products) {
-        const parseResult = productSchema.safeParse(productData);
+        const parseResult = insertOfferSchema.safeParse(productData);
         if (parseResult.success) {
           validProducts.push(parseResult.data);
         } else {
@@ -292,19 +292,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       for (const productData of validProducts) {
         try {
-          const product = await storage.createProduct(productData);
-          // Only include essential product info to avoid large responses
+          const offer = await storage.createOffer(productData);
+          // Only include essential offer info to avoid large responses
           importedProducts.push({
-            id: product.id,
-            name: product.name,
-            sku: product.sku
+            id: offer.id,
+            name: offer.name,
+            category: offer.category
           });
         } catch (error) {
           console.error("Error importing product:", error);
           invalidProducts.push({
             data: {
               name: productData.name || 'Unknown',
-              sku: productData.sku || 'Unknown'
+              category: productData.category || 'Unknown'
             },
             errors: [(error as Error).message]
           });
