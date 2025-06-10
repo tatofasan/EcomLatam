@@ -154,7 +154,7 @@ export default function HomePage() {
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
-                        data={metrics.salesData}
+                        data={metrics.salesData || []}
                         margin={{
                           top: 5,
                           right: 30,
@@ -181,7 +181,7 @@ export default function HomePage() {
                 </CardHeader>
                 <CardContent>
                   <div className="h-80">
-                    {metrics.offerCategoriesData && metrics.offerCategoriesData.length > 0 ? (
+                    {metrics.offerCategoriesData && Array.isArray(metrics.offerCategoriesData) && metrics.offerCategoriesData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
@@ -235,7 +235,7 @@ export default function HomePage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {metrics.recentLeads.length > 0 ? (
+                      {metrics.recentLeads && metrics.recentLeads.length > 0 ? (
                         metrics.recentLeads.map((lead) => (
                           <tr key={lead.id} className="border-b hover:bg-gray-50">
                             <td className="py-3 px-4">{lead.leadNumber}</td>
