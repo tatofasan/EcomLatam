@@ -53,6 +53,7 @@ interface OrderForStats {
   updatedAt?: string; // date of last activity
   status: string;
   totalAmount: number;
+  payout: number;
   orderItems?: Array<{
     id: number;
     productId: number;
@@ -95,10 +96,10 @@ export default function OrderStatisticsPage() {
     };
   }, [statistics]);
   
-  // Calculate overall delivery percentage
-  const totalDeliveryPercentage = useMemo(() => {
-    const { delivered, total } = calcTotalsByStatus;
-    return total > 0 ? (delivered / total * 100).toFixed(2) : "0.00";
+  // Calculate overall sale percentage
+  const totalSalePercentage = useMemo(() => {
+    const { sale, total } = calcTotalsByStatus;
+    return total > 0 ? (sale / total * 100).toFixed(2) : "0.00";
   }, [calcTotalsByStatus]);
 
   // Get user role - no data regeneration in production
@@ -403,10 +404,10 @@ export default function OrderStatisticsPage() {
                         </TableHead>
                         <TableHead 
                           className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none whitespace-nowrap"
-                          onClick={() => handleSort("delivered")}
+                          onClick={() => handleSort("sale")}
                         >
-                          Delivered
-                          {sortField === "delivered" && (
+                          Sale
+                          {sortField === "sale" && (
                             <span className="inline-flex ml-1">
                               {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                             </span>
@@ -414,10 +415,10 @@ export default function OrderStatisticsPage() {
                         </TableHead>
                         <TableHead 
                           className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none whitespace-nowrap"
-                          onClick={() => handleSort("pending")}
+                          onClick={() => handleSort("hold")}
                         >
-                          Pending
-                          {sortField === "pending" && (
+                          Hold
+                          {sortField === "hold" && (
                             <span className="inline-flex ml-1">
                               {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                             </span>
@@ -425,10 +426,10 @@ export default function OrderStatisticsPage() {
                         </TableHead>
                         <TableHead 
                           className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none whitespace-nowrap"
-                          onClick={() => handleSort("processing")}
+                          onClick={() => handleSort("rejected")}
                         >
-                          In Distribution
-                          {sortField === "processing" && (
+                          Rejected
+                          {sortField === "rejected" && (
                             <span className="inline-flex ml-1">
                               {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                             </span>
@@ -436,10 +437,10 @@ export default function OrderStatisticsPage() {
                         </TableHead>
                         <TableHead 
                           className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none whitespace-nowrap"
-                          onClick={() => handleSort("cancelled")}
+                          onClick={() => handleSort("trash")}
                         >
-                          Cancelled
-                          {sortField === "cancelled" && (
+                          Trash
+                          {sortField === "trash" && (
                             <span className="inline-flex ml-1">
                               {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                             </span>
@@ -457,22 +458,11 @@ export default function OrderStatisticsPage() {
                           )}
                         </TableHead>
                         <TableHead 
-                          className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none whitespace-nowrap"
-                          onClick={() => handleSort("deliveredPercentage")}
-                        >
-                          Delivery %
-                          {sortField === "deliveredPercentage" && (
-                            <span className="inline-flex ml-1">
-                              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                            </span>
-                          )}
-                        </TableHead>
-                        <TableHead 
                           className="text-right py-3 px-4 font-medium text-primary cursor-pointer select-none whitespace-nowrap"
-                          onClick={() => handleSort("revenue")}
+                          onClick={() => handleSort("payout")}
                         >
-                          Revenue
-                          {sortField === "revenue" && (
+                          Payout
+                          {sortField === "payout" && (
                             <span className="inline-flex ml-1">
                               {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                             </span>
@@ -488,13 +478,12 @@ export default function OrderStatisticsPage() {
                           .map((stat) => (
                             <TableRow key={stat.date}>
                               <TableCell className="font-medium whitespace-nowrap">{stat.date}</TableCell>
-                              <TableCell>{stat.delivered}</TableCell>
-                              <TableCell>{stat.pending}</TableCell>
-                              <TableCell>{stat.processing}</TableCell>
-                              <TableCell>{stat.cancelled}</TableCell>
+                              <TableCell>{stat.sale}</TableCell>
+                              <TableCell>{stat.hold}</TableCell>
+                              <TableCell>{stat.rejected}</TableCell>
+                              <TableCell>{stat.trash}</TableCell>
                               <TableCell>{stat.total}</TableCell>
-                              <TableCell>{stat.deliveredPercentage.toFixed(2)}%</TableCell>
-                              <TableCell className="text-right">${stat.revenue.toFixed(2)}</TableCell>
+                              <TableCell className="text-right">${stat.payout.toFixed(2)}</TableCell>
                             </TableRow>
                           ))
                       ) : (
@@ -507,14 +496,13 @@ export default function OrderStatisticsPage() {
                       <TableFooter className="bg-muted/50">
                         <TableRow className="font-bold">
                           <TableCell>Total (All Pages)</TableCell>
-                          <TableCell>{calcTotalsByStatus.delivered}</TableCell>
-                          <TableCell>{calcTotalsByStatus.pending}</TableCell>
-                          <TableCell>{calcTotalsByStatus.processing}</TableCell>
-                          <TableCell>{calcTotalsByStatus.cancelled}</TableCell>
+                          <TableCell>{calcTotalsByStatus.sale}</TableCell>
+                          <TableCell>{calcTotalsByStatus.hold}</TableCell>
+                          <TableCell>{calcTotalsByStatus.rejected}</TableCell>
+                          <TableCell>{calcTotalsByStatus.trash}</TableCell>
                           <TableCell>{calcTotalsByStatus.total}</TableCell>
-                          <TableCell>{totalDeliveryPercentage}%</TableCell>
                           <TableCell className="text-right">
-                            ${calcTotalsByStatus.revenue.toFixed(2)}
+                            ${calcTotalsByStatus.payout.toFixed(2)}
                           </TableCell>
                         </TableRow>
                       </TableFooter>
