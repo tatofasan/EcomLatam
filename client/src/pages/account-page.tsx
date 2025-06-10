@@ -817,22 +817,63 @@ export default function AccountPage() {
                         </p>
                         <div className="mt-3 text-xs">
                           <details className="cursor-pointer">
+                            <summary className="text-blue-700 font-medium">API Fields & Rules</summary>
+                            <div className="mt-2 p-2 bg-blue-100 rounded text-blue-800">
+                              <div className="font-medium mb-2">Required Fields:</div>
+                              <ul className="list-disc list-inside mb-3 space-y-1">
+                                <li><code>productId</code> - ID of existing product</li>
+                                <li><code>customerName</code> - Customer full name</li>
+                                <li><code>customerPhone</code> - Customer phone number</li>
+                              </ul>
+                              <div className="font-medium mb-2">Optional Fields:</div>
+                              <ul className="list-disc list-inside mb-3 space-y-1">
+                                <li><code>quantity</code> - Defaults to 1 if empty</li>
+                                <li><code>salePrice</code> - Ignored, product price always used</li>
+                                <li><code>customerAddress</code> - Street address</li>
+                                <li><code>postalCode</code> - Postal/ZIP code</li>
+                                <li><code>city</code> - City name</li>
+                                <li><code>province</code> - State/Province</li>
+                                <li><code>customerEmail</code> - Customer email</li>
+                                <li><code>notes</code> - Additional notes</li>
+                              </ul>
+                            </div>
+                          </details>
+                          <details className="cursor-pointer">
                             <summary className="text-blue-700 font-medium">Example: Create Order</summary>
                             <pre className="mt-2 p-2 bg-blue-100 rounded text-blue-800 overflow-x-auto whitespace-pre-wrap">
-{`// Create order example
-fetch('https://yourapp.repl.co/api/external/orders', {
+{`// Minimal order (required fields only)
+fetch('${window.location.origin}/api/external/orders', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
     'X-API-Key': '${user?.apiKey || "your-api-key-here"}'
   },
   body: JSON.stringify({
-    productId: 123,
+    productId: 1,
+    customerName: "María García",
+    customerPhone: "+34687654321"
+  })
+})
+
+// Complete order with all fields
+fetch('${window.location.origin}/api/external/orders', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Key': '${user?.apiKey || "your-api-key-here"}'
+  },
+  body: JSON.stringify({
+    productId: 1,
     quantity: 2,
-    salePrice: 29.99,
-    customerName: "John Doe",
-    customerPhone: "+1234567890",
-    customerAddress: "123 Main St"
+    salePrice: 999.99, // This will be ignored
+    customerName: "Juan Pérez",
+    customerPhone: "+34612345678",
+    customerAddress: "Calle Mayor 123",
+    postalCode: "28001",
+    city: "Madrid",
+    province: "Madrid",
+    customerEmail: "juan.perez@email.com",
+    notes: "Entrega urgente"
   })
 })
 .then(response => response.json())
@@ -844,7 +885,7 @@ fetch('https://yourapp.repl.co/api/external/orders', {
                             <summary className="text-blue-700 font-medium">Example: Check Order Status</summary>
                             <pre className="mt-2 p-2 bg-blue-100 rounded text-blue-800 overflow-x-auto whitespace-pre-wrap">
 {`// Check order status example
-fetch('https://yourapp.repl.co/api/external/orders/ORD-12345/status', {
+fetch('${window.location.origin}/api/external/orders/ORD-12345/status', {
   method: 'GET',
   headers: {
     'X-API-Key': '${user?.apiKey || "your-api-key-here"}'
