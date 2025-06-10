@@ -242,18 +242,18 @@ export default function HomePage() {
                             <td className="py-3 px-4">{lead.customerName}</td>
                             <td className="py-3 px-4">${parseFloat(lead.value || '0').toFixed(2)}</td>
                             <td className="py-3 px-4">
-                              {format(new Date(order.createdAt), "dd/MM/yyyy")}
+                              {format(new Date(lead.createdAt), "dd/MM/yyyy")}
                             </td>
                             <td className="py-3 px-4">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                ${order.status === 'delivered' ? 'bg-green-100 text-green-800' : 
-                                  order.status === 'processing' ? 'bg-blue-100 text-blue-800' : 
-                                    order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                ${lead.status === 'sale' ? 'bg-green-100 text-green-800' : 
+                                  lead.status === 'hold' ? 'bg-blue-100 text-blue-800' : 
+                                    lead.status === 'rejected' ? 'bg-red-100 text-red-800' :
                                       'bg-amber-100 text-amber-800'}`}>
-                                {order.status === 'delivered' ? <CheckCircle2 className="w-3 h-3 mr-1" /> : 
-                                  order.status === 'processing' ? <Clock className="w-3 h-3 mr-1" /> : 
+                                {lead.status === 'sale' ? <CheckCircle2 className="w-3 h-3 mr-1" /> : 
+                                  lead.status === 'hold' ? <Clock className="w-3 h-3 mr-1" /> : 
                                     <Clock className="w-3 h-3 mr-1" />}
-                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                                {lead.status ? lead.status.charAt(0).toUpperCase() + lead.status.slice(1) : 'Unknown'}
                               </span>
                             </td>
                           </tr>
@@ -261,7 +261,7 @@ export default function HomePage() {
                       ) : (
                         <tr>
                           <td colSpan={5} className="py-4 text-center text-muted-foreground">
-                            No recent orders to display
+                            No recent leads to display
                           </td>
                         </tr>
                       )}
