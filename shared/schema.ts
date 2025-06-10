@@ -96,12 +96,15 @@ export const insertOrderSchema = createInsertSchema(orders, {
 // Schema for API order ingestion
 export const apiOrderSchema = z.object({
   productId: z.number().int().positive(),
-  quantity: z.number().int().positive(),
-  price: z.number().positive(),
+  quantity: z.number().int().positive().optional().default(1),
+  salePrice: z.number().positive().optional(),
   customerName: z.string().min(2),
   customerPhone: z.string().min(5),
+  customerAddress: z.string().optional(),
+  postalCode: z.string().optional(),
+  city: z.string().optional(),
+  province: z.string().optional(),
   customerEmail: z.string().email().optional(),
-  shippingAddress: z.string().optional(),
   notes: z.string().optional()
 });
 

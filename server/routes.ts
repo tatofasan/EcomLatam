@@ -1227,14 +1227,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate a unique order number with timestamp
       const orderNumber = `ORD-${Date.now()}-${userId}`;
       
+      // Use product price instead of provided salePrice (business rule)
+      const finalPrice = product.price;
+      const quantity = orderData.quantity || 1;
+      
+      // Build shipping address from components
+      const addressParts = [
+        orderData.customerAddress,
+        orderData.postalCode,
+        orderData.city,
+        orderData.province
+      ].filter(Boolean);
+      
+      const shippingAddress = addressParts.length > 0 
+        ? addressParts.join(', ') 
+        : "No shipping address provided";
+      
       // Create the order using storage
       const order = await storage.createOrder({
         customerName: orderData.customerName,
         customerEmail: orderData.customerEmail || null,
         customerPhone: orderData.customerPhone,
-        shippingAddress: orderData.shippingAddress || "No shipping address provided",
+        shippingAddress: shippingAddress,
         status: "pending",
-        totalAmount: orderData.price * orderData.quantity,
+        totalAmount: finalPrice * quantity,
         notes: orderData.notes || null,
         orderNumber: orderNumber
       }, userId);
@@ -1243,9 +1259,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.addOrderItem({
         orderId: order.id,
         productId: orderData.productId,
-        quantity: orderData.quantity,
-        price: orderData.price,  // Use the price from the API request
-        subtotal: orderData.price * orderData.quantity
+        quantity: quantity,
+        price: finalPrice,  // Always use product's configured price
+        subtotal: finalPrice * quantity
       });
       
       res.status(201).json({ 
