@@ -215,18 +215,18 @@ export default function OrderStatisticsPage() {
         case "date":
           comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
           break;
-        case "pending":
-        case "processing":
-        case "delivered":
-        case "cancelled":
+        case "sale":
+        case "hold":
+        case "rejected":
+        case "trash":
         case "total":
           comparison = a[sortField] - b[sortField];
           break;
-        case "deliveredPercentage":
-          comparison = a.deliveredPercentage - b.deliveredPercentage;
+        case "salePercentage":
+          comparison = a.salePercentage - b.salePercentage;
           break;
-        case "revenue":
-          comparison = a.revenue - b.revenue;
+        case "payout":
+          comparison = a.payout - b.payout;
           break;
         default:
           comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
@@ -265,11 +265,11 @@ export default function OrderStatisticsPage() {
       <div className="p-3 md:p-6">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-2 mb-4">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold">Order Statistics</h1>
+            <h1 className="text-xl md:text-2xl font-bold">Lead Statistics</h1>
             <p className="text-sm text-muted-foreground">
               {isAdmin 
-                ? 'Admin view (all orders)' 
-                : 'Your order statistics'}
+                ? 'Admin view (all leads)' 
+                : 'Your lead statistics'}
             </p>
           </div>
         </div>
@@ -287,7 +287,7 @@ export default function OrderStatisticsPage() {
                   <Database className="h-4 w-4" />
                   <AlertTitle>Statistics Visualization</AlertTitle>
                   <AlertDescription className="text-xs md:text-sm">
-                    This page shows order statistics over time based on your actual order data.
+                    This page shows lead statistics over time based on your actual lead data.
                   </AlertDescription>
                 </Alert>
               </div>
@@ -450,7 +450,7 @@ export default function OrderStatisticsPage() {
                           className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none whitespace-nowrap"
                           onClick={() => handleSort("total")}
                         >
-                          Total Orders
+                          Total Leads
                           {sortField === "total" && (
                             <span className="inline-flex ml-1">
                               {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -488,7 +488,7 @@ export default function OrderStatisticsPage() {
                           ))
                       ) : (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center">No order data available</TableCell>
+                          <TableCell colSpan={7} className="text-center">No lead data available</TableCell>
                         </TableRow>
                       )}
                     </TableBody>
@@ -566,26 +566,25 @@ export default function OrderStatisticsPage() {
                             
                             <div className="grid grid-cols-2 gap-2 mb-3">
                               <div className="flex flex-col">
-                                <span className="text-xs text-muted-foreground">Delivered</span>
-                                <span className="font-medium">{stat.delivered}</span>
+                                <span className="text-xs text-muted-foreground">Sale</span>
+                                <span className="font-medium">{stat.sale}</span>
                               </div>
                               <div className="flex flex-col">
-                                <span className="text-xs text-muted-foreground">Pending</span>
-                                <span className="font-medium">{stat.pending}</span>
+                                <span className="text-xs text-muted-foreground">Hold</span>
+                                <span className="font-medium">{stat.hold}</span>
                               </div>
                               <div className="flex flex-col">
-                                <span className="text-xs text-muted-foreground">In Distribution</span>
-                                <span className="font-medium">{stat.processing}</span>
+                                <span className="text-xs text-muted-foreground">Rejected</span>
+                                <span className="font-medium">{stat.rejected}</span>
                               </div>
                               <div className="flex flex-col">
-                                <span className="text-xs text-muted-foreground">Cancelled</span>
-                                <span className="font-medium">{stat.cancelled}</span>
+                                <span className="text-xs text-muted-foreground">Trash</span>
+                                <span className="font-medium">{stat.trash}</span>
                               </div>
                             </div>
                             
                             <div className="flex justify-between items-center pt-2 border-t">
-                              <span className="text-xs text-muted-foreground">Delivery: <span className="font-medium">{stat.deliveredPercentage.toFixed(2)}%</span></span>
-                              <span className="text-xs text-green-600 font-medium">${stat.revenue.toFixed(2)}</span>
+                              <span className="text-xs text-green-600 font-medium">${stat.payout.toFixed(2)}</span>
                             </div>
                           </div>
                         ))}
@@ -601,31 +600,26 @@ export default function OrderStatisticsPage() {
                         
                         <div className="grid grid-cols-2 gap-3 mb-3">
                           <div className="flex flex-col">
-                            <span className="text-xs text-muted-foreground">Pending</span>
-                            <span className="font-bold">{calcTotalsByStatus.pending}</span>
+                            <span className="text-xs text-muted-foreground">Sale</span>
+                            <span className="font-bold">{calcTotalsByStatus.sale}</span>
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-xs text-muted-foreground">Processing</span>
-                            <span className="font-bold">{calcTotalsByStatus.processing}</span>
+                            <span className="text-xs text-muted-foreground">Hold</span>
+                            <span className="font-bold">{calcTotalsByStatus.hold}</span>
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-xs text-muted-foreground">Delivered</span>
-                            <span className="font-bold">{calcTotalsByStatus.delivered}</span>
+                            <span className="text-xs text-muted-foreground">Rejected</span>
+                            <span className="font-bold">{calcTotalsByStatus.rejected}</span>
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-xs text-muted-foreground">Cancelled</span>
-                            <span className="font-bold">{calcTotalsByStatus.cancelled}</span>
+                            <span className="text-xs text-muted-foreground">Trash</span>
+                            <span className="font-bold">{calcTotalsByStatus.trash}</span>
                           </div>
                         </div>
                         
                         <div className="flex justify-between items-center pt-2 border-t border-muted-foreground/30">
-                          <span className="text-xs text-muted-foreground">Delivery: 
-                            <span className="font-bold ml-1">
-                              {totalDeliveryPercentage}%
-                            </span>
-                          </span>
                           <span className="text-sm text-green-600 font-bold">
-                            ${calcTotalsByStatus.revenue.toFixed(2)}
+                            ${calcTotalsByStatus.payout.toFixed(2)}
                           </span>
                         </div>
                       </div>
