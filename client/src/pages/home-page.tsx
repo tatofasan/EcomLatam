@@ -22,29 +22,31 @@ const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d"
 
 // Dashboard metrics type
 interface DashboardMetrics {
-  totalProducts: number;
-  totalOrders: number;
+  totalOffers: number;
+  totalLeads: number;
   totalRevenue: number;
-  recentOrders: Array<{
+  totalCommission: number;
+  recentLeads: Array<{
     id: number;
-    orderNumber: string;
+    leadNumber: string;
     customerName: string;
-    totalAmount: number;
+    value: string;
     status: string;
     createdAt: string;
   }>;
-  orderStatus: {
-    pending: number;
-    processing: number;
-    delivered: number;
-    cancelled: number;
+  leadStatus: {
+    sale: number;
+    hold: number;
+    rejected: number;
+    trash: number;
+    total: number;
   };
   salesData: Array<{
     name: string;
     sales: number;
     orders: number;
   }>;
-  productCategoriesData: Array<{
+  offerCategoriesData: Array<{
     name: string;
     value: number;
   }>;
@@ -98,8 +100,8 @@ export default function HomePage() {
                     <CheckCircle2 className="w-6 h-6 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Total Delivered</p>
-                    <h3 className="text-2xl font-bold">{metrics.orderStatus.delivered}</h3>
+                    <p className="text-sm text-gray-500">Sales</p>
+                    <h3 className="text-2xl font-bold">{metrics.leadStatus.sale}</h3>
                   </div>
                 </CardContent>
               </Card>
@@ -110,8 +112,8 @@ export default function HomePage() {
                     <ShoppingCart className="w-6 h-6 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Total Orders</p>
-                    <h3 className="text-2xl font-bold">{metrics.totalOrders}</h3>
+                    <p className="text-sm text-gray-500">Total Leads</p>
+                    <h3 className="text-2xl font-bold">{metrics.totalLeads}</h3>
                   </div>
                 </CardContent>
               </Card>
@@ -134,12 +136,8 @@ export default function HomePage() {
                     <TrendingUp className="w-6 h-6 text-amber-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Delivery Rate</p>
-                    <h3 className="text-2xl font-bold">
-                      {metrics.totalOrders > 0 
-                        ? `${((metrics.orderStatus.delivered / metrics.totalOrders) * 100).toFixed(1)}%` 
-                        : '0%'}
-                    </h3>
+                    <p className="text-sm text-gray-500">Commission</p>
+                    <h3 className="text-2xl font-bold">${metrics.totalCommission.toLocaleString()}</h3>
                   </div>
                 </CardContent>
               </Card>
@@ -178,16 +176,16 @@ export default function HomePage() {
               
               <Card>
                 <CardHeader>
-                  <CardTitle>Product Categories</CardTitle>
+                  <CardTitle>Offer Categories</CardTitle>
                   <CardDescription>Distribution by category</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="h-80">
-                    {metrics.productCategoriesData && metrics.productCategoriesData.length > 0 ? (
+                    {metrics.offerCategoriesData && metrics.offerCategoriesData.length > 0 ? (
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
-                            data={metrics.productCategoriesData}
+                            data={metrics.offerCategoriesData}
                             cx="50%"
                             cy="50%"
                             labelLine={false}
@@ -196,7 +194,7 @@ export default function HomePage() {
                             dataKey="value"
                             label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                           >
-                            {metrics.productCategoriesData.map((entry, index) => (
+                            {metrics.offerCategoriesData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                           </Pie>
@@ -206,7 +204,7 @@ export default function HomePage() {
                       </ResponsiveContainer>
                     ) : (
                       <div className="flex h-full items-center justify-center">
-                        <p className="text-muted-foreground">No product category data available</p>
+                        <p className="text-muted-foreground">No offer category data available</p>
                       </div>
                     )}
                   </div>
@@ -214,14 +212,14 @@ export default function HomePage() {
               </Card>
             </div>
             
-            {/* Recent Orders */}
+            {/* Recent Leads */}
             <Card>
               <CardHeader>
-                <CardTitle>Recent Orders</CardTitle>
+                <CardTitle>Recent Leads</CardTitle>
                 <CardDescription>
                   {isAdmin 
-                    ? 'Latest orders from all users' 
-                    : 'Your latest orders'}
+                    ? 'Latest leads from all users' 
+                    : 'Your latest leads'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -229,20 +227,20 @@ export default function HomePage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-3 px-4 font-medium">Order</th>
+                        <th className="text-left py-3 px-4 font-medium">Lead</th>
                         <th className="text-left py-3 px-4 font-medium">Customer</th>
-                        <th className="text-left py-3 px-4 font-medium">Amount</th>
+                        <th className="text-left py-3 px-4 font-medium">Value</th>
                         <th className="text-left py-3 px-4 font-medium">Date</th>
                         <th className="text-left py-3 px-4 font-medium">Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {metrics.recentOrders.length > 0 ? (
-                        metrics.recentOrders.map((order) => (
-                          <tr key={order.id} className="border-b hover:bg-gray-50">
-                            <td className="py-3 px-4">{order.orderNumber}</td>
-                            <td className="py-3 px-4">{order.customerName}</td>
-                            <td className="py-3 px-4">${order.totalAmount.toFixed(2)}</td>
+                      {metrics.recentLeads.length > 0 ? (
+                        metrics.recentLeads.map((lead) => (
+                          <tr key={lead.id} className="border-b hover:bg-gray-50">
+                            <td className="py-3 px-4">{lead.leadNumber}</td>
+                            <td className="py-3 px-4">{lead.customerName}</td>
+                            <td className="py-3 px-4">${parseFloat(lead.value || '0').toFixed(2)}</td>
                             <td className="py-3 px-4">
                               {format(new Date(order.createdAt), "dd/MM/yyyy")}
                             </td>
