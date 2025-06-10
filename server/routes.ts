@@ -551,59 +551,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Fetching dashboard metrics for user ID ${userId}, isAdmin: ${isAdmin}, isFinance: ${isFinance}`);
       
-      // Get total products count (all for admin/finance, user-created for regular users)
-      let productsQuery = db.select().from(products);
+      // Get total offers count (all for admin/finance, user-created for regular users)
+      let offersQuery = db.select().from(offers);
       if (!hasSupervisorAccess) {
-        productsQuery = productsQuery.where(eq(products.userId, userId));
+        offersQuery = offersQuery.where(eq(offers.advertiserId, userId));
       }
-      const productsList = await productsQuery;
+      const offersList = await offersQuery;
       
-      // Get orders data (all for admin/finance, user's orders for regular users)
-      let ordersQuery = db.select().from(orders);
+      // Get leads data (all for admin/finance, user's leads for regular users)
+      let leadsQuery = db.select().from(leads);
       if (!hasSupervisorAccess) {
-        ordersQuery = ordersQuery.where(eq(orders.userId, userId));
+        leadsQuery = leadsQuery.where(eq(leads.userId, userId));
       }
-      const ordersList = await ordersQuery;
+      const leadsList = await leadsQuery;
       
-      console.log(`Dashboard orders for user ${userId} (isAdmin: ${isAdmin}):`, 
-                 `Total orders: ${ordersList.length}`,
-                 `First few orders user_ids:`, ordersList.slice(0, 3).map(o => o.userId));
+      console.log(`Dashboard leads for user ${userId} (isAdmin: ${isAdmin}):`, 
+                 `Total leads: ${leadsList.length}`,
+                 `First few leads user_ids:`, leadsList.slice(0, 3).map(l => l.userId));
       
       // Calculate revenue from confirmed sales
-      const saleOrders = ordersList.filter(order => order.status === 'sale');
-      const totalRevenue = saleOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+      const saleLeads = leadsList.filter(lead => lead.status === 'sale');
+      const totalRevenue = saleLeads.reduce((sum, lead) => sum + parseFloat(lead.value || '0'), 0);
       
-      // Calculate total payouts from confirmed sales
-      const totalPayout = saleOrders.reduce((sum, order) => sum + (order.payout || 0), 0);
+      // Calculate total commission from confirmed sales
+      const totalCommission = saleLeads.reduce((sum, lead) => sum + parseFloat(lead.commission || '0'), 0);
       
-      // Get recent orders (limit to 5)
-      let recentOrdersQuery = db.select()
-        .from(orders)
-        .orderBy(desc(orders.createdAt))
+      // Get recent leads (limit to 5)
+      let recentLeadsQuery = db.select()
+        .from(leads)
+        .orderBy(desc(leads.createdAt))
         .limit(5);
         
       if (!hasSupervisorAccess) {
-        recentOrdersQuery = recentOrdersQuery.where(eq(orders.userId, userId));
+        recentLeadsQuery = recentLeadsQuery.where(eq(leads.userId, userId));
       }
       
-      const recentOrders = await recentOrdersQuery;
+      const recentLeads = await recentLeadsQuery;
       
       // Get lead counts by status
-      const saleCount = ordersList.filter(order => order.status === 'sale').length;
-      const holdCount = ordersList.filter(order => order.status === 'hold').length;
-      const rejectedCount = ordersList.filter(order => order.status === 'rejected').length;
-      const trashCount = ordersList.filter(order => order.status === 'trash').length;
+      const saleCount = leadsList.filter(lead => lead.status === 'sale').length;
+      const holdCount = leadsList.filter(lead => lead.status === 'hold').length;
+      const rejectedCount = leadsList.filter(lead => lead.status === 'rejected').length;
+      const trashCount = leadsList.filter(lead => lead.status === 'trash').length;
       
-      // Get order items for quantity calculations
-      const orderItemsPromises = ordersList.map(order => 
-        db.select().from(orderItems).where(eq(orderItems.orderId, order.id))
+      // Get lead items for quantity calculations
+      const leadItemsPromises = leadsList.map(lead => 
+        db.select().from(leadItems).where(eq(leadItems.leadId, lead.id))
       );
-      const allOrderItemsResults = await Promise.all(orderItemsPromises);
+      const allLeadItemsResults = await Promise.all(leadItemsPromises);
       
-      // Create a map of order ID to its items
-      const orderItemsMap = {};
-      ordersList.forEach((order, index) => {
-        orderItemsMap[order.id] = allOrderItemsResults[index];
+      // Create a map of lead ID to its items
+      const leadItemsMap = {};
+      leadsList.forEach((lead, index) => {
+        leadItemsMap[lead.id] = allLeadItemsResults[index];
       });
       
       // Get sales data by month
@@ -702,20 +702,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
       
       res.json({
-        totalProducts: productsList.length,
-        totalOrders: ordersList.length,
+        totalOffers: offersList.length,
+        totalLeads: leadsList.length,
         totalRevenue: parseFloat(totalRevenue.toFixed(2)),
-        totalPayout: parseFloat(totalPayout.toFixed(2)),
-        recentOrders,
-        orderStatus: {
+        totalCommission: parseFloat(totalCommission.toFixed(2)),
+        recentLeads,
+        leadStatus: {
           sale: saleCount,
           hold: holdCount,
           rejected: rejectedCount,
           trash: trashCount,
-          total: ordersList.length
+          total: leadsList.length
         },
-        salesData,
-        productCategoriesData
+        salesData: [],
+        offerCategoriesData: []
       });
     } catch (error) {
       console.error("Error fetching dashboard metrics:", error);
