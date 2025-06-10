@@ -4,10 +4,10 @@
  * Script externo para probar la API de ingesta y consulta de estado
  * 
  * Uso:
- * node test-api.js <API_KEY> <BASE_URL>
+ * node test-api.cjs <API_KEY> <BASE_URL>
  * 
  * Ejemplo:
- * node test-api.js "d29fb280-9cce-4e4a-a751-74ad2..." "http://localhost:5000"
+ * node test-api.cjs "d29fb280-9cce-4e4a-a751-74ad2..." "http://localhost:5000"
  */
 
 const https = require('https');
@@ -254,11 +254,11 @@ async function main() {
   
   if (args.length < 2) {
     console.log('❌ Uso incorrecto');
-    console.log('Uso: node test-api.js <API_KEY> <BASE_URL>');
+    console.log('Uso: node test-api.cjs <API_KEY> <BASE_URL>');
     console.log('');
     console.log('Ejemplo:');
-    console.log('  node test-api.js "d29fb280-9cce-4e4a-a751-74ad2..." "http://localhost:5000"');
-    console.log('  node test-api.js "tu-api-key" "https://tu-dominio.replit.app"');
+    console.log('  node test-api.cjs "d29fb280-9cce-4e4a-a751-74ad2..." "http://localhost:5000"');
+    console.log('  node test-api.cjs "tu-api-key" "https://tu-dominio.replit.app"');
     console.log('');
     console.log('Para obtener una API key:');
     console.log('  1. Inicia sesión en la aplicación');

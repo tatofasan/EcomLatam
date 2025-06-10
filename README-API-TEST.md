@@ -53,13 +53,13 @@ Devuelve el estado completo de la orden incluyendo items y detalles del cliente.
 ### Ejecutar el Script
 ```bash
 # Formato básico
-node test-api.js "TU_API_KEY" "BASE_URL"
+node test-api.cjs "TU_API_KEY" "BASE_URL"
 
 # Ejemplo para desarrollo local
-node test-api.js "d29fb280-9cce-4e4a-a751-74ad2..." "http://localhost:5000"
+node test-api.cjs "d29fb280-9cce-4e4a-a751-74ad2..." "http://localhost:5000"
 
 # Ejemplo para producción
-node test-api.js "tu-api-key" "https://tu-dominio.replit.app"
+node test-api.cjs "tu-api-key" "https://tu-dominio.replit.app"
 ```
 
 ## Casos de Prueba Incluidos
