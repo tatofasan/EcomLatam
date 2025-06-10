@@ -296,8 +296,8 @@ export default function OrderStatisticsPage() {
             <Card>
               <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-2 md:space-y-0">
                 <div className="flex flex-col space-y-1">
-                  <CardTitle>Daily Order Summary</CardTitle>
-                  <CardDescription className="hidden md:block">View and analyze order data by day</CardDescription>
+                  <CardTitle>Daily Lead Summary</CardTitle>
+                  <CardDescription className="hidden md:block">View and analyze lead data by day</CardDescription>
                 </div>
                 <div className="flex items-center space-x-2 bg-muted/30 p-1.5 rounded-md">
                   <Label htmlFor="date-type" className="text-xs md:text-sm truncate">Creation Date</Label>
@@ -594,7 +594,7 @@ export default function OrderStatisticsPage() {
                         <div className="flex justify-between items-center border-b border-muted-foreground/30 pb-2 mb-3">
                           <h4 className="font-bold">Total (All Pages)</h4>
                           <span className="bg-primary/20 text-primary px-2 py-1 rounded-md text-xs font-semibold">
-                            {calcTotalsByStatus.total} Orders
+                            {calcTotalsByStatus.total} Leads
                           </span>
                         </div>
                         
