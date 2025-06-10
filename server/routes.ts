@@ -705,12 +705,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalProducts: productsList.length,
         totalOrders: ordersList.length,
         totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+        totalPayout: parseFloat(totalPayout.toFixed(2)),
         recentOrders,
         orderStatus: {
-          pending: pendingCount,
-          processing: processingCount,
-          delivered: deliveredCount,
-          cancelled: cancelledCount
+          sale: saleCount,
+          hold: holdCount,
+          rejected: rejectedCount,
+          trash: trashCount,
+          total: ordersList.length
         },
         salesData,
         productCategoriesData

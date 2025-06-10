@@ -38,13 +38,13 @@ import { format, subDays } from "date-fns";
 
 interface OrderStatsByDay {
   date: string;
-  pending: number;
-  processing: number;
-  delivered: number;
-  cancelled: number;
+  sale: number;
+  hold: number;
+  rejected: number;
+  trash: number;
   total: number;
-  deliveredPercentage: number;
-  revenue: number;
+  salePercentage: number;
+  payout: number;
 }
 
 interface OrderForStats {
@@ -86,12 +86,12 @@ export default function OrderStatisticsPage() {
   // Helper functions to calculate totals for all statistics
   const calcTotalsByStatus = useMemo(() => {
     return {
-      pending: statistics.reduce((sum, stat) => sum + stat.pending, 0),
-      processing: statistics.reduce((sum, stat) => sum + stat.processing, 0),
-      delivered: statistics.reduce((sum, stat) => sum + stat.delivered, 0),
-      cancelled: statistics.reduce((sum, stat) => sum + stat.cancelled, 0),
+      sale: statistics.reduce((sum, stat) => sum + stat.sale, 0),
+      hold: statistics.reduce((sum, stat) => sum + stat.hold, 0),
+      rejected: statistics.reduce((sum, stat) => sum + stat.rejected, 0),
+      trash: statistics.reduce((sum, stat) => sum + stat.trash, 0),
       total: statistics.reduce((sum, stat) => sum + stat.total, 0),
-      revenue: statistics.reduce((sum, stat) => sum + stat.revenue, 0),
+      payout: statistics.reduce((sum, stat) => sum + stat.payout, 0),
     };
   }, [statistics]);
   
@@ -180,29 +180,29 @@ export default function OrderStatisticsPage() {
 
     // Calculate statistics for each day
     const stats = Object.entries(ordersByDate).map(([date, dayOrders]) => {
-      const pending = dayOrders.filter((order: OrderForStats) => order.status === 'pending').length;
-      const processing = dayOrders.filter((order: OrderForStats) => order.status === 'processing').length;
-      const delivered = dayOrders.filter((order: OrderForStats) => order.status === 'delivered').length;
-      const cancelled = dayOrders.filter((order: OrderForStats) => order.status === 'cancelled').length;
+      const sale = dayOrders.filter((order: OrderForStats) => order.status === 'sale').length;
+      const hold = dayOrders.filter((order: OrderForStats) => order.status === 'hold').length;
+      const rejected = dayOrders.filter((order: OrderForStats) => order.status === 'rejected').length;
+      const trash = dayOrders.filter((order: OrderForStats) => order.status === 'trash').length;
       const total = dayOrders.length;
       
-      // Calculate delivered percentage
-      const deliveredPercentage = total > 0 ? (delivered / total) * 100 : 0;
+      // Calculate sale percentage
+      const salePercentage = total > 0 ? (sale / total) * 100 : 0;
       
-      // Calculate revenue from delivered orders
-      const revenue = dayOrders
-        .filter((order: OrderForStats) => order.status === 'delivered')
-        .reduce((sum: number, order: OrderForStats) => sum + order.totalAmount, 0);
+      // Calculate total payout from sale orders
+      const payout = dayOrders
+        .filter((order: OrderForStats) => order.status === 'sale')
+        .reduce((sum: number, order: OrderForStats) => sum + (order.payout || 0), 0);
       
       return {
         date,
-        pending,
-        processing,
-        delivered,
-        cancelled,
+        sale,
+        hold,
+        rejected,
+        trash,
         total,
-        deliveredPercentage,
-        revenue
+        salePercentage,
+        payout
       };
     });
 
