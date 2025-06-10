@@ -355,11 +355,11 @@ export default function ConnectionsPage() {
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-primary">Conexiones</h1>
+            <h1 className="text-2xl font-bold text-primary">Connections</h1>
             <p className="text-muted-foreground mt-1">
               {user?.role === 'admin' 
-                ? "Administra las conexiones de todos los usuarios"
-                : "Gestiona las conexiones con tus plataformas de e-commerce"
+                ? "Manage connections for all users"
+                : "Manage connections with your e-commerce platforms"
               }
             </p>
           </div>

@@ -664,22 +664,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Process products from orders to get categories
           orderProducts.forEach(product => {
-            // Asegurarse de que los valores null, undefined, o cadenas vacías se conviertan a "Sin categoría"
-            const category = (product.category && product.category.trim()) ? product.category.trim() : 'Sin categoría';
+            // Ensure null, undefined, or empty strings are converted to "Uncategorized"
+            const category = (product.category && product.category.trim()) ? product.category.trim() : 'Uncategorized';
             if (!productCategories[category]) {
               productCategories[category] = 0;
             }
             productCategories[category] += 1;
           });
         } else {
-          // Si no hay productos en los pedidos, crear una categoría por defecto
-          productCategories['Sin categoría'] = 1;
+          // If no products in orders, create default category
+          productCategories['Uncategorized'] = 1;
         }
       } else {
         // Process products created by the user
         productsList.forEach(product => {
-          // Asegurarse de que los valores null, undefined, o cadenas vacías se conviertan a "Sin categoría"
-          const category = (product.category && product.category.trim()) ? product.category.trim() : 'Sin categoría';
+          // Ensure null, undefined, or empty strings are converted to "Uncategorized"
+          const category = (product.category && product.category.trim()) ? product.category.trim() : 'Uncategorized';
           if (!productCategories[category]) {
             productCategories[category] = 0;
           }
@@ -687,12 +687,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Si después de todo no hay categorías, asegurarse de que haya al menos una
+      // If after all there are no categories, ensure there's at least one
       if (Object.keys(productCategories).length === 0) {
-        productCategories['Sin categoría'] = 1;
+        productCategories['Uncategorized'] = 1;
       }
       
-      // Convertir a array para el gráfico
+      // Convert to array for chart
       const productCategoriesData = Object.entries(productCategories).map(([name, value]) => ({
         name,
         value
