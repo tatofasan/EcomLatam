@@ -569,9 +569,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                  `Total orders: ${ordersList.length}`,
                  `First few orders user_ids:`, ordersList.slice(0, 3).map(o => o.userId));
       
-      // Calculate revenue from completed orders
-      const deliveredOrders = ordersList.filter(order => order.status === 'delivered');
-      const totalRevenue = deliveredOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+      // Calculate revenue from confirmed sales
+      const saleOrders = ordersList.filter(order => order.status === 'sale');
+      const totalRevenue = saleOrders.reduce((sum, order) => sum + order.totalAmount, 0);
+      
+      // Calculate total payouts from confirmed sales
+      const totalPayout = saleOrders.reduce((sum, order) => sum + (order.payout || 0), 0);
       
       // Get recent orders (limit to 5)
       let recentOrdersQuery = db.select()
@@ -585,11 +588,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const recentOrders = await recentOrdersQuery;
       
-      // Get order counts by status
-      const pendingCount = ordersList.filter(order => order.status === 'pending').length;
-      const processingCount = ordersList.filter(order => order.status === 'processing').length;
-      const deliveredCount = ordersList.filter(order => order.status === 'delivered').length;
-      const cancelledCount = ordersList.filter(order => order.status === 'cancelled').length;
+      // Get lead counts by status
+      const saleCount = ordersList.filter(order => order.status === 'sale').length;
+      const holdCount = ordersList.filter(order => order.status === 'hold').length;
+      const rejectedCount = ordersList.filter(order => order.status === 'rejected').length;
+      const trashCount = ordersList.filter(order => order.status === 'trash').length;
       
       // Get order items for quantity calculations
       const orderItemsPromises = ordersList.map(order => 
@@ -622,8 +625,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (monthlyData[monthKey]) {
           monthlyData[monthKey].orders += 1;
           
-          // For delivered orders, count the quantity of items sold
-          if (order.status === 'delivered') {
+          // For confirmed sales, count the quantity of items sold
+          if (order.status === 'sale') {
             const orderItems = orderItemsMap[order.id] || [];
             const itemsCount = orderItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
             monthlyData[monthKey].sales += itemsCount;

@@ -73,7 +73,7 @@ export const productSchema = createInsertSchema(products, {
 export type InsertProduct = z.infer<typeof productSchema>;
 export type Product = typeof products.$inferSelect;
 
-// Order Schema
+// Lead Schema (previously Order Schema)
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
   orderNumber: text("order_number").notNull().unique(),
@@ -82,22 +82,24 @@ export const orders = pgTable("orders", {
   customerEmail: text("customer_email"),
   customerPhone: text("customer_phone"),
   shippingAddress: text("shipping_address").notNull(),
-  status: text("status").notNull().default("pending"), // pending, processing, shipped, delivered, cancelled
+  status: text("status").notNull().default("hold"), // sale, hold, rejected, trash
   totalAmount: doublePrecision("total_amount").notNull(),
+  payout: doublePrecision("payout").notNull().default(0), // Commission amount for affiliate
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   notes: text("notes"),
 });
 
 export const insertOrderSchema = createInsertSchema(orders, {
-  status: z.enum(["pending", "processing", "shipped", "delivered", "cancelled"])
+  status: z.enum(["sale", "hold", "rejected", "trash"])
 }).omit({ id: true, userId: true, createdAt: true, updatedAt: true });
 
-// Schema for API order ingestion
+// Schema for API lead ingestion
 export const apiOrderSchema = z.object({
   productId: z.number().int().positive(),
   quantity: z.number().int().positive().optional().default(1),
   salePrice: z.number().positive().optional(),
+  payout: z.number().positive().optional().default(0), // Commission for affiliate
   customerName: z.string().min(2),
   customerPhone: z.string().min(5),
   customerAddress: z.string().optional(),
@@ -108,7 +110,7 @@ export const apiOrderSchema = z.object({
   notes: z.string().optional()
 });
 
-// Schema for API order status query
+// Schema for API lead status query
 export const apiOrderStatusSchema = z.object({
   orderNumber: z.string()
 });
