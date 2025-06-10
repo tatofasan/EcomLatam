@@ -1,222 +1,453 @@
-import { pgTable, text, serial, integer, boolean, doublePrecision, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, decimal, boolean, serial, pgEnum, json } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import { relations } from "drizzle-orm";
 
-// User Schema
+// Enums
+export const userRoleEnum = pgEnum("user_role", ["user", "admin", "moderator", "finance"]);
+export const userStatusEnum = pgEnum("user_status", ["pending", "active", "inactive", "suspended"]);
+export const leadStatusEnum = pgEnum("lead_status", ["sale", "hold", "rejected", "trash"]);
+export const campaignStatusEnum = pgEnum("campaign_status", ["active", "paused", "completed", "draft"]);
+export const offerStatusEnum = pgEnum("offer_status", ["active", "inactive", "pending_approval"]);
+export const commissionTypeEnum = pgEnum("commission_type", ["fixed", "percentage", "tiered"]);
+export const trafficSourceEnum = pgEnum("traffic_source", ["organic", "paid", "social", "email", "direct", "referral"]);
+export const transactionTypeEnum = pgEnum("transaction_type", ["deposit", "withdrawal", "commission", "bonus", "adjustment"]);
+export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "completed", "failed", "cancelled"]);
+
+// Users Table - Affiliates and Admins
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   fullName: text("full_name"),
-  email: text("email"),
-  role: text("role").default("user"), // admin, user, moderator, finance
-  status: text("status").default("pending"), // active, inactive, pending, email_verification
-  apiKey: text("api_key").unique(), // API key for order ingestion
-  createdAt: timestamp("created_at").defaultNow(),
+  email: text("email").notNull().unique(),
+  role: userRoleEnum("role").default("user"),
+  status: userStatusEnum("status").default("pending"),
+  apiKey: text("api_key").unique(),
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).default("0.00"), // Default commission %
+  referralCode: text("referral_code").unique(),
+  country: text("country"),
+  phone: text("phone"),
+  paymentMethods: json("payment_methods"), // Stripe, PayPal, Bank, etc.
   lastLogin: timestamp("last_login"),
-  settings: jsonb("settings"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
   verificationToken: text("verification_token"),
   verificationExpires: timestamp("verification_expires"),
   isEmailVerified: boolean("is_email_verified").default(false),
+  settings: json("settings"), // JSON for user preferences
 });
 
-export const insertUserSchema = createInsertSchema(users, {
-  role: z.enum(["admin", "user", "moderator", "finance"]).default("user"),
-  status: z.enum(["active", "inactive", "pending", "email_verification"]).default("email_verification"),
-  email: z.string().email("Por favor ingresa un correo electrónico válido"),
-  isEmailVerified: z.boolean().default(false),
-  verificationToken: z.string().optional(),
-  verificationExpires: z.date().optional()
-}).pick({
-  username: true,
-  password: true,
-  fullName: true,
-  email: true,
-  role: true,
-  status: true,
-  isEmailVerified: true,
-  verificationToken: true,
-  verificationExpires: true,
-});
-
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
-
-// Product Schema
-export const products = pgTable("products", {
+// Advertisers Table - Companies providing offers
+export const advertisers = pgTable("advertisers", {
   id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  contactPerson: text("contact_person"),
+  phone: text("phone"),
+  website: text("website"),
+  status: text("status").default("active"), // active, inactive, suspended
+  commissionSettings: json("commission_settings"), // Default commission rules
+  postbackUrl: text("postback_url"), // URL to notify conversions
+  apiCredentials: json("api_credentials"), // API keys for integration
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Offers Table - Products/Services to promote
+export const offers = pgTable("offers", {
+  id: serial("id").primaryKey(),
+  advertiserId: integer("advertiser_id").references(() => advertisers.id),
   name: text("name").notNull(),
   description: text("description").notNull(),
-  price: doublePrecision("price").notNull(),
-  stock: integer("stock").notNull().default(0),
-  status: text("status").notNull().default("draft"), // active, inactive, draft, low
-  sku: text("sku").notNull().unique(),
-  imageUrl: text("image_url").notNull(),
-  additionalImages: text("additional_images").array(),
-  weight: doublePrecision("weight"),
-  dimensions: text("dimensions"),
   category: text("category"),
-  specifications: jsonb("specifications"),
-  reference: text("reference"),
-  provider: text("provider"),
-  userId: integer("user_id").references(() => users.id),
+  status: offerStatusEnum("status").default("active"),
+  price: decimal("price", { precision: 10, scale: 2 }),
+  commission: decimal("commission", { precision: 10, scale: 2 }),
+  commissionType: commissionTypeEnum("commission_type").default("fixed"),
+  targetCountries: json("target_countries"), // Array of country codes
+  allowedTrafficSources: json("allowed_traffic_sources"),
+  landingPageUrl: text("landing_page_url"),
+  trackingUrl: text("tracking_url"),
+  images: json("images"), // Array of image URLs
+  requirements: text("requirements"), // Lead quality requirements
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const productSchema = createInsertSchema(products, {
-  status: z.enum(["active", "inactive", "draft", "low"]),
-  additionalImages: z.array(z.string()).optional().nullable()
-}).omit({ id: true, userId: true, createdAt: true, updatedAt: true });
-
-export type InsertProduct = z.infer<typeof productSchema>;
-export type Product = typeof products.$inferSelect;
-
-// Lead Schema (previously Order Schema)
-export const orders = pgTable("orders", {
+// Campaigns Table - Marketing campaigns
+export const campaigns = pgTable("campaigns", {
   id: serial("id").primaryKey(),
-  orderNumber: text("order_number").notNull().unique(),
   userId: integer("user_id").references(() => users.id),
+  offerId: integer("offer_id").references(() => offers.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  status: campaignStatusEnum("status").default("draft"),
+  budget: decimal("budget", { precision: 10, scale: 2 }),
+  spent: decimal("spent", { precision: 10, scale: 2 }).default("0.00"),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  targetAudience: json("target_audience"), // Demographics, interests, etc.
+  trackingParams: json("tracking_params"), // UTM parameters, custom params
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Leads Table - Individual lead records (renamed from orders)
+export const leads = pgTable("leads", {
+  id: serial("id").primaryKey(),
+  leadNumber: text("lead_number").notNull().unique(),
+  userId: integer("user_id").references(() => users.id),
+  campaignId: integer("campaign_id").references(() => campaigns.id),
+  offerId: integer("offer_id").references(() => offers.id),
+  
+  // Customer Information
   customerName: text("customer_name").notNull(),
   customerEmail: text("customer_email"),
-  customerPhone: text("customer_phone"),
-  shippingAddress: text("shipping_address").notNull(),
-  status: text("status").notNull().default("hold"), // sale, hold, rejected, trash
-  totalAmount: doublePrecision("total_amount").notNull(),
-  payout: doublePrecision("payout").notNull().default(0), // Commission amount for affiliate
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  customerPhone: text("customer_phone").notNull(),
+  customerAddress: text("customer_address"),
+  customerCity: text("customer_city"),
+  customerCountry: text("customer_country"),
+  
+  // Lead Details
+  status: leadStatusEnum("status").default("hold"),
+  quality: text("quality").default("standard"), // premium, standard, basic
+  value: decimal("value", { precision: 10, scale: 2 }),
+  commission: decimal("commission", { precision: 10, scale: 2 }),
+  
+  // Tracking Information
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  referrerUrl: text("referrer_url"),
+  landingPage: text("landing_page"),
+  trafficSource: trafficSourceEnum("traffic_source"),
+  utmSource: text("utm_source"),
+  utmMedium: text("utm_medium"),
+  utmCampaign: text("utm_campaign"),
+  utmTerm: text("utm_term"),
+  utmContent: text("utm_content"),
+  clickId: text("click_id"), // Unique click identifier
+  subId: text("sub_id"), // Affiliate's tracking ID
+  
+  // Conversion Tracking
+  conversionTime: timestamp("conversion_time"),
+  conversionValue: decimal("conversion_value", { precision: 10, scale: 2 }),
+  isConverted: boolean("is_converted").default(false),
+  postbackSent: boolean("postback_sent").default(false),
+  
+  // Additional Data
   notes: text("notes"),
-});
-
-export const insertOrderSchema = createInsertSchema(orders, {
-  status: z.enum(["sale", "hold", "rejected", "trash"])
-}).omit({ id: true, userId: true, createdAt: true, updatedAt: true });
-
-// Schema for API lead ingestion
-export const apiOrderSchema = z.object({
-  productId: z.number().int().positive(),
-  quantity: z.number().int().positive().optional().default(1),
-  salePrice: z.number().positive().optional(),
-  payout: z.number().positive().optional().default(0), // Commission for affiliate
-  customerName: z.string().min(2),
-  customerPhone: z.string().min(5),
-  customerAddress: z.string().optional(),
-  postalCode: z.string().optional(),
-  city: z.string().optional(),
-  province: z.string().optional(),
-  customerEmail: z.string().email().optional(),
-  notes: z.string().optional()
-});
-
-// Schema for API lead status query
-export const apiOrderStatusSchema = z.object({
-  orderNumber: z.string()
-});
-
-export type InsertOrder = z.infer<typeof insertOrderSchema>;
-export type ApiOrder = z.infer<typeof apiOrderSchema>;
-export type Order = typeof orders.$inferSelect;
-
-// Order Items Schema
-export const orderItems = pgTable("order_items", {
-  id: serial("id").primaryKey(),
-  orderId: integer("order_id").references(() => orders.id).notNull(),
-  productId: integer("product_id").references(() => products.id).notNull(),
-  quantity: integer("quantity").notNull(),
-  price: doublePrecision("price").notNull(),
-  subtotal: doublePrecision("subtotal").notNull(),
-});
-
-export const insertOrderItemSchema = createInsertSchema(orderItems).omit({
-  id: true,
-});
-
-export type InsertOrderItem = z.infer<typeof insertOrderItemSchema>;
-export type OrderItem = typeof orderItems.$inferSelect;
-
-// Connection Schema (for integrations with e-commerce platforms)
-export const connections = pgTable("connections", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id).notNull(),
-  platform: text("platform").notNull(), // shopify, woocommerce, mercadolibre, etc.
-  name: text("name").notNull(),
-  apiKey: text("api_key"),
-  apiSecret: text("api_secret"),
-  status: text("status").notNull().default("active"), // active, inactive, error
+  customFields: json("custom_fields"), // Flexible additional data
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-  settings: jsonb("settings"),
 });
 
-export const insertConnectionSchema = createInsertSchema(connections, {
-  status: z.enum(["active", "inactive", "error"])
-}).omit({ id: true, userId: true, createdAt: true, updatedAt: true });
+// Lead Items Table - Products within a lead
+export const leadItems = pgTable("lead_items", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id").references(() => leads.id),
+  productName: text("product_name").notNull(),
+  quantity: integer("quantity").default(1),
+  price: decimal("price", { precision: 10, scale: 2 }),
+  total: decimal("total", { precision: 10, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
 
-export type InsertConnection = z.infer<typeof insertConnectionSchema>;
-export type Connection = typeof connections.$inferSelect;
+// Postbacks Table - Conversion notifications
+export const postbacks = pgTable("postbacks", {
+  id: serial("id").primaryKey(),
+  leadId: integer("lead_id").references(() => leads.id),
+  advertiserId: integer("advertiser_id").references(() => advertisers.id),
+  url: text("url").notNull(),
+  method: text("method").default("GET"), // GET, POST
+  payload: json("payload"), // Data sent in postback
+  response: json("response"), // Response from advertiser
+  status: text("status").default("pending"), // pending, sent, failed
+  attempts: integer("attempts").default(0),
+  lastAttempt: timestamp("last_attempt"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
 
-// Wallet/Transaction Schema
+// Transactions Table - Financial records
 export const transactions = pgTable("transactions", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id).notNull(),
-  type: text("type").notNull(), // withdrawal, bonus, discount
-  amount: doublePrecision("amount").notNull(),
-  status: text("status").notNull().default("pending"), // pending, processing, paid, failed, cancelled
+  userId: integer("user_id").references(() => users.id),
+  leadId: integer("lead_id").references(() => leads.id),
+  type: transactionTypeEnum("type").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  status: transactionStatusEnum("status").default("pending"),
   description: text("description"),
+  paymentMethod: text("payment_method"), // stripe, paypal, bank_transfer
+  paymentProof: text("payment_proof"), // URL to payment proof image
+  reference: text("reference"), // Transaction reference number
+  fees: decimal("fees", { precision: 10, scale: 2 }).default("0.00"),
+  netAmount: decimal("net_amount", { precision: 10, scale: 2 }),
+  processedAt: timestamp("processed_at"),
   createdAt: timestamp("created_at").defaultNow(),
-  reference: text("reference"), // order_id, payment_id, etc.
-  settings: jsonb("settings") // Used to store additional data like payment proof
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Click Tracking Table - Track all clicks
+export const clickTracking = pgTable("click_tracking", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  campaignId: integer("campaign_id").references(() => campaigns.id),
+  offerId: integer("offer_id").references(() => offers.id),
+  clickId: text("click_id").notNull().unique(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  referrerUrl: text("referrer_url"),
+  landingPage: text("landing_page"),
+  country: text("country"),
+  device: text("device"), // mobile, desktop, tablet
+  browser: text("browser"),
+  os: text("os"),
+  isBot: boolean("is_bot").default(false),
+  isConverted: boolean("is_converted").default(false),
+  conversionTime: timestamp("conversion_time"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Performance Reports Table - Cached statistics
+export const performanceReports = pgTable("performance_reports", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  campaignId: integer("campaign_id").references(() => campaigns.id),
+  offerId: integer("offer_id").references(() => offers.id),
+  date: timestamp("date").notNull(),
+  clicks: integer("clicks").default(0),
+  leads: integer("leads").default(0),
+  sales: integer("sales").default(0),
+  revenue: decimal("revenue", { precision: 10, scale: 2 }).default("0.00"),
+  commission: decimal("commission", { precision: 10, scale: 2 }).default("0.00"),
+  conversionRate: decimal("conversion_rate", { precision: 5, scale: 2 }).default("0.00"),
+  costPerLead: decimal("cost_per_lead", { precision: 10, scale: 2 }).default("0.00"),
+  returnOnInvestment: decimal("roi", { precision: 5, scale: 2 }).default("0.00"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Schema validation
+export const insertUserSchema = createInsertSchema(users, {
+  role: z.enum(["user", "admin", "moderator", "finance"]).default("user"),
+  status: z.enum(["pending", "active", "inactive", "suspended"]).default("pending"),
+  email: z.string().email("Por favor ingresa un correo electrónico válido"),
+  commissionRate: z.string().transform(val => parseFloat(val)),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastLogin: true,
+});
+
+export const insertAdvertiserSchema = createInsertSchema(advertisers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertOfferSchema = createInsertSchema(offers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCampaignSchema = createInsertSchema(campaigns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLeadSchema = createInsertSchema(leads, {
+  status: z.enum(["sale", "hold", "rejected", "trash"]).default("hold"),
+  value: z.string().transform(val => parseFloat(val)),
+  commission: z.string().transform(val => parseFloat(val)),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLeadItemSchema = createInsertSchema(leadItems).omit({
+  id: true,
+  createdAt: true,
 });
 
 export const insertTransactionSchema = createInsertSchema(transactions, {
-  type: z.enum(["withdrawal", "bonus", "discount"]),
-  status: z.enum(["pending", "processing", "paid", "failed", "cancelled"]),
-  settings: z.record(z.any()).optional()
-}).omit({ id: true, userId: true, createdAt: true });
+  type: z.enum(["deposit", "withdrawal", "commission", "bonus", "adjustment"]),
+  status: z.enum(["pending", "completed", "failed", "cancelled"]).default("pending"),
+  amount: z.string().transform(val => parseFloat(val)),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// API schemas for external integrations
+export const apiLeadSchema = z.object({
+  customerName: z.string().min(1),
+  customerEmail: z.string().email().optional(),
+  customerPhone: z.string().min(1),
+  customerAddress: z.string().optional(),
+  customerCity: z.string().optional(),
+  customerCountry: z.string().optional(),
+  offerId: z.number().positive(),
+  campaignId: z.number().positive().optional(),
+  value: z.number().positive().optional(),
+  trafficSource: z.enum(["organic", "paid", "social", "email", "direct", "referral"]).optional(),
+  utmSource: z.string().optional(),
+  utmMedium: z.string().optional(),
+  utmCampaign: z.string().optional(),
+  clickId: z.string().optional(),
+  subId: z.string().optional(),
+  ipAddress: z.string().optional(),
+  userAgent: z.string().optional(),
+  customFields: z.record(z.any()).optional(),
+});
+
+export const apiLeadStatusSchema = z.object({
+  status: z.enum(["sale", "hold", "rejected", "trash"]),
+  notes: z.string().optional(),
+});
+
+// Type exports
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
+export type SelectUser = typeof users.$inferSelect;
+
+export type InsertAdvertiser = z.infer<typeof insertAdvertiserSchema>;
+export type Advertiser = typeof advertisers.$inferSelect;
+
+export type InsertOffer = z.infer<typeof insertOfferSchema>;
+export type Offer = typeof offers.$inferSelect;
+
+export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
+export type Campaign = typeof campaigns.$inferSelect;
+
+export type InsertLead = z.infer<typeof insertLeadSchema>;
+export type Lead = typeof leads.$inferSelect;
+
+export type InsertLeadItem = z.infer<typeof insertLeadItemSchema>;
+export type LeadItem = typeof leadItems.$inferSelect;
 
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type Transaction = typeof transactions.$inferSelect;
 
-// Define relationships
-export const productsRelations = relations(products, ({ one, many }) => ({
-  user: one(users, {
-    fields: [products.userId],
-    references: [users.id]
-  }),
-  orderItems: many(orderItems)
+export type ClickTrack = typeof clickTracking.$inferSelect;
+export type Postback = typeof postbacks.$inferSelect;
+export type PerformanceReport = typeof performanceReports.$inferSelect;
+
+export type ApiLead = z.infer<typeof apiLeadSchema>;
+
+// Legacy aliases for backward compatibility
+export type Product = Offer;
+export type InsertProduct = InsertOffer;
+export type Order = Lead;
+export type InsertOrder = InsertLead;
+export type OrderItem = LeadItem;
+export type InsertOrderItem = InsertLeadItem;
+export type Connection = Campaign;
+export type InsertConnection = InsertCampaign;
+
+// Relations
+export const usersRelations = relations(users, ({ many }) => ({
+  leads: many(leads),
+  campaigns: many(campaigns),
+  transactions: many(transactions),
+  clickTracking: many(clickTracking),
 }));
 
-export const ordersRelations = relations(orders, ({ one, many }) => ({
-  user: one(users, {
-    fields: [orders.userId],
-    references: [users.id]
-  }),
-  items: many(orderItems)
+export const advertisersRelations = relations(advertisers, ({ many }) => ({
+  offers: many(offers),
+  postbacks: many(postbacks),
 }));
 
-export const orderItemsRelations = relations(orderItems, ({ one }) => ({
-  order: one(orders, {
-    fields: [orderItems.orderId],
-    references: [orders.id]
+export const offersRelations = relations(offers, ({ one, many }) => ({
+  advertiser: one(advertisers, {
+    fields: [offers.advertiserId],
+    references: [advertisers.id],
   }),
-  product: one(products, {
-    fields: [orderItems.productId],
-    references: [products.id]
-  })
+  campaigns: many(campaigns),
+  leads: many(leads),
 }));
 
-export const connectionsRelations = relations(connections, ({ one }) => ({
+export const campaignsRelations = relations(campaigns, ({ one, many }) => ({
   user: one(users, {
-    fields: [connections.userId],
-    references: [users.id]
-  })
+    fields: [campaigns.userId],
+    references: [users.id],
+  }),
+  offer: one(offers, {
+    fields: [campaigns.offerId],
+    references: [offers.id],
+  }),
+  leads: many(leads),
+}));
+
+export const leadsRelations = relations(leads, ({ one, many }) => ({
+  user: one(users, {
+    fields: [leads.userId],
+    references: [users.id],
+  }),
+  campaign: one(campaigns, {
+    fields: [leads.campaignId],
+    references: [campaigns.id],
+  }),
+  offer: one(offers, {
+    fields: [leads.offerId],
+    references: [offers.id],
+  }),
+  items: many(leadItems),
+  transactions: many(transactions),
+  postbacks: many(postbacks),
+}));
+
+export const leadItemsRelations = relations(leadItems, ({ one }) => ({
+  lead: one(leads, {
+    fields: [leadItems.leadId],
+    references: [leads.id],
+  }),
 }));
 
 export const transactionsRelations = relations(transactions, ({ one }) => ({
   user: one(users, {
     fields: [transactions.userId],
-    references: [users.id]
-  })
+    references: [users.id],
+  }),
+  lead: one(leads, {
+    fields: [transactions.leadId],
+    references: [leads.id],
+  }),
 }));
+
+export const postbacksRelations = relations(postbacks, ({ one }) => ({
+  lead: one(leads, {
+    fields: [postbacks.leadId],
+    references: [leads.id],
+  }),
+  advertiser: one(advertisers, {
+    fields: [postbacks.advertiserId],
+    references: [advertisers.id],
+  }),
+}));
+
+export const clickTrackingRelations = relations(clickTracking, ({ one }) => ({
+  user: one(users, {
+    fields: [clickTracking.userId],
+    references: [users.id],
+  }),
+  campaign: one(campaigns, {
+    fields: [clickTracking.campaignId],
+    references: [campaigns.id],
+  }),
+  offer: one(offers, {
+    fields: [clickTracking.offerId],
+    references: [offers.id],
+  }),
+}));
+
+// Legacy relations for backward compatibility
+export const productsRelations = offersRelations;
+export const ordersRelations = leadsRelations;
+export const orderItemsRelations = leadItemsRelations;
+export const connectionsRelations = campaignsRelations;
