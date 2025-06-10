@@ -44,7 +44,7 @@ interface ConnectionWithStats extends ConnectionType {
   lastSync?: string;
   products?: number;
   orders?: number;
-  userName?: string; // Nombre de usuario (para vista de administrador)
+  userName?: string; // Username (for admin view)
 }
 
 export default function ConnectionsPage() {

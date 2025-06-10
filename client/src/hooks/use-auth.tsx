@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.setQueryData(["/api/user"], user);
       toast({
         title: "Login successful",
-        description: "Welcome to EcomLatam!",
+        description: "Welcome to EcomDrop!",
       });
     },
     onError: (error: Error) => {
@@ -59,27 +59,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return await res.json();
     },
     onSuccess: (response: any) => {
-      // Comprobar si la respuesta contiene un usuario o un mensaje de verificación
+      // Check if response contains a user or verification message
       if (response.id) {
-        // La respuesta es un usuario (para compatibilidad con versiones anteriores)
+        // The response is a user (for backwards compatibility)
         queryClient.setQueryData(["/api/user"], response);
         toast({
           title: "Registration successful",
-          description: "Welcome to EcomLatam!",
+          description: "Welcome to EcomDrop!",
         });
       } else if (response.success === true) {
-        // La respuesta es un mensaje de verificación
+        // The response is a verification message
         toast({
           title: "Registration successful",
           description: response.message || "Please check your email to verify your account.",
         });
         
-        // Redirigir a la página de login después de un pequeño delay para que el usuario vea el toast
+        // Redirect to login page after a small delay so user sees the toast
         setTimeout(() => {
           window.location.href = "/auth";
         }, 2000);
       } else {
-        // Respuesta inesperada
+        // Unexpected response
         toast({
           title: "Something went wrong",
           description: "Please try again later.",

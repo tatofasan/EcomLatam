@@ -145,22 +145,22 @@ export default function ProductDetailDialog({
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
     
-    // Validar campos obligatorios
+    // Validate required fields
     if (!formData.name || formData.name.trim() === "") {
-      errors.name = "Nombre del producto es obligatorio";
+      errors.name = "Product name is required";
     }
     
     if (!formData.description || formData.description.trim() === "") {
-      errors.description = "Descripción del producto es obligatoria";
+      errors.description = "Product description is required";
     }
     
     if (!formData.sku || formData.sku.trim() === "") {
-      errors.sku = "SKU es obligatorio";
+      errors.sku = "SKU is required";
     }
     
     if (!formData.imageUrl || formData.imageUrl === "") {
-      // Si no hay imagen principal pero hay imágenes adicionales,
-      // promover la primera imagen adicional a principal
+      // If there's no main image but there are additional images,
+      // promote the first additional image to main
       if (formData.additionalImages && formData.additionalImages.length > 0) {
         const newAdditionalImages = [...formData.additionalImages];
         const newMainImage = newAdditionalImages.shift();
@@ -170,46 +170,46 @@ export default function ProductDetailDialog({
           additionalImages: newAdditionalImages
         });
       } else {
-        errors.imageUrl = "Imagen principal es obligatoria";
+        errors.imageUrl = "Main image is required";
       }
     }
     
-    // Validación de precio - debe ser mayor que 0
+    // Price validation - must be greater than 0
     if (formData.price === undefined || formData.price <= 0) {
-      errors.price = "Precio debe ser mayor que 0";
+      errors.price = "Price must be greater than 0";
     }
     
-    // Validación de stock - solo puede ser 0 si status es draft o inactive
+    // Stock validation - can only be 0 if status is draft or inactive
     if (formData.stock === undefined || formData.stock < 0) {
-      errors.stock = "Stock debe ser un valor positivo";
+      errors.stock = "Stock must be a positive value";
     } else if (formData.stock === 0 && 
               !(formData.status === "draft" || formData.status === "inactive")) {
-      errors.stock = "Stock solo puede ser 0 si el estado es Borrador o Inactivo";
+      errors.stock = "Stock can only be 0 if status is Draft or Inactive";
     }
     
-    // Validación de categoría
+    // Category validation
     if (!formData.category || formData.category.trim() === "") {
-      errors.category = "Categoría es obligatoria";
+      errors.category = "Category is required";
     }
     
-    // Validación de peso
+    // Weight validation
     if (formData.weight === undefined || formData.weight === null) {
-      errors.weight = "Peso es obligatorio";
+      errors.weight = "Weight is required";
     }
     
-    // Validación de dimensiones
+    // Dimensions validation
     if (!formData.dimensions || formData.dimensions.trim() === "") {
-      errors.dimensions = "Dimensiones son obligatorias";
+      errors.dimensions = "Dimensions are required";
     }
     
-    // Quitamos las validaciones de especificaciones y referencia (por pedido del usuario)
+    // We remove specifications and reference validations (per user request)
     
-    // Validación de proveedor (solo para administradores)
+    // Provider validation (admin only)
     if (isAdmin && (!formData.provider || formData.provider.trim() === "")) {
-      errors.provider = "Proveedor es obligatorio";
+      errors.provider = "Provider is required";
     }
     
-    // Actualizar los errores y devolver si pasó la validación
+    // Update errors and return if validation passed
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
