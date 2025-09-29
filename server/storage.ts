@@ -1,7 +1,7 @@
 import { 
   users, type User, type InsertUser,
   advertisers, type Advertiser, type InsertAdvertiser,
-  offers, type Offer, type InsertOffer,
+  products, type Product, type InsertProduct,
   campaigns, type Campaign, type InsertCampaign,
   leads, type Lead, type InsertLead,
   leadItems, type LeadItem, type InsertLeadItem,
@@ -9,11 +9,6 @@ import {
   postbacks, type Postback,
   clickTracking, type ClickTrack,
   performanceReports, type PerformanceReport,
-  // Legacy aliases for backward compatibility
-  type Product, type InsertProduct,
-  type Order, type InsertOrder,
-  type OrderItem, type InsertOrderItem,
-  type Connection, type InsertConnection
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, asc, sql, inArray, gte, lte, count, sum } from "drizzle-orm";
@@ -39,12 +34,13 @@ export interface IStorage {
   updateAdvertiser(id: number, advertiser: Partial<InsertAdvertiser>): Promise<Advertiser | undefined>;
   deleteAdvertiser(id: number): Promise<boolean>;
   
-  // Offer methods (renamed from Product methods)
-  getAllOffers(): Promise<Offer[]>;
-  getOffer(id: number): Promise<Offer | undefined>;
-  createOffer(offer: InsertOffer): Promise<Offer>;
-  updateOffer(id: number, offer: Partial<InsertOffer>): Promise<Offer | undefined>;
-  deleteOffer(id: number): Promise<boolean>;
+  // Product methods
+  getAllProducts(): Promise<Product[]>;
+  getProduct(id: number): Promise<Product | undefined>;
+  getProductBySku(sku: string): Promise<Product | undefined>;
+  createProduct(product: InsertProduct): Promise<Product>;
+  updateProduct(id: number, product: Partial<InsertProduct>): Promise<Product | undefined>;
+  deleteProduct(id: number): Promise<boolean>;
   
   // Campaign methods (renamed from Connection methods)
   getUserCampaigns(userId: number): Promise<Campaign[]>;
@@ -106,7 +102,7 @@ export interface IStorage {
   deleteConnection(id: number): Promise<boolean>;
   
   // Demo data methods
-  seedDemoOffers(): Promise<void>;
+  seedDemoProducts(): Promise<void>;
   seedDemoLeads(userId: number): Promise<void>;
   seedDemoCampaigns(userId: number): Promise<void>;
   seedDemoTransactions(userId: number): Promise<void>;
@@ -199,32 +195,37 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount > 0;
   }
 
-  // Offer methods
-  async getAllOffers(): Promise<Offer[]> {
-    return await db.select().from(offers).orderBy(desc(offers.createdAt));
+  // Product methods
+  async getAllProducts(): Promise<Product[]> {
+    return await db.select().from(products).orderBy(desc(products.createdAt));
   }
 
-  async getOffer(id: number): Promise<Offer | undefined> {
-    const [offer] = await db.select().from(offers).where(eq(offers.id, id));
-    return offer || undefined;
+  async getProduct(id: number): Promise<Product | undefined> {
+    const [product] = await db.select().from(products).where(eq(products.id, id));
+    return product || undefined;
   }
 
-  async createOffer(offer: InsertOffer): Promise<Offer> {
-    const [created] = await db.insert(offers).values(offer).returning();
+  async getProductBySku(sku: string): Promise<Product | undefined> {
+    const [product] = await db.select().from(products).where(eq(products.sku, sku));
+    return product || undefined;
+  }
+
+  async createProduct(product: InsertProduct): Promise<Product> {
+    const [created] = await db.insert(products).values(product).returning();
     return created;
   }
 
-  async updateOffer(id: number, updateData: Partial<InsertOffer>): Promise<Offer | undefined> {
+  async updateProduct(id: number, updateData: Partial<InsertProduct>): Promise<Product | undefined> {
     const data = { ...updateData, updatedAt: new Date() };
-    const [offer] = await db.update(offers)
+    const [product] = await db.update(products)
       .set(data)
-      .where(eq(offers.id, id))
+      .where(eq(products.id, id))
       .returning();
-    return offer || undefined;
+    return product || undefined;
   }
 
-  async deleteOffer(id: number): Promise<boolean> {
-    const result = await db.delete(offers).where(eq(offers.id, id));
+  async deleteProduct(id: number): Promise<boolean> {
+    const result = await db.delete(products).where(eq(products.id, id));
     return result.rowCount > 0;
   }
 
@@ -465,26 +466,6 @@ export class DatabaseStorage implements IStorage {
       .where(eq(leads.id, leadId));
   }
 
-  // Legacy compatibility methods
-  async getAllProducts(): Promise<Product[]> {
-    return await this.getAllOffers() as Product[];
-  }
-
-  async getProduct(id: number): Promise<Product | undefined> {
-    return await this.getOffer(id) as Product | undefined;
-  }
-
-  async createProduct(product: InsertProduct): Promise<Product> {
-    return await this.createOffer(product as InsertOffer) as Product;
-  }
-
-  async updateProduct(id: number, product: InsertProduct): Promise<Product | undefined> {
-    return await this.updateOffer(id, product as Partial<InsertOffer>) as Product | undefined;
-  }
-
-  async deleteProduct(id: number): Promise<boolean> {
-    return await this.deleteOffer(id);
-  }
 
   async getAllOrders(userId?: number): Promise<Order[]> {
     return await this.getAllLeads(userId) as Order[];
@@ -535,12 +516,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Demo data seeding
-  async seedDemoOffers() {
-    const demoOffers = [
+  async seedDemoProducts() {
+    const demoProducts = [
       {
         name: "iPhone 15 Pro",
         description: "Latest iPhone with advanced camera system",
         category: "Electronics",
+        sku: "IPHONE15PRO",
         price: "999.00",
         commission: "50.00",
         commissionType: "fixed" as any,
@@ -551,6 +533,7 @@ export class DatabaseStorage implements IStorage {
         name: "Curso de Marketing Digital",
         description: "Aprende marketing digital desde cero",
         category: "Education",
+        sku: "MKTCOURSE01",
         price: "297.00", 
         commission: "89.10",
         commissionType: "percentage" as any,
@@ -559,12 +542,21 @@ export class DatabaseStorage implements IStorage {
       }
     ];
 
-    for (const offer of demoOffers) {
-      await this.createOffer(offer);
+    for (const product of demoProducts) {
+      await this.createProduct(offer);
     }
   }
 
   async seedDemoLeads(userId: number) {
+    // Get first offer to associate with leads
+    const products = await this.getAllProducts();
+    const firstProduct = products[0];
+    
+    if (!firstProduct) {
+      console.warn("No products found for demo leads. Skipping lead seeding.");
+      return;
+    }
+
     const demoLeads = [
       {
         customerName: "Juan Pérez",
@@ -572,9 +564,13 @@ export class DatabaseStorage implements IStorage {
         customerPhone: "+34666777888",
         customerCity: "Madrid",
         customerCountry: "Spain",
+        productId: firstProduct.id,
         status: "sale" as any,
+        quality: "premium",
         value: "50.00",
-        commission: "15.00"
+        commission: "15.00",
+        isConverted: false,
+        postbackSent: false
       },
       {
         customerName: "María García",
@@ -582,9 +578,13 @@ export class DatabaseStorage implements IStorage {
         customerPhone: "+34666777889",
         customerCity: "Barcelona",
         customerCountry: "Spain",
+        productId: firstProduct.id,
         status: "hold" as any,
+        quality: "standard",
         value: "30.00",
-        commission: "9.00"
+        commission: "9.00",
+        isConverted: false,
+        postbackSent: false
       }
     ];
 
@@ -639,7 +639,7 @@ export class DatabaseStorage implements IStorage {
 
   // Legacy aliases
   async seedDemoProducts(): Promise<void> {
-    await this.seedDemoOffers();
+    await this.seedDemoProducts();
   }
 
   async seedDemoOrders(userId: number): Promise<void> {

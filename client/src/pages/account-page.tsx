@@ -800,16 +800,16 @@ export default function AccountPage() {
                           API Documentation
                         </h4>
                         <p className="text-sm text-blue-700 mt-1">
-                          Our API allows you to programmatically create orders and check order status.
+                          Our API allows you to programmatically create leads and check lead status. You can identify products by ID or SKU.
                         </p>
                         <div className="mt-2 space-y-2 text-sm text-blue-700">
                           <div>
                             <span className="bg-blue-100 px-1 py-0.5 rounded font-mono">POST /api/external/orders</span>
-                            <span className="ml-2">Create a new order</span>
+                            <span className="ml-2">Create a new lead</span>
                           </div>
                           <div>
                             <span className="bg-blue-100 px-1 py-0.5 rounded font-mono">GET /api/external/orders/:orderNumber/status</span>
-                            <span className="ml-2">Check order status</span>
+                            <span className="ml-2">Check lead status</span>
                           </div>
                         </div>
                         <p className="text-sm text-blue-700 mt-2">
@@ -821,7 +821,7 @@ export default function AccountPage() {
                             <div className="mt-2 p-2 bg-blue-100 rounded text-blue-800">
                               <div className="font-medium mb-2">Required Fields:</div>
                               <ul className="list-disc list-inside mb-3 space-y-1">
-                                <li><code>productId</code> - ID of existing product</li>
+                                <li><code>offerId</code> OR <code>offerSku</code> - Product ID or SKU (use one, not both)</li>
                                 <li><code>customerName</code> - Customer full name</li>
                                 <li><code>customerPhone</code> - Customer phone number</li>
                               </ul>
@@ -839,9 +839,9 @@ export default function AccountPage() {
                             </div>
                           </details>
                           <details className="cursor-pointer">
-                            <summary className="text-blue-700 font-medium">Example: Create Order</summary>
+                            <summary className="text-blue-700 font-medium">Example: Create Lead</summary>
                             <pre className="mt-2 p-2 bg-blue-100 rounded text-blue-800 overflow-x-auto whitespace-pre-wrap">
-{`// Minimal order (required fields only)
+{`// Using offer ID (minimal fields)
 fetch('${window.location.origin}/api/external/orders', {
   method: 'POST',
   headers: {
@@ -849,13 +849,13 @@ fetch('${window.location.origin}/api/external/orders', {
     'X-API-Key': '${user?.apiKey || "your-api-key-here"}'
   },
   body: JSON.stringify({
-    productId: 1,
+    offerId: 1,
     customerName: "María García",
     customerPhone: "+34687654321"
   })
 })
 
-// Complete order with all fields
+// Using offer SKU (complete fields)
 fetch('${window.location.origin}/api/external/orders', {
   method: 'POST',
   headers: {
@@ -863,17 +863,17 @@ fetch('${window.location.origin}/api/external/orders', {
     'X-API-Key': '${user?.apiKey || "your-api-key-here"}'
   },
   body: JSON.stringify({
-    productId: 1,
-    quantity: 2,
-    salePrice: 999.99, // This will be ignored
+    offerSku: "IPHONE15PRO",
     customerName: "Juan Pérez",
     customerPhone: "+34612345678",
     customerAddress: "Calle Mayor 123",
-    postalCode: "28001",
-    city: "Madrid",
-    province: "Madrid",
+    customerCity: "Madrid",
+    customerCountry: "Spain",
     customerEmail: "juan.perez@email.com",
-    notes: "Entrega urgente"
+    value: 999.99,
+    utmSource: "facebook",
+    utmMedium: "cpc",
+    utmCampaign: "summer-sale"
   })
 })
 .then(response => response.json())
@@ -882,10 +882,10 @@ fetch('${window.location.origin}/api/external/orders', {
                             </pre>
                           </details>
                           <details className="cursor-pointer mt-3">
-                            <summary className="text-blue-700 font-medium">Example: Check Order Status</summary>
+                            <summary className="text-blue-700 font-medium">Example: Check Lead Status</summary>
                             <pre className="mt-2 p-2 bg-blue-100 rounded text-blue-800 overflow-x-auto whitespace-pre-wrap">
-{`// Check order status example
-fetch('${window.location.origin}/api/external/orders/ORD-12345/status', {
+{`// Check lead status example
+fetch('${window.location.origin}/api/external/orders/LEAD-12345/status', {
   method: 'GET',
   headers: {
     'X-API-Key': '${user?.apiKey || "your-api-key-here"}'
@@ -893,6 +893,7 @@ fetch('${window.location.origin}/api/external/orders/ORD-12345/status', {
 })
 .then(response => response.json())
 .then(data => console.log(data))
+// Response includes lead details: status, value, customer info, etc.
 `}
                             </pre>
                           </details>

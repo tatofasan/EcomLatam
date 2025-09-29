@@ -6,20 +6,22 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { 
-  insertOfferSchema, 
+  insertProductSchema, 
   insertLeadSchema, 
   insertLeadItemSchema, 
   insertCampaignSchema,
   insertTransactionSchema,
   apiLeadSchema,
   apiLeadStatusSchema,
-  offers,
+  apiLeadIngestSchema,
+  products,
   leads,
   leadItems,
   transactions,
   users,
   type InsertTransaction,
-  type ApiLead
+  type ApiLead,
+  type ApiLeadIngest
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, sql, inArray } from "drizzle-orm";
@@ -136,33 +138,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generar un número de orden único
       const orderNumber = `ORD-AYER-${Date.now().toString().slice(-4)}`;
       
-      // Crear un pedido de ayer con actividad hoy
-      const [specialOrder] = await db
-        .insert(orders)
+      // Crear un lead de ayer con actividad hoy
+      const [specialLead] = await db
+        .insert(leads)
         .values({
-          orderNumber,
+          leadNumber: `LEAD-${Date.now().toString().slice(-4)}`,
           userId: userId,
           customerName: "Test Customer",
           customerEmail: "test@example.com",
           customerPhone: "123-456-7890",
-          shippingAddress: "Test Address, Test City",
-          status: "delivered", // Estado que no es 'pending' para que sea claro que hubo un cambio
-          totalAmount: 199.99,
-          notes: "Pedido de prueba (ayer-hoy)",
+          customerAddress: "Test Address, Test City",
+          status: "sale", // Estado válido para leads
+          quality: "standard",
+          value: "199.99",
+          commission: "20.00",
+          notes: "Lead de prueba (ayer-hoy)",
+          isConverted: true,
+          postbackSent: false,
           createdAt: yesterday,
           updatedAt: today
         })
         .returning();
       
-      // Agregar un item al pedido
-      const [product] = await db.select().from(products).limit(1);
-      if (product) {
-        await db.insert(orderItems).values({
-          orderId: specialOrder.id,
-          productId: product.id,
+      // Agregar un item al lead
+      const [offer] = await db.select().from(products).limit(1);
+      if (offer) {
+        await db.insert(leadItems).values({
+          leadId: specialLead.id,
+          productName: offer.name,
           quantity: 1,
-          price: product.price,
-          subtotal: product.price
+          price: offer.price,
+          total: offer.price
         });
       }
       
@@ -214,7 +220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       console.log("Offer data received:", JSON.stringify(req.body, null, 2));
-      const parseResult = insertOfferSchema.safeParse(req.body);
+      const parseResult = insertProductSchema.safeParse(req.body);
       
       if (!parseResult.success) {
         console.error("Offer validation error:", JSON.stringify(parseResult.error.format(), null, 2));
@@ -224,7 +230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const offer = await storage.createOffer(parseResult.data);
+      const offer = await storage.createProduct(parseResult.data);
       res.status(201).json(offer);
     } catch (error) {
       console.error("Error creating offer:", error);
@@ -255,7 +261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const invalidProducts = [];
       
       for (const productData of products) {
-        const parseResult = insertOfferSchema.safeParse(productData);
+        const parseResult = insertProductSchema.safeParse(productData);
         if (parseResult.success) {
           validProducts.push(parseResult.data);
         } else {
@@ -292,7 +298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       for (const productData of validProducts) {
         try {
-          const offer = await storage.createOffer(productData);
+          const offer = await storage.createProduct(productData);
           // Only include essential offer info to avoid large responses
           importedProducts.push({
             id: offer.id,
@@ -352,7 +358,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const productId = parseInt(req.params.id);
-      const parseResult = productSchema.safeParse(req.body);
+      const parseResult = insertProductSchema.safeParse(req.body);
       
       if (!parseResult.success) {
         return res.status(400).json({ 
@@ -458,7 +464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      const parseResult = insertOrderSchema.safeParse(req.body);
+      const parseResult = insertLeadSchema.safeParse(req.body);
       
       if (!parseResult.success) {
         return res.status(400).json({ 
@@ -554,9 +560,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get total offers count (all for admin/finance, user-created for regular users)
       let offersList;
       if (hasSupervisorAccess) {
-        offersList = await db.select().from(offers);
+        offersList = await db.select().from(products);
       } else {
-        offersList = await db.select().from(offers).where(eq(offers.advertiserId, userId));
+        offersList = await db.select().from(products).where(eq(offers.advertiserId, userId));
       }
       
       // Get leads data (all for admin/finance, user's leads for regular users)
@@ -1134,91 +1140,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // API endpoint for order ingestion (requires API key)
+  // API endpoint for lead ingestion (requires API key) - supports both offerId and offerSku
   app.post("/api/external/orders", requireApiKey, async (req, res) => {
     try {
-      // Validate the request body against the API order schema
-      const parseResult = apiOrderSchema.safeParse(req.body);
+      // Validate the request body against the API lead ingest schema
+      const parseResult = apiLeadIngestSchema.safeParse(req.body);
       
       if (!parseResult.success) {
         return res.status(400).json({ 
           success: false,
-          message: "Invalid order data", 
+          message: "Invalid lead data", 
           errors: parseResult.error.format() 
         });
       }
       
-      const orderData = parseResult.data;
+      const leadData = parseResult.data;
       
-      // Check if the product exists
-      const product = await storage.getProduct(orderData.productId);
+      // Find the offer by ID or SKU
+      let offer;
+      if (leadData.productId) {
+        offer = await storage.getProduct(leadData.productId);
+      } else if (leadData.productSku) {
+        offer = await storage.getProductBySku(leadData.productSku);
+      }
       
-      if (!product) {
+      if (!offer) {
+        const identifierType = leadData.productId ? "offerId" : "offerSku";
+        const identifierValue = leadData.productId || leadData.productSku;
         return res.status(404).json({ 
           success: false,
-          message: "Product not found" 
+          message: `Offer not found for ${identifierType}: ${identifierValue}` 
         });
       }
       
-      // Create order with user ID from API key
+      // Create lead with user ID from API key
       const userId = req.user.id;
       
-      // Generate a unique order number with timestamp
-      const orderNumber = `ORD-${Date.now()}-${userId}`;
+      // Generate a unique lead number with timestamp
+      const leadNumber = `LEAD-${Date.now()}-${userId}`;
       
-      // Use product price instead of provided salePrice (business rule)
-      const finalPrice = product.price;
-      const quantity = orderData.quantity || 1;
+      // Use offer value or price for lead value
+      const leadValue = leadData.value || parseFloat(offer.price || "0");
       
-      // Build shipping address from components
-      const addressParts = [
-        orderData.customerAddress,
-        orderData.postalCode,
-        orderData.city,
-        orderData.province
-      ].filter(Boolean);
+      // Build address components
+      const customerAddress = [
+        leadData.customerAddress,
+        leadData.customerCity,
+        leadData.customerCountry
+      ].filter(Boolean).join(', ') || null;
       
-      const shippingAddress = addressParts.length > 0 
-        ? addressParts.join(', ') 
-        : "No shipping address provided";
-      
-      // Create the order using storage
-      const order = await storage.createOrder({
-        customerName: orderData.customerName,
-        customerEmail: orderData.customerEmail || null,
-        customerPhone: orderData.customerPhone,
-        shippingAddress: shippingAddress,
-        status: "pending",
-        totalAmount: finalPrice * quantity,
-        notes: orderData.notes || null,
-        orderNumber: orderNumber
-      }, userId);
-      
-      // Add order item
-      await storage.addOrderItem({
-        orderId: order.id,
-        productId: orderData.productId,
-        quantity: quantity,
-        price: finalPrice,  // Always use product's configured price
-        subtotal: finalPrice * quantity
+      // Create the lead using lead table structure
+      const lead = await storage.createLead({
+        leadNumber: leadNumber,
+        userId: userId,
+        campaignId: leadData.campaignId || null,
+        offerId: offer.id,
+        customerName: leadData.customerName,
+        customerEmail: leadData.customerEmail || null,
+        customerPhone: leadData.customerPhone,
+        customerAddress: customerAddress,
+        customerCity: leadData.customerCity || null,
+        customerCountry: leadData.customerCountry || null,
+        status: "hold", // default status for new leads
+        quality: "standard",
+        value: leadValue.toString(),
+        commission: offer.commission || "0",
+        ipAddress: leadData.ipAddress || null,
+        userAgent: leadData.userAgent || null,
+        trafficSource: leadData.trafficSource || null,
+        utmSource: leadData.utmSource || null,
+        utmMedium: leadData.utmMedium || null,
+        utmCampaign: leadData.utmCampaign || null,
+        clickId: leadData.clickId || null,
+        subId: leadData.subId || null,
+        customFields: leadData.customFields || null,
+        isConverted: false,
+        postbackSent: false
       });
       
       res.status(201).json({ 
         success: true,
-        message: "Order created successfully",
-        order: {
-          id: order.id,
-          orderNumber: order.orderNumber,
-          status: order.status,
-          totalAmount: order.totalAmount,
-          createdAt: order.createdAt
+        message: "Lead created successfully",
+        lead: {
+          id: lead.id,
+          leadNumber: lead.leadNumber,
+          status: lead.status,
+          value: lead.value,
+          createdAt: lead.createdAt
         }
       });
     } catch (error) {
-      console.error("Error creating order via API:", error);
+      console.error("Error creating lead via API:", error);
       res.status(500).json({ 
         success: false,
-        message: "Failed to create order" 
+        message: "Failed to create lead" 
       });
     }
   });
@@ -1229,45 +1244,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { orderNumber } = req.params;
       const userId = req.user.id;
       
-      // Query the database for the order
-      const [order] = await db
+      // Query the database for the lead
+      const [lead] = await db
         .select()
-        .from(orders)
-        .where(eq(orders.orderNumber, orderNumber))
+        .from(leads)
+        .where(eq(leads.leadNumber, orderNumber))
         .limit(1);
       
-      if (!order) {
+      if (!lead) {
         return res.status(404).json({ 
           success: false,
-          message: "Order not found" 
+          message: "Lead not found" 
         });
       }
       
-      // Check if the order belongs to the user associated with the API key
-      if (order.userId !== userId) {
+      // Check if the lead belongs to the user associated with the API key
+      if (lead.userId !== userId) {
         return res.status(403).json({ 
           success: false,
-          message: "You do not have permission to access this order" 
+          message: "You do not have permission to access this lead" 
         });
       }
       
-      // Get order items
-      const orderItems = await storage.getOrderItems(order.id);
+      // Get lead items
+      const leadItems = await storage.getLeadItems(lead.id);
       
       res.json({ 
         success: true,
-        order: {
-          orderNumber: order.orderNumber,
-          status: order.status,
-          customerName: order.customerName,
-          totalAmount: order.totalAmount,
-          createdAt: order.createdAt,
-          updatedAt: order.updatedAt,
-          items: orderItems.map(item => ({
-            productId: item.productId,
+        lead: {
+          leadNumber: lead.leadNumber,
+          status: lead.status,
+          customerName: lead.customerName,
+          value: lead.value,
+          createdAt: lead.createdAt,
+          updatedAt: lead.updatedAt,
+          items: leadItems.map(item => ({
+            productName: item.productName,
             quantity: item.quantity,
             price: item.price,
-            subtotal: item.subtotal
+            total: item.total
           }))
         }
       });

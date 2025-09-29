@@ -54,24 +54,27 @@ export const advertisers = pgTable("advertisers", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Offers Table - Products/Services to promote
-export const offers = pgTable("offers", {
+// Products Table - Existing products/services (now with SKU support)
+export const products = pgTable("products", {
   id: serial("id").primaryKey(),
-  advertiserId: integer("advertiser_id").references(() => advertisers.id),
   name: text("name").notNull(),
-  description: text("description").notNull(),
-  category: text("category"),
-  status: offerStatusEnum("status").default("active"),
+  description: text("description"),
   price: decimal("price", { precision: 10, scale: 2 }),
-  commission: decimal("commission", { precision: 10, scale: 2 }),
-  commissionType: commissionTypeEnum("commission_type").default("fixed"),
-  targetCountries: json("target_countries"), // Array of country codes
-  allowedTrafficSources: json("allowed_traffic_sources"),
-  landingPageUrl: text("landing_page_url"),
-  trackingUrl: text("tracking_url"),
-  images: json("images"), // Array of image URLs
-  requirements: text("requirements"), // Lead quality requirements
-  isActive: boolean("is_active").default(true),
+  imageUrl: text("image_url"),
+  category: text("category"),
+  stock: integer("stock").default(0),
+  status: text("status").default("active"),
+  sku: text("sku").notNull().unique(), // Unique product identifier
+  additionalImages: text("additional_images").array(),
+  weight: decimal("weight", { precision: 10, scale: 2 }),
+  dimensions: text("dimensions"),
+  specifications: json("specifications"),
+  reference: text("reference"),
+  provider: text("provider"),
+  userId: integer("user_id").references(() => users.id),
+  payoutPo: decimal("payout_po", { precision: 10, scale: 2 }).default("0"),
+  trending: boolean("trending").default(false),
+  vertical: text("vertical"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -80,7 +83,7 @@ export const offers = pgTable("offers", {
 export const campaigns = pgTable("campaigns", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id),
-  offerId: integer("offer_id").references(() => offers.id),
+  productId: integer("product_id").references(() => products.id),
   name: text("name").notNull(),
   description: text("description"),
   status: campaignStatusEnum("status").default("draft"),
@@ -100,7 +103,7 @@ export const leads = pgTable("leads", {
   leadNumber: text("lead_number").notNull().unique(),
   userId: integer("user_id").references(() => users.id),
   campaignId: integer("campaign_id").references(() => campaigns.id),
-  offerId: integer("offer_id").references(() => offers.id),
+  productId: integer("product_id").references(() => products.id),
   
   // Customer Information
   customerName: text("customer_name").notNull(),
@@ -194,7 +197,7 @@ export const clickTracking = pgTable("click_tracking", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id),
   campaignId: integer("campaign_id").references(() => campaigns.id),
-  offerId: integer("offer_id").references(() => offers.id),
+  productId: integer("product_id").references(() => products.id),
   clickId: text("click_id").notNull().unique(),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
@@ -215,7 +218,7 @@ export const performanceReports = pgTable("performance_reports", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id),
   campaignId: integer("campaign_id").references(() => campaigns.id),
-  offerId: integer("offer_id").references(() => offers.id),
+  productId: integer("product_id").references(() => products.id),
   date: timestamp("date").notNull(),
   clicks: integer("clicks").default(0),
   leads: integer("leads").default(0),
@@ -247,7 +250,9 @@ export const insertAdvertiserSchema = createInsertSchema(advertisers).omit({
   updatedAt: true,
 });
 
-export const insertOfferSchema = createInsertSchema(offers).omit({
+export const insertProductSchema = createInsertSchema(products, {
+  sku: z.string().min(1, "SKU is required"),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -292,7 +297,7 @@ export const apiLeadSchema = z.object({
   customerAddress: z.string().optional(),
   customerCity: z.string().optional(),
   customerCountry: z.string().optional(),
-  offerId: z.number().positive(),
+  productId: z.number().positive(),
   campaignId: z.number().positive().optional(),
   value: z.number().positive().optional(),
   trafficSource: z.enum(["organic", "paid", "social", "email", "direct", "referral"]).optional(),
@@ -311,6 +316,35 @@ export const apiLeadStatusSchema = z.object({
   notes: z.string().optional(),
 });
 
+// API Lead Ingest Schema - supports either productId or productSku (exclusively)
+export const apiLeadIngestSchema = z.object({
+  customerName: z.string().min(1),
+  customerEmail: z.string().email().optional(),
+  customerPhone: z.string().min(1),
+  customerAddress: z.string().optional(),
+  customerCity: z.string().optional(),
+  customerCountry: z.string().optional(),
+  productId: z.number().positive().optional(),
+  productSku: z.string().min(1).optional(),
+  campaignId: z.number().positive().optional(),
+  value: z.number().positive().optional(),
+  trafficSource: z.enum(["organic", "paid", "social", "email", "direct", "referral"]).optional(),
+  utmSource: z.string().optional(),
+  utmMedium: z.string().optional(),
+  utmCampaign: z.string().optional(),
+  clickId: z.string().optional(),
+  subId: z.string().optional(),
+  ipAddress: z.string().optional(),
+  userAgent: z.string().optional(),
+  customFields: z.record(z.any()).optional(),
+}).refine(
+  (data) => (!!data.productId) !== (!!data.productSku),
+  {
+    message: "Provide either productId or productSku (exclusively, not both)",
+    path: ["productId", "productSku"]
+  }
+);
+
 // Type exports
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -319,8 +353,6 @@ export type SelectUser = typeof users.$inferSelect;
 export type InsertAdvertiser = z.infer<typeof insertAdvertiserSchema>;
 export type Advertiser = typeof advertisers.$inferSelect;
 
-export type InsertOffer = z.infer<typeof insertOfferSchema>;
-export type Offer = typeof offers.$inferSelect;
 
 export type InsertCampaign = z.infer<typeof insertCampaignSchema>;
 export type Campaign = typeof campaigns.$inferSelect;
@@ -339,10 +371,11 @@ export type Postback = typeof postbacks.$inferSelect;
 export type PerformanceReport = typeof performanceReports.$inferSelect;
 
 export type ApiLead = z.infer<typeof apiLeadSchema>;
+export type ApiLeadIngest = z.infer<typeof apiLeadIngestSchema>;
 
-// Legacy aliases for backward compatibility
-export type Product = Offer;
-export type InsertProduct = InsertOffer;
+// Type exports for products
+export type Product = typeof products.$inferSelect;
+export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Order = Lead;
 export type InsertOrder = InsertLead;
 export type OrderItem = LeadItem;
@@ -359,14 +392,14 @@ export const usersRelations = relations(users, ({ many }) => ({
 }));
 
 export const advertisersRelations = relations(advertisers, ({ many }) => ({
-  offers: many(offers),
+  products: many(products),
   postbacks: many(postbacks),
 }));
 
-export const offersRelations = relations(offers, ({ one, many }) => ({
-  advertiser: one(advertisers, {
-    fields: [offers.advertiserId],
-    references: [advertisers.id],
+export const productsRelations = relations(products, ({ one, many }) => ({
+  user: one(users, {
+    fields: [products.userId],
+    references: [users.id],
   }),
   campaigns: many(campaigns),
   leads: many(leads),
@@ -377,9 +410,9 @@ export const campaignsRelations = relations(campaigns, ({ one, many }) => ({
     fields: [campaigns.userId],
     references: [users.id],
   }),
-  offer: one(offers, {
-    fields: [campaigns.offerId],
-    references: [offers.id],
+  product: one(products, {
+    fields: [campaigns.productId],
+    references: [products.id],
   }),
   leads: many(leads),
 }));
@@ -393,9 +426,9 @@ export const leadsRelations = relations(leads, ({ one, many }) => ({
     fields: [leads.campaignId],
     references: [campaigns.id],
   }),
-  offer: one(offers, {
-    fields: [leads.offerId],
-    references: [offers.id],
+  product: one(products, {
+    fields: [leads.productId],
+    references: [products.id],
   }),
   items: many(leadItems),
   transactions: many(transactions),
@@ -440,14 +473,13 @@ export const clickTrackingRelations = relations(clickTracking, ({ one }) => ({
     fields: [clickTracking.campaignId],
     references: [campaigns.id],
   }),
-  offer: one(offers, {
-    fields: [clickTracking.offerId],
-    references: [offers.id],
+  product: one(products, {
+    fields: [clickTracking.productId],
+    references: [products.id],
   }),
 }));
 
 // Legacy relations for backward compatibility
-export const productsRelations = offersRelations;
 export const ordersRelations = leadsRelations;
 export const orderItemsRelations = leadItemsRelations;
 export const connectionsRelations = campaignsRelations;
