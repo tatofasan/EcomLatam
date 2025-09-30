@@ -562,7 +562,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (hasSupervisorAccess) {
         offersList = await db.select().from(products);
       } else {
-        offersList = await db.select().from(products).where(eq(offers.advertiserId, userId));
+        offersList = await db.select().from(products).where(eq(products.userId, userId));
       }
       
       // Get leads data (all for admin/finance, user's leads for regular users)
@@ -1165,19 +1165,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (!offer) {
-        const identifierType = leadData.productId ? "offerId" : "offerSku";
+        const identifierType = leadData.productId ? "productId" : "productSku";
         const identifierValue = leadData.productId || leadData.productSku;
         return res.status(404).json({ 
           success: false,
-          message: `Offer not found for ${identifierType}: ${identifierValue}` 
+          message: `Product not found for ${identifierType}: ${identifierValue}` 
         });
       }
       
       // Create lead with user ID from API key
-      const userId = req.user.id;
-      
-      // Generate a unique lead number with timestamp
-      const leadNumber = `LEAD-${Date.now()}-${userId}`;
+      const userId = req.user!.id;
       
       // Use offer value or price for lead value
       const leadValue = leadData.value || parseFloat(offer.price || "0");
@@ -1189,12 +1186,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         leadData.customerCountry
       ].filter(Boolean).join(', ') || null;
       
+      // Calculate commission (10% of value by default)
+      const commission = parseFloat(offer.payoutPo || "0") || (leadValue * 0.1);
+      
       // Create the lead using lead table structure
       const lead = await storage.createLead({
-        leadNumber: leadNumber,
-        userId: userId,
         campaignId: leadData.campaignId || null,
-        offerId: offer.id,
+        productId: offer.id,
         customerName: leadData.customerName,
         customerEmail: leadData.customerEmail || null,
         customerPhone: leadData.customerPhone,
@@ -1204,7 +1202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "hold", // default status for new leads
         quality: "standard",
         value: leadValue.toString(),
-        commission: offer.commission || "0",
+        commission: commission.toString(),
         ipAddress: leadData.ipAddress || null,
         userAgent: leadData.userAgent || null,
         trafficSource: leadData.trafficSource || null,
@@ -1216,7 +1214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customFields: leadData.customFields || null,
         isConverted: false,
         postbackSent: false
-      });
+      }, userId);
       
       res.status(201).json({ 
         success: true,
