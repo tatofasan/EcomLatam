@@ -10,7 +10,11 @@ import '@shopify/shopify-api/adapters/node';
 // Get configuration from environment variables
 const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY || '';
 const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET || '';
-const SHOPIFY_APP_URL = process.env.SHOPIFY_APP_URL || 'http://localhost:5000';
+// Ensure SHOPIFY_APP_URL has protocol
+let SHOPIFY_APP_URL = process.env.SHOPIFY_APP_URL || 'http://localhost:5000';
+if (!SHOPIFY_APP_URL.startsWith('http://') && !SHOPIFY_APP_URL.startsWith('https://')) {
+  SHOPIFY_APP_URL = `https://${SHOPIFY_APP_URL}`;
+}
 const SHOPIFY_SCOPES = process.env.SHOPIFY_SCOPES || 'read_products,write_products,read_assigned_fulfillment_orders,write_assigned_fulfillment_orders,write_fulfillments';
 
 // Required scopes for the Shopify app (Fulfillment Service model)
