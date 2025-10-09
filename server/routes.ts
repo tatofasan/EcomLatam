@@ -6,23 +6,26 @@ import { registerShopifyRoutes } from "./routes-shopify";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { 
-  insertProductSchema, 
-  insertLeadSchema, 
-  insertLeadItemSchema, 
+import {
+  insertProductSchema,
+  insertLeadSchema,
+  insertLeadItemSchema,
   insertCampaignSchema,
   insertTransactionSchema,
   apiLeadSchema,
   apiLeadStatusSchema,
   apiLeadIngestSchema,
+  insertTermsSchema,
   products,
   leads,
   leadItems,
   transactions,
   users,
+  termsAndConditions,
   type InsertTransaction,
   type ApiLead,
-  type ApiLeadIngest
+  type ApiLeadIngest,
+  type InsertTerms
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, sql, inArray } from "drizzle-orm";
@@ -1898,43 +1901,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/resend-verification", async (req, res) => {
     try {
       const { email } = req.body;
-      
+
       if (!email) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "El correo electrónico es obligatorio" 
+        return res.status(400).json({
+          success: false,
+          message: "El correo electrónico es obligatorio"
         });
       }
-      
+
       // Buscar usuario por email
       const [user] = await db
         .select()
         .from(users)
         .where(eq(users.email, email));
-      
+
       if (!user) {
         // Por seguridad, no revelamos si el email existe o no
-        return res.status(200).json({ 
-          success: true, 
-          message: "Si tu correo está registrado, recibirás un email con las instrucciones para verificar tu cuenta." 
+        return res.status(200).json({
+          success: true,
+          message: "Si tu correo está registrado, recibirás un email con las instrucciones para verificar tu cuenta."
         });
       }
-      
+
       // Solo reenviamos si el usuario está en estado de verificación de email
       if (user.status !== 'email_verification') {
         // Por seguridad, no revelamos el estado actual
-        return res.status(200).json({ 
-          success: true, 
-          message: "Si tu correo está registrado, recibirás un email con las instrucciones para verificar tu cuenta." 
+        return res.status(200).json({
+          success: true,
+          message: "Si tu correo está registrado, recibirás un email con las instrucciones para verificar tu cuenta."
         });
       }
-      
+
       // Generar nuevo token
       const { createVerificationData } = await import('./verification');
       const { sendVerificationEmail } = await import('./email');
-      
+
       const verificationData = createVerificationData();
-      
+
       // Actualizar usuario con nuevo token
       await db
         .update(users)
@@ -1943,23 +1946,214 @@ export async function registerRoutes(app: Express): Promise<Server> {
           verificationExpires: verificationData.expires
         })
         .where(eq(users.id, user.id));
-      
+
       // Enviar email
       await sendVerificationEmail(email, verificationData.token);
-      
-      res.status(200).json({ 
-        success: true, 
-        message: "Si tu correo está registrado, recibirás un email con las instrucciones para verificar tu cuenta." 
+
+      res.status(200).json({
+        success: true,
+        message: "Si tu correo está registrado, recibirás un email con las instrucciones para verificar tu cuenta."
       });
     } catch (error) {
       console.error("Error al reenviar verificación:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Error al procesar la solicitud" 
+      res.status(500).json({
+        success: false,
+        message: "Error al procesar la solicitud"
       });
     }
   });
-  
+
+  // ================== TERMS AND CONDITIONS ROUTES ==================
+  // Public route to get the active terms and conditions
+  app.get("/api/terms", async (req, res) => {
+    try {
+      const [activeTerms] = await db
+        .select()
+        .from(termsAndConditions)
+        .where(eq(termsAndConditions.isActive, true))
+        .orderBy(desc(termsAndConditions.effectiveDate))
+        .limit(1);
+
+      if (!activeTerms) {
+        return res.status(404).json({
+          success: false,
+          message: "No active terms and conditions found"
+        });
+      }
+
+      res.json({
+        success: true,
+        data: activeTerms
+      });
+    } catch (error) {
+      console.error("Error fetching terms:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error fetching terms and conditions"
+      });
+    }
+  });
+
+  // Get all terms versions (admin only)
+  app.get("/api/terms/all", requireAdmin, async (req, res) => {
+    try {
+      const allTerms = await db
+        .select()
+        .from(termsAndConditions)
+        .orderBy(desc(termsAndConditions.effectiveDate));
+
+      res.json({
+        success: true,
+        data: allTerms
+      });
+    } catch (error) {
+      console.error("Error fetching all terms:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error fetching terms and conditions"
+      });
+    }
+  });
+
+  // Create new terms version (admin only)
+  app.post("/api/terms", requireAdmin, async (req, res) => {
+    try {
+      const validatedData = insertTermsSchema.parse(req.body);
+
+      // If the new terms should be active, deactivate all others
+      if (validatedData.isActive) {
+        await db
+          .update(termsAndConditions)
+          .set({ isActive: false })
+          .where(eq(termsAndConditions.isActive, true));
+      }
+
+      const [newTerms] = await db
+        .insert(termsAndConditions)
+        .values(validatedData)
+        .returning();
+
+      res.status(201).json({
+        success: true,
+        data: newTerms
+      });
+    } catch (error) {
+      console.error("Error creating terms:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error creating terms and conditions"
+      });
+    }
+  });
+
+  // Update terms (admin only)
+  app.put("/api/terms/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validatedData = insertTermsSchema.parse(req.body);
+
+      // If the updated terms should be active, deactivate all others
+      if (validatedData.isActive) {
+        await db
+          .update(termsAndConditions)
+          .set({ isActive: false })
+          .where(eq(termsAndConditions.isActive, true));
+      }
+
+      const [updatedTerms] = await db
+        .update(termsAndConditions)
+        .set({ ...validatedData, updatedAt: new Date() })
+        .where(eq(termsAndConditions.id, id))
+        .returning();
+
+      if (!updatedTerms) {
+        return res.status(404).json({
+          success: false,
+          message: "Terms and conditions not found"
+        });
+      }
+
+      res.json({
+        success: true,
+        data: updatedTerms
+      });
+    } catch (error) {
+      console.error("Error updating terms:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error updating terms and conditions"
+      });
+    }
+  });
+
+  // Delete terms (admin only)
+  app.delete("/api/terms/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+
+      const [deletedTerms] = await db
+        .delete(termsAndConditions)
+        .where(eq(termsAndConditions.id, id))
+        .returning();
+
+      if (!deletedTerms) {
+        return res.status(404).json({
+          success: false,
+          message: "Terms and conditions not found"
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Terms and conditions deleted successfully"
+      });
+    } catch (error) {
+      console.error("Error deleting terms:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error deleting terms and conditions"
+      });
+    }
+  });
+
+  // Activate specific terms version (admin only)
+  app.patch("/api/terms/:id/activate", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+
+      // Deactivate all terms
+      await db
+        .update(termsAndConditions)
+        .set({ isActive: false })
+        .where(eq(termsAndConditions.isActive, true));
+
+      // Activate the selected terms
+      const [activatedTerms] = await db
+        .update(termsAndConditions)
+        .set({ isActive: true, updatedAt: new Date() })
+        .where(eq(termsAndConditions.id, id))
+        .returning();
+
+      if (!activatedTerms) {
+        return res.status(404).json({
+          success: false,
+          message: "Terms and conditions not found"
+        });
+      }
+
+      res.json({
+        success: true,
+        data: activatedTerms
+      });
+    } catch (error) {
+      console.error("Error activating terms:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error activating terms and conditions"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

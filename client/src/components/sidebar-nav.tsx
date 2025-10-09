@@ -6,18 +6,19 @@ import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { EcomdropLogo } from "@/lib/logos";
-import { 
-  LayoutDashboard, 
-  Package, 
-  ShoppingCart, 
-  Link2, 
-  Wallet, 
-  Users, 
+import {
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  Link2,
+  Wallet,
+  Users,
   UserCog,
-  User, 
+  User,
   LogOut,
   Menu,
-  X
+  X,
+  FileText
 } from "lucide-react";
 
 interface SidebarNavProps {
@@ -141,6 +142,12 @@ export default function SidebarNav({
       href: "/account",
       icon: <UserCog className="h-5 w-5" />,
       key: "account"
+    },
+    {
+      title: "Terms & Conditions",
+      href: "/terms",
+      icon: <FileText className="h-5 w-5" />,
+      key: "terms"
     }
   ];
 

@@ -13,6 +13,7 @@ import ConnectionsPage from "@/pages/connections-page";
 import WalletPage from "@/pages/wallet-page";
 import TeamPage from "@/pages/team-page";
 import AccountPage from "@/pages/account-page";
+import TermsPage from "@/pages/terms-page";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -20,6 +21,7 @@ function Router() {
     <Switch>
       <Route path="/auth" component={AuthPage} />
       <Route path="/verify-email" component={VerifyEmailPage} />
+      <Route path="/terms" component={TermsPage} />
       <ProtectedRoute path="/" component={HomePage} />
       <ProtectedRoute path="/products" component={ProductsPage} />
       <ProtectedRoute path="/orders" component={OrdersPage} />

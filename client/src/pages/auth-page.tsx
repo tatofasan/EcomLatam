@@ -345,6 +345,11 @@ export default function AuthPage() {
             
             <div className="mt-8 text-center">
               <p className="text-xs text-gray-500">Version: 2.12.0</p>
+              <p className="mt-2 text-xs text-gray-500">
+                <a href="/terms" className="text-primary hover:underline">
+                  Términos y Condiciones
+                </a>
+              </p>
             </div>
           </CardContent>
         </Card>

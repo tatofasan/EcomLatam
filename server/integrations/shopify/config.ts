@@ -26,8 +26,8 @@ export const REQUIRED_SCOPES = [
   'write_fulfillments',
 ];
 
-// Initialize Shopify API
-export const shopify = shopifyApi({
+// Initialize Shopify API only if credentials are provided
+export const shopify = SHOPIFY_API_KEY && SHOPIFY_API_SECRET ? shopifyApi({
   apiKey: SHOPIFY_API_KEY,
   apiSecretKey: SHOPIFY_API_SECRET,
   scopes: SHOPIFY_SCOPES.split(','),
@@ -36,7 +36,7 @@ export const shopify = shopifyApi({
   apiVersion: ApiVersion.October24, // Using explicit version instead of LATEST_API_VERSION
   isEmbeddedApp: false,
   isCustomStoreApp: false,
-});
+}) : null;
 
 // OAuth configuration
 export const OAUTH_CONFIG = {

@@ -249,6 +249,18 @@ export const shopifyStores = pgTable("shopify_stores", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Terms and Conditions Table
+export const termsAndConditions = pgTable("terms_and_conditions", {
+  id: serial("id").primaryKey(),
+  version: text("version").notNull().unique(), // e.g., "1.0", "1.1"
+  title: text("title").notNull(),
+  content: text("content").notNull(), // Main content in markdown or HTML
+  effectiveDate: timestamp("effective_date").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Schema validation
 export const insertUserSchema = createInsertSchema(users, {
   role: z.enum(["user", "admin", "moderator", "finance"]).default("user"),
@@ -314,6 +326,12 @@ export const insertShopifyStoreSchema = createInsertSchema(shopifyStores, {
   createdAt: true,
   updatedAt: true,
   installedAt: true,
+});
+
+export const insertTermsSchema = createInsertSchema(termsAndConditions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 // API schemas for external integrations
@@ -395,6 +413,9 @@ export type Transaction = typeof transactions.$inferSelect;
 
 export type InsertShopifyStore = z.infer<typeof insertShopifyStoreSchema>;
 export type ShopifyStore = typeof shopifyStores.$inferSelect;
+
+export type InsertTerms = z.infer<typeof insertTermsSchema>;
+export type TermsAndConditions = typeof termsAndConditions.$inferSelect;
 
 export type ClickTrack = typeof clickTracking.$inferSelect;
 export type Postback = typeof postbacks.$inferSelect;
