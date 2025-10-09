@@ -1,0 +1,40 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "ff547460211ab153a0676242040ad6ba"
+name = "GPloadPackage"
+application_url = "https://ecomlatam-production.up.railway.app/"
+embedded = true
+
+[webhooks]
+api_version = "2025-10"
+
+# GDPR Mandatory Compliance Webhooks
+# These are required by Shopify for app submission
+# IMPORTANT: Must use "compliance_topics" (not "topics") for GDPR webhooks
+[[webhooks.subscriptions]]
+compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
+uri = "/api/shopify/webhooks/gdpr"
+
+# Business Logic Webhooks
+[[webhooks.subscriptions]]
+topics = ["orders/create"]
+uri = "/api/shopify/webhooks/orders-create"
+
+[[webhooks.subscriptions]]
+topics = ["orders/cancelled"]
+uri = "/api/shopify/webhooks/orders-cancelled"
+
+[[webhooks.subscriptions]]
+topics = ["app/uninstalled"]
+uri = "/api/shopify/webhooks/app-uninstalled"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_assigned_fulfillment_orders,write_assigned_fulfillment_orders,write_fulfillments,read_products,write_products,read_orders"
+optional_scopes = [ ]
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = [
+  "https://ecomlatam-production.up.railway.app/api/shopify/callback"
+]

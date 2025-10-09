@@ -358,8 +358,9 @@ export function registerShopifyRoutes(app: Express) {
       const body = JSON.stringify(req.body);
 
       // Verify webhook HMAC
+      // IMPORTANT: Shopify requires 401 (not 403) when HMAC is invalid
       if (!verifyWebhookHmac(body, hmac)) {
-        return res.status(403).json({ message: 'Invalid webhook signature' });
+        return res.status(401).json({ message: 'Unauthorized - Invalid webhook signature' });
       }
 
       // Process order
@@ -389,8 +390,9 @@ export function registerShopifyRoutes(app: Express) {
       const body = JSON.stringify(req.body);
 
       // Verify webhook HMAC
+      // IMPORTANT: Shopify requires 401 (not 403) when HMAC is invalid
       if (!verifyWebhookHmac(body, hmac)) {
-        return res.status(403).json({ message: 'Invalid webhook signature' });
+        return res.status(401).json({ message: 'Unauthorized - Invalid webhook signature' });
       }
 
       // Process order cancellation
@@ -411,8 +413,9 @@ export function registerShopifyRoutes(app: Express) {
       const body = JSON.stringify(req.body);
 
       // Verify webhook HMAC
+      // IMPORTANT: Shopify requires 401 (not 403) when HMAC is invalid
       if (!verifyWebhookHmac(body, hmac)) {
-        return res.status(403).json({ message: 'Invalid webhook signature' });
+        return res.status(401).json({ message: 'Unauthorized - Invalid webhook signature' });
       }
 
       // Process app uninstallation
@@ -440,8 +443,9 @@ export function registerShopifyRoutes(app: Express) {
       const body = JSON.stringify(req.body);
 
       // Verify webhook HMAC
+      // IMPORTANT: Shopify requires 401 (not 403) when HMAC is invalid
       if (!verifyWebhookHmac(body, hmac)) {
-        return res.status(403).json({ message: 'Invalid webhook signature' });
+        return res.status(401).json({ message: 'Unauthorized - Invalid webhook signature' });
       }
 
       const payload = req.body;
@@ -518,8 +522,9 @@ export function registerShopifyRoutes(app: Express) {
       const body = JSON.stringify(req.body);
 
       // Verify webhook HMAC
+      // IMPORTANT: Shopify requires 401 (not 403) when HMAC is invalid
       if (!verifyWebhookHmac(body, hmac)) {
-        return res.status(403).json({ message: 'Invalid webhook signature' });
+        return res.status(401).json({ message: 'Unauthorized - Invalid webhook signature' });
       }
 
       const payload = req.body;
@@ -552,8 +557,9 @@ export function registerShopifyRoutes(app: Express) {
       const body = JSON.stringify(req.body);
 
       // Verify webhook HMAC
+      // IMPORTANT: Shopify requires 401 (not 403) when HMAC is invalid
       if (!verifyWebhookHmac(body, hmac)) {
-        return res.status(403).json({ message: 'Invalid webhook signature' });
+        return res.status(401).json({ message: 'Unauthorized - Invalid webhook signature' });
       }
 
       const payload = req.body;
@@ -587,8 +593,9 @@ export function registerShopifyRoutes(app: Express) {
       const body = JSON.stringify(req.body);
 
       // Verify webhook HMAC
+      // IMPORTANT: Shopify requires 401 (not 403) when HMAC is invalid
       if (!verifyWebhookHmac(body, hmac)) {
-        return res.status(403).json({ message: 'Invalid webhook signature' });
+        return res.status(401).json({ message: 'Unauthorized - Invalid webhook signature' });
       }
 
       const payload = req.body;
