@@ -13,7 +13,9 @@ if (process.env.NODE_ENV !== 'production') {
 import { Pool as NeonPool, neonConfig } from '@neondatabase/serverless';
 import { drizzle as neonDrizzle } from 'drizzle-orm/neon-serverless';
 import { drizzle as pgDrizzle } from 'drizzle-orm/node-postgres';
-import { Pool as PgPool } from 'pg';
+// pg is a CommonJS module, import it differently for ESM compatibility
+import pg from 'pg';
+const { Pool: PgPool } = pg;
 import ws from "ws";
 import * as schema from "@shared/schema";
 
