@@ -83,7 +83,7 @@ export default function ProductCard({ product, viewMode, onClick, onEdit, isAdmi
             <h3 className="font-medium">{product.name}</h3>
             <p className="text-sm text-gray-500 mb-2">{product.description}</p>
             <div className="flex items-center justify-between">
-              <span className="font-semibold">${product.price.toFixed(2)}</span>
+              <span className="font-semibold">${Number(product.price).toFixed(2)}</span>
               <span className="text-sm text-gray-500">Stock: {product.stock}</span>
             </div>
           </div>
@@ -130,7 +130,7 @@ export default function ProductCard({ product, viewMode, onClick, onEdit, isAdmi
           <h3 className="font-medium">{product.name}</h3>
           <p className="text-sm text-gray-500 mb-2">{product.description}</p>
           <div className="flex items-center justify-between">
-            <span className="font-semibold">${product.price.toFixed(2)}</span>
+            <span className="font-semibold">${Number(product.price).toFixed(2)}</span>
             <span className="text-sm text-gray-500">Stock: {product.stock}</span>
           </div>
         </div>

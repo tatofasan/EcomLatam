@@ -85,7 +85,8 @@ export function setupAuth(app: Express) {
       const user = await storage.getUser(id);
       done(null, user);
     } catch (err) {
-      done(err);
+      // If user doesn't exist (stale session), fail gracefully
+      done(null, false);
     }
   });
 

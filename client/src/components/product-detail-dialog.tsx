@@ -535,7 +535,7 @@ export default function ProductDetailDialog({
                   >
                     {getStatusText(productData.status)}
                   </Badge>
-                  <div className="text-2xl font-bold text-primary">${productData.price.toFixed(2)}</div>
+                  <div className="text-2xl font-bold text-primary">${Number(productData.price).toFixed(2)}</div>
                 </div>
                 
                 <Tabs defaultValue="details">

@@ -13,6 +13,7 @@ export const commissionTypeEnum = pgEnum("commission_type", ["fixed", "percentag
 export const trafficSourceEnum = pgEnum("traffic_source", ["organic", "paid", "social", "email", "direct", "referral"]);
 export const transactionTypeEnum = pgEnum("transaction_type", ["deposit", "withdrawal", "commission", "bonus", "adjustment"]);
 export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "completed", "failed", "cancelled"]);
+export const shopifyStoreStatusEnum = pgEnum("shopify_store_status", ["active", "inactive", "error", "pending"]);
 
 // Users Table - Affiliates and Admins
 export const users = pgTable("users", {
@@ -231,6 +232,23 @@ export const performanceReports = pgTable("performance_reports", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Shopify Stores Table - Connected Shopify stores for dropshipping integration
+export const shopifyStores = pgTable("shopify_stores", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  shop: text("shop").notNull().unique(), // mystore.myshopify.com
+  accessToken: text("access_token").notNull(), // OAuth access token (encrypted)
+  status: shopifyStoreStatusEnum("status").default("pending"),
+  scopes: text("scopes"), // Comma-separated authorized scopes
+  installedAt: timestamp("installed_at").defaultNow(),
+  uninstalledAt: timestamp("uninstalled_at"),
+  settings: json("settings"), // Auto-sync, fulfillment settings, etc.
+  webhookIds: json("webhook_ids"), // Registered webhook IDs for cleanup
+  lastSyncAt: timestamp("last_sync_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Schema validation
 export const insertUserSchema = createInsertSchema(users, {
   role: z.enum(["user", "admin", "moderator", "finance"]).default("user"),
@@ -287,6 +305,15 @@ export const insertTransactionSchema = createInsertSchema(transactions, {
   id: true,
   createdAt: true,
   updatedAt: true,
+});
+
+export const insertShopifyStoreSchema = createInsertSchema(shopifyStores, {
+  status: z.enum(["active", "inactive", "error", "pending"]).default("pending"),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  installedAt: true,
 });
 
 // API schemas for external integrations
@@ -366,6 +393,9 @@ export type LeadItem = typeof leadItems.$inferSelect;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type Transaction = typeof transactions.$inferSelect;
 
+export type InsertShopifyStore = z.infer<typeof insertShopifyStoreSchema>;
+export type ShopifyStore = typeof shopifyStores.$inferSelect;
+
 export type ClickTrack = typeof clickTracking.$inferSelect;
 export type Postback = typeof postbacks.$inferSelect;
 export type PerformanceReport = typeof performanceReports.$inferSelect;
@@ -389,6 +419,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   campaigns: many(campaigns),
   transactions: many(transactions),
   clickTracking: many(clickTracking),
+  shopifyStores: many(shopifyStores),
 }));
 
 export const advertisersRelations = relations(advertisers, ({ many }) => ({
@@ -476,6 +507,13 @@ export const clickTrackingRelations = relations(clickTracking, ({ one }) => ({
   product: one(products, {
     fields: [clickTracking.productId],
     references: [products.id],
+  }),
+}));
+
+export const shopifyStoresRelations = relations(shopifyStores, ({ one }) => ({
+  user: one(users, {
+    fields: [shopifyStores.userId],
+    references: [users.id],
   }),
 }));
 

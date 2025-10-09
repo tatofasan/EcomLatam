@@ -190,10 +190,10 @@ export default function OrdersPage() {
     // First filter the orders
     const filtered = orders.filter(order => {
       // Text search filter
-      const matchesSearch = 
-        order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.customerEmail.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch =
+        (order.orderNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (order.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (order.customerEmail || '').toLowerCase().includes(searchTerm.toLowerCase());
       
       // Status filter
       const matchesStatus = statusFilter === "all" || order.status === statusFilter;
@@ -619,7 +619,7 @@ export default function OrdersPage() {
                           <td className="py-4 px-4">
                             {order.status === "delivered" ? new Date(order.updatedAt).toLocaleDateString() : ""}
                           </td>
-                          <td className="py-4 px-4 font-medium text-primary">${order.totalAmount.toFixed(2)}</td>
+                          <td className="py-4 px-4 font-medium text-primary">${(order.totalAmount || 0).toFixed(2)}</td>
                           <td className="py-4 px-4">
                             {getStatusBadge(order.status)}
                           </td>

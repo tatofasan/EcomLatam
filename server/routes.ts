@@ -2,6 +2,7 @@ import express, { type Express, Request, Response, NextFunction } from "express"
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
+import { registerShopifyRoutes } from "./routes-shopify";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -30,6 +31,9 @@ import { verifyUserEmail, activateUserAccount } from "./verification";
 export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication routes
   setupAuth(app);
+
+  // Register Shopify integration routes
+  registerShopifyRoutes(app);
 
   // Middleware to ensure authentication for protected routes
   const requireAuth = (req: Request, res: Response, next: Function) => {
@@ -711,23 +715,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (hasSupervisorAccess) {
         // Admin and Finance users see total balance of all users
-        // Obtener la suma de todos los pedidos entregados
-        const [deliveredOrdersResult] = await db
-          .select({ total: sql`SUM(total_amount)` })
-          .from(orders)
-          .where(eq(orders.status, "delivered"));
-        
-        // Obtener la suma de todos los retiros
-        const [withdrawalsResult] = await db
-          .select({ total: sql`SUM(amount)` })
+        // Sum all completed transactions across all users
+        const [totalBalanceResult] = await db
+          .select({ total: sql`SUM(CAST(amount AS DECIMAL))` })
           .from(transactions)
-          .where(eq(transactions.type, "withdrawal"));
-          
-        const ordersTotal = deliveredOrdersResult.total ? Number(deliveredOrdersResult.total) : 0;
-        const withdrawalsTotal = withdrawalsResult.total ? Number(withdrawalsResult.total) : 0;
-        
-        balance = ordersTotal + withdrawalsTotal; // withdrawalsTotal ya es negativo
-        console.log(`Admin/Finance balance calculation: Orders total: ${ordersTotal}, Withdrawals total: ${withdrawalsTotal}, Final balance: ${balance}`);
+          .where(eq(transactions.status, "completed"));
+
+        balance = totalBalanceResult.total ? Number(totalBalanceResult.total) : 0;
+        console.log(`Admin/Finance balance calculation: Total balance across all users: ${balance}`);
       } else {
         // Regular users see only their balance
         balance = await storage.getUserBalance(userId);
