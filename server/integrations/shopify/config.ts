@@ -8,8 +8,8 @@ import { shopifyApi, Session, ApiVersion } from '@shopify/shopify-api';
 import '@shopify/shopify-api/adapters/node';
 
 // Get configuration from environment variables
-const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY || '';
-const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET || '';
+const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY || 'placeholder-api-key';
+const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET || 'placeholder-api-secret';
 // Ensure SHOPIFY_APP_URL has protocol
 let SHOPIFY_APP_URL = process.env.SHOPIFY_APP_URL || 'http://localhost:5000';
 if (!SHOPIFY_APP_URL.startsWith('http://') && !SHOPIFY_APP_URL.startsWith('https://')) {
@@ -26,8 +26,8 @@ export const REQUIRED_SCOPES = [
   'write_fulfillments',
 ];
 
-// Initialize Shopify API only if credentials are provided
-export const shopify = SHOPIFY_API_KEY && SHOPIFY_API_SECRET ? shopifyApi({
+// Initialize Shopify API
+export const shopify = shopifyApi({
   apiKey: SHOPIFY_API_KEY,
   apiSecretKey: SHOPIFY_API_SECRET,
   scopes: SHOPIFY_SCOPES.split(','),
@@ -36,7 +36,7 @@ export const shopify = SHOPIFY_API_KEY && SHOPIFY_API_SECRET ? shopifyApi({
   apiVersion: ApiVersion.October24, // Using explicit version instead of LATEST_API_VERSION
   isEmbeddedApp: false,
   isCustomStoreApp: false,
-}) : null;
+});
 
 // OAuth configuration
 export const OAUTH_CONFIG = {
