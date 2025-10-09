@@ -428,7 +428,86 @@ export function registerShopifyRoutes(app: Express) {
   /**
    * GDPR Mandatory Compliance Webhooks
    * Required by Shopify for app submission
+   *
+   * Unified endpoint that handles all GDPR compliance webhooks
+   * Routes based on X-Shopify-Topic header
    */
+  app.post('/api/shopify/webhooks/gdpr', async (req, res) => {
+    try {
+      const hmac = req.headers['x-shopify-hmac-sha256'] as string;
+      const shop = req.headers['x-shopify-shop-domain'] as string;
+      const topic = req.headers['x-shopify-topic'] as string;
+      const body = JSON.stringify(req.body);
+
+      // Verify webhook HMAC
+      if (!verifyWebhookHmac(body, hmac)) {
+        return res.status(403).json({ message: 'Invalid webhook signature' });
+      }
+
+      const payload = req.body;
+
+      // Route to appropriate handler based on topic
+      switch (topic) {
+        case 'customers/data_request':
+          console.log('[GDPR] Customer data request received:', {
+            shop,
+            customer_id: payload.customer?.id,
+            orders_requested: payload.orders_requested,
+          });
+
+          // TODO: Implement logic to gather customer data
+          // For now, we acknowledge the request
+          // In production, you should:
+          // 1. Collect all customer data from your database
+          // 2. Send the data to the customer via email or secure download link
+          // 3. Log the request for compliance records
+
+          return res.status(200).json({ message: 'Customer data request acknowledged' });
+
+        case 'customers/redact':
+          console.log('[GDPR] Customer redaction request received:', {
+            shop,
+            customer_id: payload.customer?.id,
+            customer_email: payload.customer?.email,
+            orders_to_redact: payload.orders_to_redact,
+          });
+
+          // TODO: Implement logic to redact customer data
+          // For now, we acknowledge the request
+          // In production, you should:
+          // 1. Delete or anonymize customer personal data
+          // 2. Keep only necessary data for legal/accounting purposes
+          // 3. Log the deletion for compliance records
+
+          return res.status(200).json({ message: 'Customer redaction request acknowledged' });
+
+        case 'shop/redact':
+          console.log('[GDPR] Shop redaction request received:', {
+            shop_id: payload.shop_id,
+            shop_domain: payload.shop_domain,
+          });
+
+          // TODO: Implement logic to redact shop data
+          // For now, we acknowledge the request
+          // In production, you should:
+          // 1. Delete or anonymize shop data
+          // 2. Keep only necessary data for legal/accounting purposes
+          // 3. Log the deletion for compliance records
+
+          return res.status(200).json({ message: 'Shop redaction request acknowledged' });
+
+        default:
+          console.error('[GDPR] Unknown webhook topic:', topic);
+          return res.status(400).json({ message: 'Unknown webhook topic' });
+      }
+    } catch (error) {
+      console.error('[GDPR] Error processing compliance webhook:', error);
+      return res.status(500).json({ message: 'Failed to process webhook' });
+    }
+  });
+
+  // Legacy individual endpoints - kept for backward compatibility
+  // These can be removed once the unified endpoint is confirmed working
 
   // Handle customers/data_request webhook
   // This webhook is triggered when a customer requests their data
