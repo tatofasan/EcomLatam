@@ -425,5 +425,112 @@ export function registerShopifyRoutes(app: Express) {
     }
   });
 
+  /**
+   * GDPR Mandatory Compliance Webhooks
+   * Required by Shopify for app submission
+   */
+
+  // Handle customers/data_request webhook
+  // This webhook is triggered when a customer requests their data
+  app.post('/api/shopify/webhooks/customers-data_request', async (req, res) => {
+    try {
+      const hmac = req.headers['x-shopify-hmac-sha256'] as string;
+      const shop = req.headers['x-shopify-shop-domain'] as string;
+      const body = JSON.stringify(req.body);
+
+      // Verify webhook HMAC
+      if (!verifyWebhookHmac(body, hmac)) {
+        return res.status(403).json({ message: 'Invalid webhook signature' });
+      }
+
+      const payload = req.body;
+      console.log('[GDPR] Customer data request received:', {
+        shop,
+        customer_id: payload.customer?.id,
+        orders_requested: payload.orders_requested,
+      });
+
+      // TODO: Implement logic to gather customer data
+      // For now, we acknowledge the request
+      // In production, you should:
+      // 1. Collect all customer data from your database
+      // 2. Send the data to the customer via email or secure download link
+      // 3. Log the request for compliance records
+
+      res.status(200).json({ message: 'Customer data request acknowledged' });
+    } catch (error) {
+      console.error('Error processing customers/data_request webhook:', error);
+      res.status(500).json({ message: 'Failed to process webhook' });
+    }
+  });
+
+  // Handle customers/redact webhook
+  // This webhook is triggered 48 hours after a customer requests data deletion
+  app.post('/api/shopify/webhooks/customers-redact', async (req, res) => {
+    try {
+      const hmac = req.headers['x-shopify-hmac-sha256'] as string;
+      const shop = req.headers['x-shopify-shop-domain'] as string;
+      const body = JSON.stringify(req.body);
+
+      // Verify webhook HMAC
+      if (!verifyWebhookHmac(body, hmac)) {
+        return res.status(403).json({ message: 'Invalid webhook signature' });
+      }
+
+      const payload = req.body;
+      console.log('[GDPR] Customer redaction request received:', {
+        shop,
+        customer_id: payload.customer?.id,
+        customer_email: payload.customer?.email,
+        orders_to_redact: payload.orders_to_redact,
+      });
+
+      // TODO: Implement logic to redact customer data
+      // For now, we acknowledge the request
+      // In production, you should:
+      // 1. Delete or anonymize customer personal data
+      // 2. Keep only necessary data for legal/accounting purposes
+      // 3. Log the deletion for compliance records
+
+      res.status(200).json({ message: 'Customer redaction request acknowledged' });
+    } catch (error) {
+      console.error('Error processing customers/redact webhook:', error);
+      res.status(500).json({ message: 'Failed to process webhook' });
+    }
+  });
+
+  // Handle shop/redact webhook
+  // This webhook is triggered 48 hours after a shop uninstalls the app
+  app.post('/api/shopify/webhooks/shop-redact', async (req, res) => {
+    try {
+      const hmac = req.headers['x-shopify-hmac-sha256'] as string;
+      const shop = req.headers['x-shopify-shop-domain'] as string;
+      const body = JSON.stringify(req.body);
+
+      // Verify webhook HMAC
+      if (!verifyWebhookHmac(body, hmac)) {
+        return res.status(403).json({ message: 'Invalid webhook signature' });
+      }
+
+      const payload = req.body;
+      console.log('[GDPR] Shop redaction request received:', {
+        shop_id: payload.shop_id,
+        shop_domain: payload.shop_domain,
+      });
+
+      // TODO: Implement logic to redact shop data
+      // For now, we acknowledge the request
+      // In production, you should:
+      // 1. Delete or anonymize shop data
+      // 2. Keep only necessary data for legal/accounting purposes
+      // 3. Log the deletion for compliance records
+
+      res.status(200).json({ message: 'Shop redaction request acknowledged' });
+    } catch (error) {
+      console.error('Error processing shop/redact webhook:', error);
+      res.status(500).json({ message: 'Failed to process webhook' });
+    }
+  });
+
   console.log('Shopify routes registered successfully');
 }
