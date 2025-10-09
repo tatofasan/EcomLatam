@@ -1,9 +1,18 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
+import { config } from "dotenv";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+
+// Load environment variables
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+config({ path: join(__dirname, "..", ".env") });
+
+import { Pool as NeonPool, neonConfig } from '@neondatabase/serverless';
+import { drizzle as neonDrizzle } from 'drizzle-orm/neon-serverless';
+import { drizzle as pgDrizzle } from 'drizzle-orm/node-postgres';
+import { Pool as PgPool } from 'pg';
 import ws from "ws";
 import * as schema from "@shared/schema";
-
-neonConfig.webSocketConstructor = ws;
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -11,5 +20,26 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle({ client: pool, schema });
+// Use different driver based on database URL
+// Neon databases use wss://, local PostgreSQL uses postgresql://
+// Railway and most PostgreSQL instances use the standard pg driver
+const isNeonDatabase = process.env.DATABASE_URL.includes('neon.tech') ||
+                       process.env.DATABASE_URL.startsWith('wss://');
+
+let pool: any;
+let db: any;
+
+if (isNeonDatabase) {
+  // Use Neon serverless driver for Neon databases only
+  console.log('[db] Using Neon serverless driver');
+  neonConfig.webSocketConstructor = ws;
+  pool = new NeonPool({ connectionString: process.env.DATABASE_URL });
+  db = neonDrizzle({ client: pool, schema });
+} else {
+  // Use standard PostgreSQL driver for Railway, local, and most other PostgreSQL
+  console.log('[db] Using standard PostgreSQL driver');
+  pool = new PgPool({ connectionString: process.env.DATABASE_URL });
+  db = pgDrizzle({ client: pool, schema });
+}
+
+export { pool, db };
