@@ -1,11 +1,14 @@
-import { config } from "dotenv";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+// In production (Railway, etc), environment variables are provided by the platform
+// Only load dotenv in development
+if (process.env.NODE_ENV !== 'production') {
+  const { config } = await import("dotenv");
+  const { fileURLToPath } = await import("url");
+  const { dirname, join } = await import("path");
 
-// Load environment variables
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-config({ path: join(__dirname, "..", ".env") });
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  config({ path: join(__dirname, "..", ".env") });
+}
 
 import { Pool as NeonPool, neonConfig } from '@neondatabase/serverless';
 import { drizzle as neonDrizzle } from 'drizzle-orm/neon-serverless';
