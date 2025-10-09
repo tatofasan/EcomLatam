@@ -4,7 +4,7 @@
  * This module manages configuration for Shopify integration
  */
 
-import { shopifyApi, LATEST_API_VERSION, Session } from '@shopify/shopify-api';
+import { shopifyApi, Session, ApiVersion } from '@shopify/shopify-api';
 import '@shopify/shopify-api/adapters/node';
 
 // Get configuration from environment variables
@@ -29,7 +29,7 @@ export const shopify = shopifyApi({
   scopes: SHOPIFY_SCOPES.split(','),
   hostName: new URL(SHOPIFY_APP_URL).hostname,
   hostScheme: new URL(SHOPIFY_APP_URL).protocol.replace(':', '') as 'http' | 'https',
-  apiVersion: LATEST_API_VERSION,
+  apiVersion: ApiVersion.October24, // Using explicit version instead of LATEST_API_VERSION
   isEmbeddedApp: false,
   isCustomStoreApp: false,
 });
