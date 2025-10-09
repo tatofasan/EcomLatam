@@ -637,11 +637,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Legacy aliases
-  async seedDemoProducts(): Promise<void> {
-    await this.seedDemoProducts();
-  }
-
+  // Legacy aliases (removed duplicate seedDemoProducts to avoid recursion)
   async seedDemoOrders(userId: number): Promise<void> {
     await this.seedDemoLeads(userId);
   }
