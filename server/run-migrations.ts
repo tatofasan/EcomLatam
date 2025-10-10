@@ -32,7 +32,7 @@ async function runMigrations() {
     console.log('[migrations] Running incremental migration (0001_add_missing_columns.sql)...');
     await pool.query(migrationSQL);
     console.log('[migrations] ✓ Migration completed successfully');
-    console.log('[migrations] Added columns: publisher_id, subacc1-4, customer_postal_code');
+    console.log('[migrations] Added: publisher_id, subacc1-4, customer_postal_code columns + terms_and_conditions table');
   } catch (error) {
     console.error('[migrations] ✗ Migration failed:', error);
     throw error;
