@@ -821,27 +821,34 @@ export default function AccountPage() {
                             <div className="mt-2 p-2 bg-blue-100 rounded text-blue-800">
                               <div className="font-medium mb-2">Required Fields:</div>
                               <ul className="list-disc list-inside mb-3 space-y-1">
-                                <li><code>offerId</code> OR <code>offerSku</code> - Product ID or SKU (use one, not both)</li>
-                                <li><code>customerName</code> - Customer full name</li>
-                                <li><code>customerPhone</code> - Customer phone number</li>
+                                <li><code>productId</code> OR <code>productSku</code> - Product ID or SKU (use one, not both)</li>
+                                <li><code>customerName</code> - Customer full name (min: 2 chars)</li>
+                                <li><code>customerPhone</code> - Customer phone (min: 8 chars)</li>
+                                <li><code>customerAddress</code> - Full street address (min: 5 chars)</li>
+                                <li><code>customerCity</code> - City name (min: 2 chars)</li>
+                                <li><code>customerPostalCode</code> - Postal/ZIP code (min: 3 chars)</li>
                               </ul>
                               <div className="font-medium mb-2">Optional Fields:</div>
                               <ul className="list-disc list-inside mb-3 space-y-1">
-                                <li><code>quantity</code> - Defaults to 1 if empty</li>
-                                <li><code>salePrice</code> - Ignored, product price always used</li>
-                                <li><code>customerAddress</code> - Street address</li>
-                                <li><code>postalCode</code> - Postal/ZIP code</li>
-                                <li><code>city</code> - City name</li>
-                                <li><code>province</code> - State/Province</li>
-                                <li><code>customerEmail</code> - Customer email</li>
-                                <li><code>notes</code> - Additional notes</li>
+                                <li><code>customerEmail</code> - Customer email (validated format)</li>
+                                <li><code>quantity</code> - Number of items (default: 1, max: 100)</li>
+                                <li><code>campaignId</code> - Associated campaign ID</li>
+                                <li><code>publisherId</code> - Publisher/Affiliate identifier (max: 200 chars)</li>
+                                <li><code>subacc1</code>, <code>subacc2</code>, <code>subacc3</code>, <code>subacc4</code> - Affiliate sub-accounts for reporting</li>
+                                <li><code>clickId</code>, <code>subId</code> - Additional tracking IDs</li>
+                                <li><code>ipAddress</code> - Customer IP (validated IPv4/IPv6)</li>
+                                <li><code>userAgent</code> - Browser user agent</li>
+                                <li><code>customFields</code> - Additional custom data (JSON object)</li>
                               </ul>
+                              <div className="mt-2 text-xs text-blue-600">
+                                <strong>Note:</strong> Country is always set to "Argentina" automatically. The value is calculated as quantity × product price. The API validates product availability and stock before creating leads.
+                              </div>
                             </div>
                           </details>
                           <details className="cursor-pointer">
                             <summary className="text-blue-700 font-medium">Example: Create Lead</summary>
                             <pre className="mt-2 p-2 bg-blue-100 rounded text-blue-800 overflow-x-auto whitespace-pre-wrap">
-{`// Using offer ID (minimal fields)
+{`// Required fields only
 fetch('${window.location.origin}/api/external/orders', {
   method: 'POST',
   headers: {
@@ -849,13 +856,18 @@ fetch('${window.location.origin}/api/external/orders', {
     'X-API-Key': '${user?.apiKey || "your-api-key-here"}'
   },
   body: JSON.stringify({
-    offerId: 1,
+    productSku: "CURSO-MKT-001",
     customerName: "María García",
-    customerPhone: "+34687654321"
+    customerPhone: "+34687654321",
+    customerAddress: "Calle Mayor 123, Piso 4B",
+    customerCity: "Madrid",
+    customerPostalCode: "28013"
+    // Country is always Argentina - no need to send
+    // Value is calculated automatically (quantity × price)
   })
 })
 
-// Using offer SKU (complete fields)
+// Complete fields with tracking
 fetch('${window.location.origin}/api/external/orders', {
   method: 'POST',
   headers: {
@@ -863,17 +875,18 @@ fetch('${window.location.origin}/api/external/orders', {
     'X-API-Key': '${user?.apiKey || "your-api-key-here"}'
   },
   body: JSON.stringify({
-    offerSku: "IPHONE15PRO",
+    productSku: "PROT-WHEY-001",
     customerName: "Juan Pérez",
+    customerEmail: "juan.perez@email.com", // Optional
     customerPhone: "+34612345678",
-    customerAddress: "Calle Mayor 123",
-    customerCity: "Madrid",
-    customerCountry: "Spain",
-    customerEmail: "juan.perez@email.com",
-    value: 999.99,
-    utmSource: "facebook",
-    utmMedium: "cpc",
-    utmCampaign: "summer-sale"
+    customerAddress: "Av. Principal 456",
+    customerCity: "Barcelona",
+    customerPostalCode: "08001",
+    quantity: 2, // Optional, default: 1
+    publisherId: "publisher123", // Optional: Publisher/Affiliate ID
+    subacc1: "campaign1", // Optional: Sub-account for reporting
+    subacc2: "source1", // Optional: Sub-account for reporting
+    ipAddress: "192.168.1.100" // Optional
   })
 })
 .then(response => response.json())

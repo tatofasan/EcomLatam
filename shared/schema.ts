@@ -125,14 +125,17 @@ export const leads = pgTable("leads", {
   userAgent: text("user_agent"),
   referrerUrl: text("referrer_url"),
   landingPage: text("landing_page"),
-  trafficSource: trafficSourceEnum("traffic_source"),
-  utmSource: text("utm_source"),
-  utmMedium: text("utm_medium"),
-  utmCampaign: text("utm_campaign"),
   utmTerm: text("utm_term"),
   utmContent: text("utm_content"),
   clickId: text("click_id"), // Unique click identifier
   subId: text("sub_id"), // Affiliate's tracking ID
+
+  // Affiliate tracking fields for reporting
+  publisherId: text("publisher_id"), // Publisher/Affiliate identifier
+  subacc1: text("subacc1"), // Sub-account 1 for reporting
+  subacc2: text("subacc2"), // Sub-account 2 for reporting
+  subacc3: text("subacc3"), // Sub-account 3 for reporting
+  subacc4: text("subacc4"), // Sub-account 4 for reporting
   
   // Conversion Tracking
   conversionTime: timestamp("conversion_time"),
@@ -362,25 +365,59 @@ export const apiLeadStatusSchema = z.object({
 });
 
 // API Lead Ingest Schema - supports either productId or productSku (exclusively)
+// Enhanced version with mandatory shipping fields
 export const apiLeadIngestSchema = z.object({
-  customerName: z.string().min(1),
-  customerEmail: z.string().email().optional(),
-  customerPhone: z.string().min(1),
-  customerAddress: z.string().optional(),
-  customerCity: z.string().optional(),
-  customerCountry: z.string().optional(),
+  // Customer information (required)
+  customerName: z.string()
+    .min(2, "Customer name must be at least 2 characters")
+    .max(100, "Customer name too long"),
+
+  customerEmail: z.string()
+    .email("Invalid email format")
+    .toLowerCase()
+    .optional(),
+
+  customerPhone: z.string()
+    .min(8, "Phone number must be at least 8 characters")
+    .max(20, "Phone number too long"),
+
+  // Shipping information (REQUIRED for product delivery)
+  // Country is always Argentina, no need to send it
+  customerAddress: z.string()
+    .min(5, "Address must be at least 5 characters")
+    .max(200, "Address too long"),
+
+  customerCity: z.string()
+    .min(2, "City must be at least 2 characters")
+    .max(100, "City name too long"),
+
+  customerPostalCode: z.string()
+    .min(3, "Postal code must be at least 3 characters")
+    .max(20, "Postal code too long"),
+
+  // Product identification (one of the two required)
   productId: z.number().positive().optional(),
   productSku: z.string().min(1).optional(),
+
+  // Additional information
   campaignId: z.number().positive().optional(),
-  value: z.number().positive().optional(),
-  trafficSource: z.enum(["organic", "paid", "social", "email", "direct", "referral"]).optional(),
-  utmSource: z.string().optional(),
-  utmMedium: z.string().optional(),
-  utmCampaign: z.string().optional(),
-  clickId: z.string().optional(),
-  subId: z.string().optional(),
-  ipAddress: z.string().optional(),
-  userAgent: z.string().optional(),
+  quantity: z.number().int().positive().max(100).default(1),
+  // Note: value is calculated automatically (quantity × product price)
+
+  // Tracking information (optional)
+  publisherId: z.string().max(200).optional(),
+  clickId: z.string().max(100).optional(),
+  subacc1: z.string().max(200).optional(),
+  subacc2: z.string().max(200).optional(),
+  subacc3: z.string().max(200).optional(),
+  subacc4: z.string().max(200).optional(),
+
+  ipAddress: z.string()
+    .ip({ version: "v4" })
+    .or(z.string().ip({ version: "v6" }))
+    .optional(),
+
+  userAgent: z.string().max(500).optional(),
   customFields: z.record(z.any()).optional(),
 }).refine(
   (data) => (!!data.productId) !== (!!data.productSku),

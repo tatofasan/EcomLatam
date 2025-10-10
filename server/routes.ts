@@ -1138,98 +1138,243 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // API endpoint for lead ingestion (requires API key) - supports both offerId and offerSku
+  // API endpoint for lead ingestion (requires API key) - supports both productId and productSku
+  // Enhanced version with robust validations and better error handling
   app.post("/api/external/orders", requireApiKey, async (req, res) => {
+    const startTime = Date.now();
+
     try {
-      // Validate the request body against the API lead ingest schema
+      // 1. VALIDATE REQUEST SCHEMA
       const parseResult = apiLeadIngestSchema.safeParse(req.body);
-      
+
       if (!parseResult.success) {
-        return res.status(400).json({ 
+        console.warn("[API Lead Ingest] Validation failed:", {
+          errors: parseResult.error.errors,
+          body: req.body
+        });
+
+        return res.status(400).json({
           success: false,
-          message: "Invalid lead data", 
-          errors: parseResult.error.format() 
+          error: "VALIDATION_ERROR",
+          message: "Invalid lead data provided",
+          details: parseResult.error.errors.map(err => ({
+            field: err.path.join('.'),
+            message: err.message,
+            code: err.code
+          }))
         });
       }
-      
+
       const leadData = parseResult.data;
-      
-      // Find the offer by ID or SKU
-      let offer;
-      if (leadData.productId) {
-        offer = await storage.getProduct(leadData.productId);
-      } else if (leadData.productSku) {
-        offer = await storage.getProductBySku(leadData.productSku);
-      }
-      
-      if (!offer) {
-        const identifierType = leadData.productId ? "productId" : "productSku";
-        const identifierValue = leadData.productId || leadData.productSku;
-        return res.status(404).json({ 
+      const userId = req.user!.id;
+
+      // 2. VALIDATE AND FETCH PRODUCT
+      let product;
+      try {
+        if (leadData.productId) {
+          product = await storage.getProduct(leadData.productId);
+        } else if (leadData.productSku) {
+          product = await storage.getProductBySku(leadData.productSku);
+        }
+      } catch (dbError) {
+        console.error("[API Lead Ingest] Database error fetching product:", dbError);
+        return res.status(500).json({
           success: false,
-          message: `Product not found for ${identifierType}: ${identifierValue}` 
+          error: "DATABASE_ERROR",
+          message: "Failed to retrieve product information"
         });
       }
-      
-      // Create lead with user ID from API key
-      const userId = req.user!.id;
-      
-      // Use offer value or price for lead value
-      const leadValue = leadData.value || parseFloat(offer.price || "0");
-      
-      // Build address components
-      const customerAddress = [
+
+      if (!product) {
+        const identifier = leadData.productId
+          ? `ID ${leadData.productId}`
+          : `SKU ${leadData.productSku}`;
+
+        console.warn("[API Lead Ingest] Product not found:", identifier);
+
+        return res.status(404).json({
+          success: false,
+          error: "PRODUCT_NOT_FOUND",
+          message: `Product not found: ${identifier}`
+        });
+      }
+
+      // 2.1 Validate product status
+      if (product.status === 'inactive' || product.status === 'draft') {
+        console.warn("[API Lead Ingest] Inactive product:", {
+          productId: product.id,
+          status: product.status
+        });
+
+        return res.status(422).json({
+          success: false,
+          error: "PRODUCT_INACTIVE",
+          message: `Product "${product.name}" is not available (status: ${product.status})`
+        });
+      }
+
+      // 2.2 Validate stock availability
+      const quantity = leadData.quantity || 1;
+      if (product.stock !== null && product.stock < quantity) {
+        console.warn("[API Lead Ingest] Insufficient stock:", {
+          productId: product.id,
+          available: product.stock,
+          requested: quantity
+        });
+
+        return res.status(422).json({
+          success: false,
+          error: "INSUFFICIENT_STOCK",
+          message: `Insufficient stock for "${product.name}". Available: ${product.stock}, Requested: ${quantity}`
+        });
+      }
+
+      // 3. CALCULATE VALUES AUTOMATICALLY
+      const productPrice = parseFloat(product.price || "0");
+      const leadValue = productPrice * quantity; // Always calculated, never from request
+
+      if (leadValue <= 0) {
+        return res.status(400).json({
+          success: false,
+          error: "INVALID_VALUE",
+          message: "Lead value must be greater than 0"
+        });
+      }
+
+      // Calculate commission: use product payoutPo or 0
+      const commission = parseFloat(product.payoutPo || "0");
+      const totalCommission = commission * quantity;
+
+      // 4. BUILD COMPLETE ADDRESS WITH ARGENTINA AS DEFAULT COUNTRY
+      const fullAddress = [
         leadData.customerAddress,
         leadData.customerCity,
-        leadData.customerCountry
-      ].filter(Boolean).join(', ') || null;
-      
-      // Calculate commission (10% of value by default)
-      const commission = parseFloat(offer.payoutPo || "0") || (leadValue * 0.1);
-      
-      // Create the lead using lead table structure
-      const lead = await storage.createLead({
-        campaignId: leadData.campaignId || null,
-        productId: offer.id,
-        customerName: leadData.customerName,
-        customerEmail: leadData.customerEmail || null,
-        customerPhone: leadData.customerPhone,
-        customerAddress: customerAddress,
-        customerCity: leadData.customerCity || null,
-        customerCountry: leadData.customerCountry || null,
-        status: "hold", // default status for new leads
-        quality: "standard",
-        value: leadValue.toString(),
-        commission: commission.toString(),
-        ipAddress: leadData.ipAddress || null,
-        userAgent: leadData.userAgent || null,
-        trafficSource: leadData.trafficSource || null,
-        utmSource: leadData.utmSource || null,
-        utmMedium: leadData.utmMedium || null,
-        utmCampaign: leadData.utmCampaign || null,
-        clickId: leadData.clickId || null,
-        subId: leadData.subId || null,
-        customFields: leadData.customFields || null,
-        isConverted: false,
-        postbackSent: false
-      }, userId);
-      
-      res.status(201).json({ 
+        "Argentina", // Always Argentina
+        leadData.customerPostalCode
+      ].filter(Boolean).join(', ');
+
+      // 5. CREATE LEAD
+      let lead;
+      try {
+        lead = await storage.createLead({
+          campaignId: leadData.campaignId || null,
+          productId: product.id,
+          customerName: leadData.customerName,
+          customerEmail: leadData.customerEmail || null,
+          customerPhone: leadData.customerPhone,
+          customerAddress: fullAddress,
+          customerCity: leadData.customerCity,
+          customerCountry: "Argentina", // Always Argentina
+          status: "hold",
+          quality: "standard",
+          value: leadValue.toString(),
+          commission: totalCommission.toString(),
+          ipAddress: leadData.ipAddress || null,
+          userAgent: leadData.userAgent || null,
+          publisherId: leadData.publisherId || null,
+          clickId: leadData.clickId || null,
+          subId: leadData.subId || null,
+          subacc1: leadData.subacc1 || null,
+          subacc2: leadData.subacc2 || null,
+          subacc3: leadData.subacc3 || null,
+          subacc4: leadData.subacc4 || null,
+          customFields: leadData.customFields || null,
+          isConverted: false,
+          postbackSent: false
+        }, userId);
+      } catch (leadError) {
+        console.error("[API Lead Ingest] Failed to create lead:", leadError);
+        return res.status(500).json({
+          success: false,
+          error: "LEAD_CREATION_FAILED",
+          message: "Failed to create lead record"
+        });
+      }
+
+      // 6. CREATE LEAD ITEM
+      try {
+        await storage.addLeadItem({
+          leadId: lead.id,
+          productName: product.name,
+          quantity: quantity,
+          price: productPrice.toString(),
+          total: (productPrice * quantity).toString()
+        });
+      } catch (itemError) {
+        console.error("[API Lead Ingest] Failed to create lead item:", itemError);
+        // Don't fail the request, but log the error
+        console.error("[API Lead Ingest] Lead created but item creation failed for lead:", lead.id);
+      }
+
+      // 7. UPDATE STOCK (if applicable)
+      if (product.stock !== null) {
+        try {
+          await storage.updateProduct(product.id, {
+            ...product,
+            stock: product.stock - quantity
+          });
+        } catch (stockError) {
+          console.error("[API Lead Ingest] Failed to update stock:", stockError);
+          // Don't fail the request, the lead is already created
+        }
+      }
+
+      const processingTime = Date.now() - startTime;
+
+      console.info("[API Lead Ingest] Success:", {
+        leadId: lead.id,
+        leadNumber: lead.leadNumber,
+        productId: product.id,
+        userId,
+        processingTime: `${processingTime}ms`
+      });
+
+      // 8. SUCCESS RESPONSE
+      res.status(201).json({
         success: true,
         message: "Lead created successfully",
-        lead: {
-          id: lead.id,
-          leadNumber: lead.leadNumber,
-          status: lead.status,
-          value: lead.value,
-          createdAt: lead.createdAt
+        data: {
+          lead: {
+            id: lead.id,
+            leadNumber: lead.leadNumber,
+            status: lead.status,
+            value: parseFloat(lead.value),
+            commission: parseFloat(lead.commission),
+            createdAt: lead.createdAt
+          },
+          product: {
+            id: product.id,
+            name: product.name,
+            sku: product.sku
+          },
+          shipping: {
+            address: fullAddress,
+            city: leadData.customerCity,
+            country: "Argentina",
+            postalCode: leadData.customerPostalCode
+          }
+        },
+        meta: {
+          processingTime: `${processingTime}ms`,
+          apiVersion: "2.0"
         }
       });
+
     } catch (error) {
-      console.error("Error creating lead via API:", error);
-      res.status(500).json({ 
+      const processingTime = Date.now() - startTime;
+
+      console.error("[API Lead Ingest] Unexpected error:", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        userId: req.user?.id,
+        processingTime: `${processingTime}ms`
+      });
+
+      res.status(500).json({
         success: false,
-        message: "Failed to create lead" 
+        error: "INTERNAL_SERVER_ERROR",
+        message: "An unexpected error occurred while processing the lead",
+        requestId: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
       });
     }
   });
