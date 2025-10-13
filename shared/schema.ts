@@ -285,6 +285,9 @@ export const insertAdvertiserSchema = createInsertSchema(advertisers).omit({
 
 export const insertProductSchema = createInsertSchema(products, {
   sku: z.string().min(1, "SKU is required"),
+  price: z.union([z.string(), z.number()]).transform(val => typeof val === 'number' ? val.toString() : val),
+  weight: z.union([z.string(), z.number()]).transform(val => typeof val === 'number' ? val.toString() : val).optional(),
+  payoutPo: z.union([z.string(), z.number()]).transform(val => typeof val === 'number' ? val.toString() : val).optional(),
 }).omit({
   id: true,
   createdAt: true,

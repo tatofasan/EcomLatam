@@ -343,11 +343,12 @@ export default function ProductDetailDialog({
       <DialogContent className="sm:max-w-[80vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-primary text-xl">{titleText}</DialogTitle>
-          {mode === "view" && isAdmin && (
-            <DialogDescription>
-              SKU: {productData.sku}
-            </DialogDescription>
-          )}
+          <DialogDescription>
+            {mode === "view" && isAdmin ? `SKU: ${productData.sku}` :
+             mode === "edit" ? "Edit product details and save changes" :
+             mode === "create" ? "Fill in the product details to create a new product" :
+             "Product details"}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
