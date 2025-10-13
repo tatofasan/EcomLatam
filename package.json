@@ -11,7 +11,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx server/run-migrations.ts",
     "db:push": "drizzle-kit push --force",
-    "db:seed": "tsx server/seed.ts"
+    "db:seed": "tsx server/seed.ts",
+    "db:migrate-lead-status": "tsx server/migrate-lead-status.ts"
   },
   "overrides": {
     "rollup": "npm:@rollup/wasm-node"
