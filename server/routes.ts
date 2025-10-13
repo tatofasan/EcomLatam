@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { registerShopifyRoutes } from "./routes-shopify";
+import { validateLead, formatValidationErrors } from "./leadValidation";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -1372,6 +1373,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         leadData.customerPostalCode
       ].filter(Boolean).join(', ');
 
+      // 4.1 VALIDATE LEAD DATA
+      const validationResult = await validateLead({
+        customerName: leadData.customerName,
+        customerPhone: leadData.customerPhone,
+        customerAddress: leadData.customerAddress,
+        customerCity: leadData.customerCity,
+        customerPostalCode: leadData.customerPostalCode,
+        customerProvince: "Argentina", // API doesn't have separate province field, use country as fallback
+        lineItems: [{
+          productName: product.name,
+          sku: product.sku || '',
+          price: productPrice,
+          quantity: quantity
+        }]
+      });
+
+      // Determine lead status based on validation
+      let leadStatus: 'sale' | 'hold' | 'rejected' | 'trash' = "hold";
+      let notes = "";
+      let customFields: any = leadData.customFields || {};
+
+      if (!validationResult.isValid) {
+        leadStatus = "trash";
+        notes = formatValidationErrors(validationResult.errors);
+        customFields = {
+          ...customFields,
+          validationStatus: 'failed',
+          validationErrors: validationResult.errors,
+        };
+
+        console.warn(`[API Lead Ingest] Lead marked as TRASH due to validation errors:`, validationResult.errors);
+      } else {
+        customFields = {
+          ...customFields,
+          validationStatus: 'passed',
+          validationErrors: null,
+        };
+      }
+
       // 5. CREATE LEAD
       let lead;
       try {
@@ -1384,7 +1424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           customerAddress: fullAddress,
           customerCity: leadData.customerCity,
           customerCountry: "Argentina", // Always Argentina
-          status: "hold",
+          status: leadStatus,
           quality: "standard",
           value: leadValue.toString(),
           commission: totalCommission.toString(),
@@ -1397,7 +1437,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           subacc2: leadData.subacc2 || null,
           subacc3: leadData.subacc3 || null,
           subacc4: leadData.subacc4 || null,
-          customFields: leadData.customFields || null,
+          customFields: customFields,
+          notes: notes || null,
           isConverted: false,
           postbackSent: false
         }, userId);

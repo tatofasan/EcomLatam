@@ -12,6 +12,115 @@ import { eq } from 'drizzle-orm';
 import type { ShopifyOrder, ShopifyFulfillmentOrder, ShopifyAssignedFulfillmentOrder } from './types';
 
 /**
+ * Validation result interface
+ */
+interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+}
+
+/**
+ * Validate Shopify order for EcomLatam import
+ *
+ * Checks:
+ * 1. SKU matches a product in catalog
+ * 2. Unit price matches product price
+ * 3. Valid address (address1 exists)
+ * 4. Phone number exists
+ * 5. Customer name exists
+ * 6. Postal code exists
+ * 7. Province exists
+ * 8. City exists
+ */
+async function validateShopifyOrder(order: ShopifyOrder): Promise<ValidationResult> {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  // Get address (prefer shipping, fallback to billing)
+  const address = order.shipping_address || order.billing_address;
+
+  // 1. Check customer name
+  const customerName = order.customer
+    ? `${order.customer.first_name || ''} ${order.customer.last_name || ''}`.trim()
+    : address?.name || '';
+
+  if (!customerName || customerName.length < 2) {
+    errors.push('INVALID_CUSTOMER_NAME: Customer name is missing or too short');
+  }
+
+  // 2. Check phone number
+  const customerPhone = order.customer?.phone || address?.phone || '';
+  if (!customerPhone || customerPhone.trim().length < 8) {
+    errors.push('INVALID_PHONE: Phone number is missing or invalid');
+  }
+
+  // 3. Check address
+  if (!address || !address.address1 || address.address1.trim().length < 5) {
+    errors.push('INVALID_ADDRESS: Street address is missing or too short');
+  }
+
+  // 4. Check postal code
+  if (!address || !address.zip || address.zip.trim().length < 3) {
+    errors.push('INVALID_POSTAL_CODE: Postal code is missing or invalid');
+  }
+
+  // 5. Check province
+  if (!address || !address.province || address.province.trim().length < 2) {
+    errors.push('INVALID_PROVINCE: Province/state is missing');
+  }
+
+  // 6. Check city
+  if (!address || !address.city || address.city.trim().length < 2) {
+    errors.push('INVALID_CITY: City is missing or invalid');
+  }
+
+  // 7. Validate line items (SKU and price validation)
+  if (!order.line_items || order.line_items.length === 0) {
+    errors.push('NO_LINE_ITEMS: Order has no products');
+  } else {
+    for (const lineItem of order.line_items) {
+      // Check if SKU exists
+      if (!lineItem.sku || lineItem.sku.trim() === '') {
+        errors.push(`MISSING_SKU: Product "${lineItem.title}" has no SKU`);
+        continue;
+      }
+
+      // Find product in catalog by SKU
+      const [catalogProduct] = await db
+        .select()
+        .from(products)
+        .where(eq(products.sku, lineItem.sku))
+        .limit(1);
+
+      if (!catalogProduct) {
+        errors.push(`SKU_NOT_FOUND: SKU "${lineItem.sku}" not found in catalog for product "${lineItem.title}"`);
+        continue;
+      }
+
+      // Validate price matches
+      const lineItemPrice = parseFloat(lineItem.price);
+      const catalogPrice = parseFloat(catalogProduct.price || '0');
+
+      // Allow small price differences (up to 1 cent) due to currency conversion
+      const priceDifference = Math.abs(lineItemPrice - catalogPrice);
+      if (priceDifference > 0.01) {
+        errors.push(
+          `PRICE_MISMATCH: Product "${lineItem.title}" (SKU: ${lineItem.sku}) has price $${lineItemPrice.toFixed(2)} ` +
+          `but catalog price is $${catalogPrice.toFixed(2)}`
+        );
+      }
+    }
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings,
+  };
+}
+
+/**
  * Convert Shopify order to EcomLatam lead format
  */
 export const convertShopifyOrderToEcomLatamLead = async (
@@ -20,6 +129,9 @@ export const convertShopifyOrderToEcomLatamLead = async (
   shop: string
 ) => {
   try {
+    // STEP 1: VALIDATE ORDER
+    const validationResult = await validateShopifyOrder(order);
+
     // Build customer info
     const customerName =
       order.customer
@@ -50,15 +162,27 @@ export const convertShopifyOrderToEcomLatamLead = async (
     // Generate lead number
     const leadNumber = `SHOPIFY-${shop.replace('.myshopify.com', '')}-${order.order_number}`;
 
-    // Determine lead status based on Shopify order status
+    // STEP 2: DETERMINE LEAD STATUS
     let leadStatus: 'sale' | 'hold' | 'rejected' | 'trash' = 'hold';
+    let notes = order.note || `Imported from Shopify: ${order.name}`;
 
-    if (order.financial_status === 'paid' && order.fulfillment_status === 'fulfilled') {
-      leadStatus = 'sale';
-    } else if (order.financial_status === 'refunded' || order.financial_status === 'voided') {
-      leadStatus = 'rejected';
-    } else if (order.financial_status === 'paid') {
-      leadStatus = 'hold'; // Paid but not fulfilled yet
+    // If validation failed, mark as trash and include error details
+    if (!validationResult.isValid) {
+      leadStatus = 'trash';
+      notes = `⚠️ ORDER VALIDATION FAILED - AUTOMATIC TRASH\n\n` +
+        `Validation Errors:\n${validationResult.errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}\n\n` +
+        `---\nOriginal Note: ${order.note || 'None'}`;
+
+      console.warn(`[Shopify Import] Order ${order.name} marked as TRASH due to validation errors:`, validationResult.errors);
+    } else {
+      // Normal status determination for valid orders
+      if (order.financial_status === 'paid' && order.fulfillment_status === 'fulfilled') {
+        leadStatus = 'sale';
+      } else if (order.financial_status === 'refunded' || order.financial_status === 'voided') {
+        leadStatus = 'rejected';
+      } else if (order.financial_status === 'paid') {
+        leadStatus = 'hold'; // Paid but not fulfilled yet
+      }
     }
 
     // Get the first product from line items (if available)
@@ -113,8 +237,10 @@ export const convertShopifyOrderToEcomLatamLead = async (
         shopifyTags: order.tags,
         shopifyNote: order.note,
         shopifyShop: shop,
+        validationStatus: validationResult.isValid ? 'passed' : 'failed',
+        validationErrors: validationResult.isValid ? null : validationResult.errors,
       },
-      notes: order.note || `Imported from Shopify: ${order.name}`,
+      notes: notes, // Use the notes variable that includes validation errors if any
       isConverted: leadStatus === 'sale',
       postbackSent: false,
     };
@@ -319,6 +445,9 @@ export const convertFulfillmentOrderToEcomLatamLead = async (
   shop: string
 ) => {
   try {
+    // STEP 1: VALIDATE ORDER
+    const validationResult = await validateShopifyOrder(order);
+
     const destination = fulfillmentOrder.destination;
 
     // Build customer info from destination
@@ -342,15 +471,27 @@ export const convertFulfillmentOrderToEcomLatamLead = async (
     // Generate lead number
     const leadNumber = `SHOPIFY-${shop.replace('.myshopify.com', '')}-${order.order_number}`;
 
-    // Determine lead status based on Shopify fulfillment order status
+    // STEP 2: DETERMINE LEAD STATUS
     let leadStatus: 'sale' | 'hold' | 'rejected' | 'trash' = 'hold';
+    let notes = order.note || `Imported from Shopify (Fulfillment Service): ${order.name}`;
 
-    if (fulfillmentOrder.status === 'closed') {
-      leadStatus = 'sale';
-    } else if (fulfillmentOrder.status === 'cancelled') {
-      leadStatus = 'rejected';
-    } else if (fulfillmentOrder.status === 'in_progress') {
-      leadStatus = 'hold';
+    // If validation failed, mark as trash and include error details
+    if (!validationResult.isValid) {
+      leadStatus = 'trash';
+      notes = `⚠️ ORDER VALIDATION FAILED - AUTOMATIC TRASH\n\n` +
+        `Validation Errors:\n${validationResult.errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}\n\n` +
+        `---\nOriginal Note: ${order.note || 'None'}`;
+
+      console.warn(`[Shopify Fulfillment Import] Order ${order.name} marked as TRASH due to validation errors:`, validationResult.errors);
+    } else {
+      // Normal status determination for valid orders
+      if (fulfillmentOrder.status === 'closed') {
+        leadStatus = 'sale';
+      } else if (fulfillmentOrder.status === 'cancelled') {
+        leadStatus = 'rejected';
+      } else if (fulfillmentOrder.status === 'in_progress') {
+        leadStatus = 'hold';
+      }
     }
 
     // Get the first product from line items
@@ -408,8 +549,10 @@ export const convertFulfillmentOrderToEcomLatamLead = async (
         shopifyTags: order.tags,
         shopifyNote: order.note,
         shopifyShop: shop,
+        validationStatus: validationResult.isValid ? 'passed' : 'failed',
+        validationErrors: validationResult.isValid ? null : validationResult.errors,
       },
-      notes: order.note || `Imported from Shopify (Fulfillment Service): ${order.name}`,
+      notes: notes, // Use the notes variable that includes validation errors if any
       isConverted: leadStatus === 'sale',
       postbackSent: false,
     };

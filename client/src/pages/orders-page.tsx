@@ -676,6 +676,26 @@ export default function OrdersPage() {
                 </div>
               ) : (
                 <div className="space-y-6">
+                  {/* VALIDATION ERROR ALERT - Show when order is in trash */}
+                  {selectedOrder.status === 'trash' && selectedOrder.notes && selectedOrder.notes.includes('VALIDATION FAILED') && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <div className="flex gap-3">
+                        <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <h4 className="text-sm font-semibold text-red-900 mb-2">⚠️ Order Automatically Marked as Trash</h4>
+                          <p className="text-sm text-red-800 mb-3">
+                            This order from Shopify failed validation checks and was automatically marked as trash. Please review the errors below:
+                          </p>
+                          <div className="bg-white border border-red-200 rounded p-3">
+                            <pre className="text-xs text-red-900 whitespace-pre-wrap font-mono">
+                              {selectedOrder.notes}
+                            </pre>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <h4 className="text-sm font-medium text-primary mb-2">Customer Information</h4>
