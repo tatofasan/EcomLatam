@@ -1481,35 +1481,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         processingTime: `${processingTime}ms`
       });
 
-      // 8. SUCCESS RESPONSE
+      // 8. SUCCESS RESPONSE (SIMPLIFIED)
+      // Build message based on validation status
+      let responseMessage = "Lead created successfully";
+      if (leadStatus === "trash") {
+        // Extract first validation error for message
+        const firstError = validationResult.errors[0] || "Validation failed";
+        responseMessage = firstError;
+      }
+
       res.status(201).json({
         success: true,
-        message: "Lead created successfully",
-        data: {
-          lead: {
-            id: lead.id,
-            leadNumber: lead.leadNumber,
-            status: lead.status,
-            value: parseFloat(lead.value),
-            commission: parseFloat(lead.commission),
-            createdAt: lead.createdAt
-          },
-          product: {
-            id: product.id,
-            name: product.name,
-            sku: product.sku
-          },
-          shipping: {
-            address: fullAddress,
-            city: leadData.customerCity,
-            country: "Argentina",
-            postalCode: leadData.customerPostalCode
-          }
-        },
-        meta: {
-          processingTime: `${processingTime}ms`,
-          apiVersion: "2.0"
-        }
+        message: responseMessage,
+        autoTrash: leadStatus === "trash",
+        orderId: lead.id
       });
 
     } catch (error) {
