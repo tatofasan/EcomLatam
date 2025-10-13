@@ -425,10 +425,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If admin/moderator and specifically requests all orders, don't filter by userId
       const orders = hasAdminAccess ? await storage.getAllOrders() : await storage.getAllOrders(userId);
 
-      // Map orders to include totalAmount field from value
+      // Map orders to include totalAmount field from value and shippingAddress from customerAddress
       const mappedOrders = orders.map(order => ({
         ...order,
-        totalAmount: parseFloat(order.value || '0')
+        totalAmount: parseFloat(order.value || '0'),
+        shippingAddress: order.customerAddress || ''
       }));
 
       res.json(mappedOrders);
@@ -540,6 +541,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const mappedOrder = {
         ...order,
         totalAmount: parseFloat(order.value || '0'), // Map 'value' to 'totalAmount' and convert to number
+        shippingAddress: order.customerAddress || '', // Map 'customerAddress' to 'shippingAddress'
+        customerCity: order.customerCity || null, // Include city for shipping info
+        customerCountry: order.customerCountry || null, // Include country for shipping info
+        commission: order.commission || '0', // Include commission
         items: mappedItems
       };
 

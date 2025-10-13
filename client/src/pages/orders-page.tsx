@@ -514,7 +514,20 @@ export default function OrdersPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-accent/50">
-                      <th 
+                      <th
+                        className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none"
+                        onClick={() => handleSort("id")}
+                      >
+                        <div className="flex items-center">
+                          ID
+                          {sortField === "id" && (
+                            <span className="ml-1">
+                              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                      <th
                         className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none"
                         onClick={() => handleSort("orderNumber")}
                       >
@@ -527,7 +540,7 @@ export default function OrdersPage() {
                           )}
                         </div>
                       </th>
-                      <th 
+                      <th
                         className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none"
                         onClick={() => handleSort("customerName")}
                       >
@@ -566,7 +579,7 @@ export default function OrdersPage() {
                           )}
                         </div>
                       </th>
-                      <th 
+                      <th
                         className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none"
                         onClick={() => handleSort("status")}
                       >
@@ -587,6 +600,7 @@ export default function OrdersPage() {
                       .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                       .map((order) => (
                         <tr key={order.id} className="border-b border-border hover:bg-accent/20">
+                          <td className="py-4 px-4 text-muted-foreground">#{order.id}</td>
                           <td className="py-4 px-4 font-medium">{order.orderNumber}</td>
                           <td className="py-4 px-4">
                             <div>
@@ -600,8 +614,8 @@ export default function OrdersPage() {
                             {getStatusBadge(order.status)}
                           </td>
                           <td className="py-4 px-4 text-right">
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
                               onClick={() => openOrderDetails(order)}
                               className="hover:bg-primary/10 hover:text-primary"
@@ -661,7 +675,7 @@ export default function OrdersPage() {
               <DialogHeader>
                 <DialogTitle>Order Details</DialogTitle>
                 <DialogDescription>
-                  Order #{selectedOrder.orderNumber}
+                  Order #{selectedOrder.orderNumber} (ID: {selectedOrder.id})
                 </DialogDescription>
               </DialogHeader>
               
@@ -690,7 +704,7 @@ export default function OrdersPage() {
                     <div>
                       <h4 className="text-sm font-medium text-primary mb-2">Order Status</h4>
                       <div className="border rounded-md p-3 bg-accent">
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-center mb-2">
                           <div className="flex flex-col">
                             <div className="flex items-center gap-2 mb-1">
                               <Calendar className="h-4 w-4 text-primary" />
@@ -705,6 +719,12 @@ export default function OrdersPage() {
                           </div>
                           {getStatusBadge(selectedOrder.status)}
                         </div>
+                        {(selectedOrder as any).commission && (
+                          <div className="pt-2 border-t border-border mt-2">
+                            <span className="text-sm text-muted-foreground">Commission: </span>
+                            <span className="text-sm font-medium text-green-600">${parseFloat((selectedOrder as any).commission || '0').toFixed(2)}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -713,6 +733,12 @@ export default function OrdersPage() {
                     <h4 className="text-sm font-medium text-primary mb-2">Shipping Information</h4>
                     <div className="border rounded-md p-3 bg-accent mb-2">
                       <p className="text-sm">{selectedOrder.shippingAddress}</p>
+                      {(selectedOrder as any).customerCity && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {(selectedOrder as any).customerCity}
+                          {(selectedOrder as any).customerCountry && `, ${(selectedOrder as any).customerCountry}`}
+                        </p>
+                      )}
                     </div>
                     {selectedOrder.notes && (
                       <div className="flex items-center text-sm">

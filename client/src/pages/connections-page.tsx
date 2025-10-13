@@ -572,8 +572,8 @@ export default function ConnectionsPage() {
                 </CardContent>
                 <CardFooter className="flex justify-between">
                   {/* Show button to activate/deactivate the connection */}
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => {
                       const newStatus = connection.status === "active" ? "inactive" : "active";
@@ -583,28 +583,17 @@ export default function ConnectionsPage() {
                   >
                     {connection.status === "active" ? "Deactivate" : "Activate"}
                   </Button>
-                  
-                  {/* Show synchronization or delete button based on user role */}
-                  {user?.role === 'admin' ? (
-                    <Button 
-                      variant="outline"
-                      size="sm"
-                      className="text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"
-                      onClick={() => handleDeleteClick(connection.id)}
-                    >
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Delete
-                    </Button>
-                  ) : (
-                    <Button 
-                      variant={connection.status === "active" ? "default" : "outline"}
-                      size="sm" 
-                      className={connection.status !== "active" ? "opacity-50 cursor-not-allowed" : ""}
-                      disabled={connection.status !== "active"}
-                    >
-                      Synchronize
-                    </Button>
-                  )}
+
+                  {/* Delete button - available for all users */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/20"
+                    onClick={() => handleDeleteClick(connection.id)}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Delete
+                  </Button>
                 </CardFooter>
               </Card>
             ))}
