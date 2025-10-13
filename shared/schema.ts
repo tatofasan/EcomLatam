@@ -109,7 +109,9 @@ export const leads = pgTable("leads", {
   // Customer Information
   customerName: text("customer_name").notNull(),
   customerEmail: text("customer_email"),
-  customerPhone: text("customer_phone").notNull(),
+  customerPhone: text("customer_phone").notNull(), // Formatted phone number
+  customerPhoneOriginal: text("customer_phone_original"), // Original phone as received
+  customerPhoneFormatted: text("customer_phone_formatted"), // Fully formatted phone with area code
   customerAddress: text("customer_address"),
   customerCity: text("customer_city"),
   customerCountry: text("customer_country"),

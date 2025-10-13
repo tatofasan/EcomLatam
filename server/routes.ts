@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { registerShopifyRoutes } from "./routes-shopify";
 import { validateLead, formatValidationErrors } from "./leadValidation";
+import { formatPhone } from "./phoneValidation";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -563,18 +564,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      
+
       const parseResult = insertLeadSchema.safeParse(req.body);
-      
+
       if (!parseResult.success) {
-        return res.status(400).json({ 
-          message: "Invalid order data", 
-          errors: parseResult.error.format() 
+        return res.status(400).json({
+          message: "Invalid order data",
+          errors: parseResult.error.format()
         });
       }
-      
+
       const userId = req.user.id;
-      const order = await storage.createOrder(parseResult.data, userId);
+      const orderData = parseResult.data;
+
+      // Validate and format phone number if provided
+      let phoneData = {
+        customerPhone: orderData.customerPhone,
+        customerPhoneOriginal: orderData.customerPhone,
+        customerPhoneFormatted: null
+      };
+
+      if (orderData.customerPhone) {
+        const phoneValidation = await formatPhone(
+          orderData.customerPhone,
+          'AR',
+          req.user.username || 'manual',
+          'manual-entry'
+        );
+
+        phoneData = {
+          customerPhone: phoneValidation.formattedPhone || phoneValidation.originalPhone,
+          customerPhoneOriginal: phoneValidation.originalPhone,
+          customerPhoneFormatted: phoneValidation.formattedPhone
+        };
+      }
+
+      const order = await storage.createOrder({
+        ...orderData,
+        ...phoneData
+      }, userId);
       
       // Handle order items if provided
       if (req.body.items && Array.isArray(req.body.items)) {
@@ -1362,7 +1390,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         leadData.customerPostalCode
       ].filter(Boolean).join(', ');
 
-      // 4.1 VALIDATE LEAD DATA
+      // 4.1 VALIDATE AND FORMAT PHONE NUMBER
+      const phoneValidation = await formatPhone(
+        leadData.customerPhone,
+        'AR', // Always Argentina for now
+        req.user?.username || 'NODEF',
+        leadData.publisherId || 'NODEF'
+      );
+
+      // 4.2 VALIDATE LEAD DATA
       // IMPORTANT: Pass the original lead price (not the fallback) so validation can detect price mismatches
       const priceForValidation = leadProvidedPrice ?? parseFloat(product.price || "0");
 
@@ -1412,7 +1448,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           productId: productNotFound ? null : product.id, // Use null if product not found
           customerName: leadData.customerName,
           customerEmail: leadData.customerEmail || null,
-          customerPhone: leadData.customerPhone,
+          customerPhone: phoneValidation.formattedPhone || phoneValidation.originalPhone,
+          customerPhoneOriginal: phoneValidation.originalPhone,
+          customerPhoneFormatted: phoneValidation.formattedPhone,
           customerAddress: fullAddress,
           customerCity: leadData.customerCity,
           customerCountry: "Argentina", // Always Argentina

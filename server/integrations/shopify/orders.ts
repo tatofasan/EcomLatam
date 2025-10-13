@@ -10,6 +10,7 @@ import { db } from '../../db';
 import { leads, leadItems, products } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import type { ShopifyOrder, ShopifyFulfillmentOrder, ShopifyAssignedFulfillmentOrder } from './types';
+import { formatPhone } from '../../phoneValidation';
 
 /**
  * Validation result interface
@@ -142,11 +143,16 @@ export const convertShopifyOrderToEcomLatamLead = async (
 
     const customerEmail = order.customer?.email || order.email || null;
 
-    const customerPhone =
+    const customerPhoneRaw =
       order.customer?.phone ||
       order.shipping_address?.phone ||
       order.billing_address?.phone ||
-      null;
+      '';
+
+    // Validate and format phone number
+    const phoneValidation = customerPhoneRaw
+      ? await formatPhone(customerPhoneRaw, 'AR', 'shopify', shop)
+      : { originalPhone: '', formattedPhone: null, isValid: false };
 
     // Build address
     const address = order.shipping_address || order.billing_address;
@@ -213,7 +219,9 @@ export const convertShopifyOrderToEcomLatamLead = async (
       productId,
       customerName,
       customerEmail,
-      customerPhone,
+      customerPhone: phoneValidation.formattedPhone || phoneValidation.originalPhone,
+      customerPhoneOriginal: phoneValidation.originalPhone,
+      customerPhoneFormatted: phoneValidation.formattedPhone,
       customerAddress,
       customerCity,
       customerCountry,
@@ -456,7 +464,12 @@ export const convertFulfillmentOrderToEcomLatamLead = async (
       : destination.company || 'Unknown Customer';
 
     const customerEmail = destination.email || order.email || null;
-    const customerPhone = destination.phone || null;
+    const customerPhoneRaw = destination.phone || '';
+
+    // Validate and format phone number
+    const phoneValidation = customerPhoneRaw
+      ? await formatPhone(customerPhoneRaw, 'AR', 'shopify', shop)
+      : { originalPhone: '', formattedPhone: null, isValid: false };
 
     // Build address
     const customerAddress = destination.address1
@@ -523,7 +536,9 @@ export const convertFulfillmentOrderToEcomLatamLead = async (
       productId,
       customerName,
       customerEmail,
-      customerPhone,
+      customerPhone: phoneValidation.formattedPhone || phoneValidation.originalPhone,
+      customerPhoneOriginal: phoneValidation.originalPhone,
+      customerPhoneFormatted: phoneValidation.formattedPhone,
       customerAddress,
       customerCity,
       customerCountry,
