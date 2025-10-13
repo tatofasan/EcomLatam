@@ -410,7 +410,8 @@ export const apiLeadIngestSchema = z.object({
   // Additional information
   campaignId: z.number().positive().optional(),
   quantity: z.number().int().positive().max(100).default(1),
-  // Note: value is calculated automatically (quantity × product price)
+  productPrice: z.number().positive().optional(), // Optional: if provided, will be validated against catalog
+  // Note: if productPrice not provided, catalog price will be used automatically
 
   // Tracking information (optional)
   publisherId: z.string().max(200).optional(),
