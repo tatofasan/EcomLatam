@@ -25,23 +25,20 @@ import {
 } from "lucide-react";
 import { ShopifyIcon, WooCommerceIcon, MercadoLibreIcon, TikTokIcon, PlatformButton } from "@/lib/platform-icons";
 
-// Type definition for connection from the API
-interface ConnectionType {
+// Type definition for Shopify store from the API
+interface ShopifyStore {
   id: number;
   userId: number;
-  platform: string;
-  name: string;
-  apiKey?: string;
-  apiSecret?: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
+  shop: string; // Store domain (e.g., my-store.myshopify.com)
+  status: string; // active, inactive, error, pending
+  scopes?: string;
+  installedAt: string;
+  lastSyncAt?: string;
   settings?: Record<string, any>;
 }
 
-// Extended connection type with additional UI-specific fields
-interface ConnectionWithStats extends ConnectionType {
-  lastSync?: string;
+// Extended type with additional UI-specific fields
+interface ConnectionWithStats extends ShopifyStore {
   products?: number;
   orders?: number;
   userName?: string; // Username (for admin view)
@@ -127,47 +124,27 @@ export default function ConnectionsPage() {
 
   // Function to initiate OAuth flow with Shopify
   const handleShopifyAuth = () => {
-    // In a real implementation, you would:
-    // 1. Call your backend to get a redirect URL for Shopify OAuth
-    // 2. Open that URL in a new window/tab
-    // 3. After user authorizes, they'll be redirected back to your app
-
-    // For this demo, we'll simulate the flow:
-    setStep('authenticating');
-    
     // Store name is required
     if (!formData.name.trim()) {
       toast({
         title: "Nombre requerido",
-        description: "Por favor, ingresa un nombre para tu tienda.",
+        description: "Por favor, ingresa un nombre de tienda válido (ej: my-store.myshopify.com)",
         variant: "destructive",
       });
-      setStep('details');
       return;
     }
-    
-    // Simulate opening a new window for authorization
-    const shopifyAuthWindow = window.open(
-      `https://shopify.com/admin/oauth/authorize?dummy=1&store=${encodeURIComponent(formData.name)}`,
-      'shopify_auth',
-      'width=800,height=600'
-    );
-    
-    // After a "successful" authentication (simulated), create the connection
-    setTimeout(() => {
-      if (shopifyAuthWindow) {
-        shopifyAuthWindow.close();
-      }
-      
-      handleCreateConnection({
-        name: formData.name,
-        platform: 'shopify',
-        status: 'active',
-      });
-      
-      setIsDialogOpen(false);
-      setStep('platforms');
-    }, 3000);
+
+    // Ensure shop has .myshopify.com suffix
+    let shop = formData.name.trim();
+    if (!shop.endsWith('.myshopify.com')) {
+      shop = `${shop}.myshopify.com`;
+    }
+
+    // Redirect to backend OAuth endpoint
+    // This will redirect to Shopify, and after authorization,
+    // Shopify will redirect back to /api/shopify/callback
+    // which will save the store and redirect to /shopify/orders?installed=true
+    window.location.href = `/api/shopify/install?shop=${encodeURIComponent(shop)}`;
   };
 
   // Function to handle creating a new connection
