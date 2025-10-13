@@ -713,17 +713,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const holdCount = leadsList.filter(lead => lead.status === 'hold').length;
       const rejectedCount = leadsList.filter(lead => lead.status === 'rejected').length;
       const trashCount = leadsList.filter(lead => lead.status === 'trash').length;
-      
-      // Generate sample sales data for the chart
+
+      // Generate real sales data for the chart (last 6 months)
       const currentDate = new Date();
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-      const salesData = monthNames.map((month, index) => {
-        const monthSales = Math.floor(Math.random() * 20) + saleCount / 6;
-        const monthOrders = Math.floor(monthSales * 1.2);
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const salesDataByMonth = new Map<string, { sales: number; orders: number }>();
+
+      // Initialize last 6 months with zero values
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const monthName = monthNames[date.getMonth()];
+        salesDataByMonth.set(monthKey, { sales: 0, orders: 0 });
+      }
+
+      // Count real sales and orders per month
+      leadsList.forEach(lead => {
+        if (lead.createdAt) {
+          const leadDate = new Date(lead.createdAt);
+          const monthKey = `${leadDate.getFullYear()}-${String(leadDate.getMonth() + 1).padStart(2, '0')}`;
+
+          if (salesDataByMonth.has(monthKey)) {
+            const monthData = salesDataByMonth.get(monthKey)!;
+            monthData.orders += 1; // Count all leads as orders
+            if (lead.status === 'sale') {
+              monthData.sales += 1; // Count only sales
+            }
+          }
+        }
+      });
+
+      // Convert to array format for frontend
+      const salesData = Array.from(salesDataByMonth.entries()).map(([monthKey, data]) => {
+        const [year, month] = monthKey.split('-');
+        const monthName = monthNames[parseInt(month) - 1];
         return {
-          name: month,
-          sales: Math.floor(monthSales),
-          orders: Math.floor(monthOrders)
+          name: monthName,
+          sales: data.sales,
+          orders: data.orders
         };
       });
       
