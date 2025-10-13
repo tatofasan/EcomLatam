@@ -23,6 +23,7 @@ import {
   transactions,
   users,
   termsAndConditions,
+  shopifyStores,
   type InsertTransaction,
   type ApiLead,
   type ApiLeadIngest,
@@ -1698,7 +1699,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to delete connection" });
     }
   });
-  
+
+  // Get Shopify stores with real statistics
+  app.get("/api/shopify/stores", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = req.user.id;
+      const isAdmin = req.user.role === 'admin';
+      const isModerator = req.user.role === 'moderator';
+      const hasAdminAccess = isAdmin || isModerator;
+      const showAll = req.query.all === 'true' && hasAdminAccess;
+
+      // Query shopifyStores table
+      let stores;
+      if (showAll) {
+        stores = await db.select().from(shopifyStores).orderBy(desc(shopifyStores.installedAt));
+      } else {
+        stores = await db.select()
+          .from(shopifyStores)
+          .where(eq(shopifyStores.userId, userId))
+          .orderBy(desc(shopifyStores.installedAt));
+      }
+
+      // Calculate real stats for each store
+      const storesWithStats = await Promise.all(stores.map(async (store) => {
+        // Count real products for this store's user
+        const productsCount = await db.select({ count: sql<number>`count(*)` })
+          .from(products)
+          .where(eq(products.userId, store.userId));
+
+        // Count real orders/leads for this store (Shopify orders)
+        const ordersCount = await db.select({ count: sql<number>`count(*)` })
+          .from(leads)
+          .where(and(
+            eq(leads.userId, store.userId),
+            eq(leads.utmSource, 'shopify')
+          ));
+
+        return {
+          id: store.id,
+          name: store.shop,
+          platform: 'shopify' as const,
+          status: store.isActive ? 'active' as const : 'inactive' as const,
+          products: Number(productsCount[0]?.count || 0),
+          orders: Number(ordersCount[0]?.count || 0),
+          createdAt: store.installedAt,
+          userId: store.userId
+        };
+      }));
+
+      res.json(storesWithStats);
+    } catch (error) {
+      console.error("Error fetching Shopify stores:", error);
+      res.status(500).json({ message: "Failed to fetch Shopify stores" });
+    }
+  });
+
   // Team management endpoints - Accessible to admin and finance users
   app.get("/api/users", requireAuth, async (req, res) => {
     try {

@@ -72,28 +72,31 @@ export default function ConnectionsPage() {
   const loadConnections = async () => {
     try {
       setIsLoading(true);
-      
+
       // If the user is an administrator, load all connections
       // If regular user, only load their connections
       const isAdmin = user?.role === 'admin';
-      const endpoint = isAdmin ? '/api/connections?all=true' : '/api/connections';
-      
+      const isModerator = user?.role === 'moderator';
+      const hasAdminAccess = isAdmin || isModerator;
+      const endpoint = hasAdminAccess ? '/api/shopify/stores?all=true' : '/api/shopify/stores';
+
       const response = await fetch(endpoint);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch connections: ${response.statusText}`);
       }
-      
-      const data = await response.json() as ConnectionType[];
-      
-      // Add UI-specific fields to the API data
-      const enhancedData: ConnectionWithStats[] = data.map(conn => ({
+
+      const data = await response.json();
+
+      // Add UI-specific fields to the API data (products and orders now come from backend)
+      const enhancedData: ConnectionWithStats[] = data.map((conn: any) => ({
         ...conn,
-        lastSync: new Date(conn.updatedAt).toLocaleString(),
-        products: Math.floor(Math.random() * 100), // In a real app, you'd fetch this from a stats endpoint
-        orders: Math.floor(Math.random() * 30),    // In a real app, you'd fetch this from a stats endpoint
+        shop: conn.name,
+        lastSync: new Date(conn.createdAt).toLocaleString(),
+        products: conn.products || 0,
+        orders: conn.orders || 0,
       }));
-      
+
       setConnections(enhancedData);
       setError(null);
     } catch (err) {
