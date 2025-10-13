@@ -415,15 +415,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      
+
       const userId = req.user.id;
       const isAdmin = req.user.role === 'admin';
       const isModerator = req.user.role === 'moderator';
       const hasAdminAccess = isAdmin || isModerator;
-      
+
       // If admin/moderator and specifically requests all orders, don't filter by userId
       const orders = hasAdminAccess ? await storage.getAllOrders() : await storage.getAllOrders(userId);
-      res.json(orders);
+
+      // Map orders to include totalAmount field from value
+      const mappedOrders = orders.map(order => ({
+        ...order,
+        totalAmount: parseFloat(order.value || '0')
+      }));
+
+      res.json(mappedOrders);
     } catch (error) {
       console.error("Error fetching orders:", error);
       res.status(500).json({ message: "Failed to fetch orders" });

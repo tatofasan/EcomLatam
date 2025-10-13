@@ -540,7 +540,7 @@ export default function OrdersPage() {
                           )}
                         </div>
                       </th>
-                      <th 
+                      <th
                         className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none"
                         onClick={() => handleSort("createdAt")}
                       >
@@ -553,20 +553,7 @@ export default function OrdersPage() {
                           )}
                         </div>
                       </th>
-                      <th 
-                        className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none"
-                        onClick={() => handleSort("updatedAt")}
-                      >
-                        <div className="flex items-center">
-                          Delivery Date
-                          {sortField === "updatedAt" && (
-                            <span className="ml-1">
-                              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                            </span>
-                          )}
-                        </div>
-                      </th>
-                      <th 
+                      <th
                         className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none"
                         onClick={() => handleSort("totalAmount")}
                       >
@@ -608,9 +595,6 @@ export default function OrdersPage() {
                             </div>
                           </td>
                           <td className="py-4 px-4">{new Date(order.createdAt).toLocaleDateString()}</td>
-                          <td className="py-4 px-4">
-                            {order.status === "delivered" ? new Date(order.updatedAt).toLocaleDateString() : ""}
-                          </td>
                           <td className="py-4 px-4 font-medium text-primary">${(order.totalAmount || 0).toFixed(2)}</td>
                           <td className="py-4 px-4">
                             {getStatusBadge(order.status)}
