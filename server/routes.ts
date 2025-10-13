@@ -511,37 +511,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      
+
       const orderId = parseInt(req.params.id);
       const { status } = req.body;
-      
+
       if (!status || typeof status !== 'string') {
         return res.status(400).json({ message: "Invalid status" });
       }
-      
-      // Check if the status is valid
-      if (!['pending', 'processing', 'shipped', 'delivered', 'cancelled'].includes(status)) {
-        return res.status(400).json({ message: "Invalid status value" });
+
+      // Check if the status is valid - using lead status values
+      if (!['sale', 'hold', 'rejected', 'trash'].includes(status)) {
+        return res.status(400).json({ message: "Invalid status value. Valid values are: sale, hold, rejected, trash" });
       }
-      
+
       const order = await storage.getOrder(orderId);
-      
+
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
       }
-      
+
       // Check if user has admin, moderator, or finance role
       const isAdmin = req.user.role === 'admin';
       const isFinance = req.user.role === 'finance';
       const isModerator = req.user.role === 'moderator';
-      
+
       // Only admin, moderator, or finance users can update order status
       if (!isAdmin && !isFinance && !isModerator) {
         return res.status(403).json({ message: "Forbidden: Only admin, moderator, or finance users can update order status" });
       }
-      
+
       const updatedOrder = await storage.updateOrderStatus(orderId, status);
-      
+
       res.json(updatedOrder);
     } catch (error) {
       console.error("Error updating order status:", error);

@@ -250,39 +250,32 @@ export default function OrdersPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "delivered":
+      case "sale":
         return (
           <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200 flex items-center gap-1 font-medium">
             <CheckCircle2 className="h-3 w-3" />
-            Delivered
+            Sale
           </Badge>
         );
-      case "processing":
+      case "hold":
         return (
           <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 flex items-center gap-1 font-medium">
             <Clock className="h-3 w-3" />
-            Processing
+            Hold
           </Badge>
         );
-      case "pending":
-        return (
-          <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 flex items-center gap-1 font-medium">
-            <AlertCircle className="h-3 w-3" />
-            Pending
-          </Badge>
-        );
-      case "shipped":
-        return (
-          <Badge variant="outline" className="bg-indigo-50 text-indigo-600 border-indigo-200 flex items-center gap-1 font-medium">
-            <TruckIcon className="h-3 w-3" />
-            Shipped
-          </Badge>
-        );
-      case "cancelled":
+      case "rejected":
         return (
           <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 flex items-center gap-1 font-medium">
             <XCircle className="h-3 w-3" />
-            Cancelled
+            Rejected
+          </Badge>
+        );
+      case "trash":
+        return (
+          <Badge variant="outline" className="bg-gray-100 text-gray-600 border-gray-200 flex items-center gap-1 font-medium">
+            <XCircle className="h-3 w-3" />
+            Trash
           </Badge>
         );
       default:
@@ -463,11 +456,10 @@ export default function OrdersPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Orders</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="processing">Processing</SelectItem>
-                <SelectItem value="shipped">Shipped</SelectItem>
-                <SelectItem value="delivered">Delivered</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="sale">Sale</SelectItem>
+                <SelectItem value="hold">Hold</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="trash">Trash</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -720,10 +712,10 @@ export default function OrdersPage() {
                               <Calendar className="h-4 w-4 text-primary" />
                               <span className="text-sm">Created: {new Date(selectedOrder.createdAt).toLocaleDateString()}</span>
                             </div>
-                            {selectedOrder.status === "delivered" && (
+                            {selectedOrder.status === "sale" && (
                               <div className="flex items-center gap-2">
                                 <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                <span className="text-sm">Delivered: {new Date(selectedOrder.updatedAt).toLocaleDateString()}</span>
+                                <span className="text-sm">Sold: {new Date(selectedOrder.updatedAt).toLocaleDateString()}</span>
                               </div>
                             )}
                           </div>
@@ -785,18 +777,17 @@ export default function OrdersPage() {
                 <Button variant="outline">Print Invoice</Button>
                 {/* Only show status update dropdown for admin or finance users */}
                 {user && (user.role === 'admin' || user.role === 'finance') && (
-                  <Select 
+                  <Select
                     onValueChange={(value) => updateOrderStatus(selectedOrder.id, value)}
                   >
                     <SelectTrigger className="w-[180px]">
                       <SelectValue placeholder="Update Status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="processing">Processing</SelectItem>
-                      <SelectItem value="shipped">Shipped</SelectItem>
-                      <SelectItem value="delivered">Delivered</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                      <SelectItem value="sale">Sale</SelectItem>
+                      <SelectItem value="hold">Hold</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                      <SelectItem value="trash">Trash</SelectItem>
                     </SelectContent>
                   </Select>
                 )}
