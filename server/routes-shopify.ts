@@ -368,17 +368,20 @@ export function registerShopifyRoutes(app: Express) {
    */
 
   // Handle orders/create webhook
-  app.post('/api/shopify/webhooks/orders-create', async (req, res) => {
+  app.post('/api/shopify/webhooks/orders-create', async (req: any, res) => {
     try {
       const hmac = req.headers['x-shopify-hmac-sha256'] as string;
       const shop = req.headers['x-shopify-shop-domain'] as string;
-      const body = JSON.stringify(req.body);
+      const body = req.rawBody || JSON.stringify(req.body);
 
       // Verify webhook HMAC
       // IMPORTANT: Shopify requires 401 (not 403) when HMAC is invalid
       if (!verifyWebhookHmac(body, hmac)) {
+        console.error('[Shopify Webhook] HMAC verification failed for shop:', shop);
         return res.status(401).json({ message: 'Unauthorized - Invalid webhook signature' });
       }
+
+      console.log('[Shopify Webhook] HMAC verified successfully for shop:', shop);
 
       // Process order
       await handleOrderCreated(shop, req.body);
@@ -400,15 +403,16 @@ export function registerShopifyRoutes(app: Express) {
   });
 
   // Handle orders/cancelled webhook
-  app.post('/api/shopify/webhooks/orders-cancelled', async (req, res) => {
+  app.post('/api/shopify/webhooks/orders-cancelled', async (req: any, res) => {
     try {
       const hmac = req.headers['x-shopify-hmac-sha256'] as string;
       const shop = req.headers['x-shopify-shop-domain'] as string;
-      const body = JSON.stringify(req.body);
+      const body = req.rawBody || JSON.stringify(req.body);
 
       // Verify webhook HMAC
       // IMPORTANT: Shopify requires 401 (not 403) when HMAC is invalid
       if (!verifyWebhookHmac(body, hmac)) {
+        console.error('[Shopify Webhook] HMAC verification failed for cancelled order, shop:', shop);
         return res.status(401).json({ message: 'Unauthorized - Invalid webhook signature' });
       }
 
@@ -423,15 +427,16 @@ export function registerShopifyRoutes(app: Express) {
   });
 
   // Handle app/uninstalled webhook
-  app.post('/api/shopify/webhooks/app-uninstalled', async (req, res) => {
+  app.post('/api/shopify/webhooks/app-uninstalled', async (req: any, res) => {
     try {
       const hmac = req.headers['x-shopify-hmac-sha256'] as string;
       const shop = req.headers['x-shopify-shop-domain'] as string;
-      const body = JSON.stringify(req.body);
+      const body = req.rawBody || JSON.stringify(req.body);
 
       // Verify webhook HMAC
       // IMPORTANT: Shopify requires 401 (not 403) when HMAC is invalid
       if (!verifyWebhookHmac(body, hmac)) {
+        console.error('[Shopify Webhook] HMAC verification failed for app uninstall, shop:', shop);
         return res.status(401).json({ message: 'Unauthorized - Invalid webhook signature' });
       }
 
@@ -452,16 +457,17 @@ export function registerShopifyRoutes(app: Express) {
    * Unified endpoint that handles all GDPR compliance webhooks
    * Routes based on X-Shopify-Topic header
    */
-  app.post('/api/shopify/webhooks/gdpr', async (req, res) => {
+  app.post('/api/shopify/webhooks/gdpr', async (req: any, res) => {
     try {
       const hmac = req.headers['x-shopify-hmac-sha256'] as string;
       const shop = req.headers['x-shopify-shop-domain'] as string;
       const topic = req.headers['x-shopify-topic'] as string;
-      const body = JSON.stringify(req.body);
+      const body = req.rawBody || JSON.stringify(req.body);
 
       // Verify webhook HMAC
       // IMPORTANT: Shopify requires 401 (not 403) when HMAC is invalid
       if (!verifyWebhookHmac(body, hmac)) {
+        console.error('[Shopify Webhook] HMAC verification failed for GDPR, shop:', shop, 'topic:', topic);
         return res.status(401).json({ message: 'Unauthorized - Invalid webhook signature' });
       }
 
@@ -532,11 +538,11 @@ export function registerShopifyRoutes(app: Express) {
 
   // Handle customers/data_request webhook
   // This webhook is triggered when a customer requests their data
-  app.post('/api/shopify/webhooks/customers-data_request', async (req, res) => {
+  app.post('/api/shopify/webhooks/customers-data_request', async (req: any, res) => {
     try {
       const hmac = req.headers['x-shopify-hmac-sha256'] as string;
       const shop = req.headers['x-shopify-shop-domain'] as string;
-      const body = JSON.stringify(req.body);
+      const body = req.rawBody || JSON.stringify(req.body);
 
       // Verify webhook HMAC
       // IMPORTANT: Shopify requires 401 (not 403) when HMAC is invalid
@@ -567,11 +573,11 @@ export function registerShopifyRoutes(app: Express) {
 
   // Handle customers/redact webhook
   // This webhook is triggered 48 hours after a customer requests data deletion
-  app.post('/api/shopify/webhooks/customers-redact', async (req, res) => {
+  app.post('/api/shopify/webhooks/customers-redact', async (req: any, res) => {
     try {
       const hmac = req.headers['x-shopify-hmac-sha256'] as string;
       const shop = req.headers['x-shopify-shop-domain'] as string;
-      const body = JSON.stringify(req.body);
+      const body = req.rawBody || JSON.stringify(req.body);
 
       // Verify webhook HMAC
       // IMPORTANT: Shopify requires 401 (not 403) when HMAC is invalid
@@ -603,11 +609,11 @@ export function registerShopifyRoutes(app: Express) {
 
   // Handle shop/redact webhook
   // This webhook is triggered 48 hours after a shop uninstalls the app
-  app.post('/api/shopify/webhooks/shop-redact', async (req, res) => {
+  app.post('/api/shopify/webhooks/shop-redact', async (req: any, res) => {
     try {
       const hmac = req.headers['x-shopify-hmac-sha256'] as string;
       const shop = req.headers['x-shopify-shop-domain'] as string;
-      const body = JSON.stringify(req.body);
+      const body = req.rawBody || JSON.stringify(req.body);
 
       // Verify webhook HMAC
       // IMPORTANT: Shopify requires 401 (not 403) when HMAC is invalid

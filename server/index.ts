@@ -12,6 +12,16 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+
+// Middleware to capture raw body for Shopify webhook verification
+// Must be BEFORE express.json()
+app.use('/api/shopify/webhooks', express.json({
+  verify: (req: any, res, buf) => {
+    req.rawBody = buf.toString('utf8');
+  },
+  limit: '50mb'
+}));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
