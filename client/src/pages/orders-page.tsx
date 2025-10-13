@@ -53,10 +53,11 @@ interface OrderType {
   status: string;
   totalAmount: number;
   notes: string;
+  utmSource?: string;
   createdAt: string;
   updatedAt: string;
   // Índice para poder acceder a propiedades con strings
-  [key: string]: string | number;
+  [key: string]: string | number | undefined;
 }
 
 interface OrderItemType {
@@ -684,7 +685,7 @@ export default function OrdersPage() {
                         <div className="flex-1">
                           <h4 className="text-sm font-semibold text-red-900 mb-2">⚠️ Order Automatically Marked as Trash</h4>
                           <p className="text-sm text-red-800 mb-3">
-                            This order from Shopify failed validation checks and was automatically marked as trash. Please review the errors below:
+                            This order {selectedOrder.utmSource === 'shopify' ? 'from Shopify' : 'from API'} failed validation checks and was automatically marked as trash. Please review the errors below:
                           </p>
                           <div className="bg-white border border-red-200 rounded p-3">
                             <pre className="text-xs text-red-900 whitespace-pre-wrap font-mono">
