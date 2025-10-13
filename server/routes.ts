@@ -11,6 +11,7 @@ import {
   insertLeadSchema,
   insertLeadItemSchema,
   insertCampaignSchema,
+  insertConnectionSchema,
   insertTransactionSchema,
   apiLeadSchema,
   apiLeadStatusSchema,

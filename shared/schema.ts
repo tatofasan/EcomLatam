@@ -340,6 +340,11 @@ export const insertTermsSchema = createInsertSchema(termsAndConditions).omit({
   updatedAt: true,
 });
 
+// Legacy schema aliases for backward compatibility
+export const insertConnectionSchema = insertCampaignSchema;
+export const insertOrderSchema = insertLeadSchema;
+export const insertOrderItemSchema = insertLeadItemSchema;
+
 // API schemas for external integrations
 export const apiLeadSchema = z.object({
   customerName: z.string().min(1),
