@@ -764,15 +764,15 @@ export default function OrdersPage() {
                             <tr key={idx} className={idx < selectedOrder.items!.length - 1 ? "border-b" : ""}>
                               <td className="py-3 px-3">{item.productName || `Product #${item.productId}`}</td>
                               <td className="py-3 px-3 text-center">{item.quantity}</td>
-                              <td className="py-3 px-3 text-center">${item.price.toFixed(2)}</td>
-                              <td className="py-3 px-3 text-right">${item.subtotal.toFixed(2)}</td>
+                              <td className="py-3 px-3 text-center">${Number(item.price).toFixed(2)}</td>
+                              <td className="py-3 px-3 text-right">${Number(item.subtotal).toFixed(2)}</td>
                             </tr>
                           ))}
                         </tbody>
                         <tfoot>
                           <tr className="border-t bg-accent">
                             <td colSpan={3} className="py-3 px-3 text-right font-medium">Total:</td>
-                            <td className="py-3 px-3 text-right font-medium text-primary">${selectedOrder.totalAmount.toFixed(2)}</td>
+                            <td className="py-3 px-3 text-right font-medium text-primary">${Number(selectedOrder.totalAmount).toFixed(2)}</td>
                           </tr>
                         </tfoot>
                       </table>
