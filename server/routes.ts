@@ -436,14 +436,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      
+
       const orderId = parseInt(req.params.id);
       const order = await storage.getOrder(orderId);
-      
+
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
       }
-      
+
       // Check if this order belongs to the authenticated user (or if user is admin/moderator)
       const isAdmin = req.user.role === 'admin';
       const isModerator = req.user.role === 'moderator';
@@ -451,12 +451,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (order.userId !== req.user.id && !hasAdminAccess) {
         return res.status(403).json({ message: "Forbidden" });
       }
-      
+
       const items = await storage.getOrderItems(orderId);
-      
+
+      // Map the items to ensure correct field names and types for the frontend
+      const mappedItems = items.map(item => ({
+        id: item.id,
+        orderId: item.leadId,
+        productId: item.id, // Using item id as productId since leadItems doesn't have productId
+        productName: item.productName,
+        quantity: item.quantity || 1,
+        price: parseFloat(item.price || '0'),
+        subtotal: parseFloat(item.total || '0') // Map 'total' field to 'subtotal' for frontend
+      }));
+
       res.json({
         ...order,
-        items
+        items: mappedItems
       });
     } catch (error) {
       console.error("Error fetching order:", error);
@@ -487,13 +498,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.body.items && Array.isArray(req.body.items)) {
         for (const item of req.body.items) {
           const itemData = {
-            orderId: order.id,
-            productId: item.productId,
+            leadId: order.id,
+            productName: item.productName || `Product #${item.productId}`,
             quantity: item.quantity,
-            price: item.price,
-            subtotal: item.price * item.quantity
+            price: item.price.toString(),
+            total: (item.price * item.quantity).toString()
           };
-          
+
           await storage.addOrderItem(itemData);
         }
       }
