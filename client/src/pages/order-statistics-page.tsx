@@ -4,11 +4,10 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import DashboardLayout from "@/components/layout/dashboard-layout";
-import { 
-  Loader2, 
+import {
+  Loader2,
   CalendarRange,
   Package2,
-  Database,
   ChevronUp,
   ChevronDown
 } from "lucide-react";
@@ -25,10 +24,8 @@ import {
 import Pagination from "@/components/pagination";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Order, Product } from "@/types";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Calendar } from "@/components/ui/calendar";
 import { DateRange } from "react-day-picker";
 import { Switch } from "@/components/ui/switch";
@@ -280,19 +277,6 @@ export default function OrderStatisticsPage() {
           </div>
         ) : (
           <>
-            {/* Title area */}
-            <div className="mb-6">
-              <div className="grid grid-cols-1 gap-4 items-center mb-4">
-                <Alert>
-                  <Database className="h-4 w-4" />
-                  <AlertTitle>Statistics Visualization</AlertTitle>
-                  <AlertDescription className="text-xs md:text-sm">
-                    This page shows lead statistics over time based on your actual lead data.
-                  </AlertDescription>
-                </Alert>
-              </div>
-            </div>
-            
             <Card>
               <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-2 md:space-y-0">
                 <div className="flex flex-col space-y-1">
