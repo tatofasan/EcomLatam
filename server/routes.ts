@@ -1290,6 +1290,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // 2. VALIDATE AND FETCH PRODUCT
       let product;
+      let productNotFound = false;
+
       try {
         if (leadData.productId) {
           product = await storage.getProduct(leadData.productId);
@@ -1305,61 +1307,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // If product not found, create a dummy product for validation purposes
+      // The validation layer will mark the lead as trash
+      const quantity = leadData.quantity || 1;
+
       if (!product) {
         const identifier = leadData.productId
           ? `ID ${leadData.productId}`
           : `SKU ${leadData.productSku}`;
 
-        console.warn("[API Lead Ingest] Product not found:", identifier);
+        console.warn("[API Lead Ingest] Product not found - will create trash lead:", identifier);
+        productNotFound = true;
 
-        return res.status(404).json({
-          success: false,
-          error: "PRODUCT_NOT_FOUND",
-          message: `Product not found: ${identifier}`
-        });
-      }
-
-      // 2.1 Validate product status
-      if (product.status === 'inactive' || product.status === 'draft') {
-        console.warn("[API Lead Ingest] Inactive product:", {
-          productId: product.id,
-          status: product.status
-        });
-
-        return res.status(422).json({
-          success: false,
-          error: "PRODUCT_INACTIVE",
-          message: `Product "${product.name}" is not available (status: ${product.status})`
-        });
-      }
-
-      // 2.2 Validate stock availability
-      const quantity = leadData.quantity || 1;
-      if (product.stock !== null && product.stock < quantity) {
-        console.warn("[API Lead Ingest] Insufficient stock:", {
-          productId: product.id,
-          available: product.stock,
-          requested: quantity
-        });
-
-        return res.status(422).json({
-          success: false,
-          error: "INSUFFICIENT_STOCK",
-          message: `Insufficient stock for "${product.name}". Available: ${product.stock}, Requested: ${quantity}`
-        });
+        // Create dummy product object for processing (won't be saved to DB)
+        product = {
+          id: 0, // Dummy ID
+          name: leadData.productSku || 'Unknown Product',
+          sku: leadData.productSku || '',
+          price: leadData.productPrice?.toString() || '0',
+          stock: null,
+          status: 'inactive',
+          payoutPo: '0',
+          userId: userId,
+          imageUrl: null,
+          additionalImages: null,
+          description: null,
+          weight: null,
+          dimensions: null,
+          category: null,
+          specifications: null,
+          reference: null,
+          provider: null,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
       }
 
       // 3. CALCULATE VALUES AUTOMATICALLY
-      const productPrice = parseFloat(product.price || "0");
-      const leadValue = productPrice * quantity; // Always calculated, never from request
-
-      if (leadValue <= 0) {
-        return res.status(400).json({
-          success: false,
-          error: "INVALID_VALUE",
-          message: "Lead value must be greater than 0"
-        });
-      }
+      const productPrice = leadData.productPrice || parseFloat(product.price || "0");
+      const leadValue = productPrice * quantity; // Use provided price or catalog price
 
       // Calculate commission: use product payoutPo or 0
       const commission = parseFloat(product.payoutPo || "0");
@@ -1417,7 +1403,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         lead = await storage.createLead({
           campaignId: leadData.campaignId || null,
-          productId: product.id,
+          productId: productNotFound ? null : product.id, // Use null if product not found
           customerName: leadData.customerName,
           customerEmail: leadData.customerEmail || null,
           customerPhone: leadData.customerPhone,
@@ -1466,8 +1452,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("[API Lead Ingest] Lead created but item creation failed for lead:", lead.id);
       }
 
-      // 7. UPDATE STOCK (if applicable)
-      if (product.stock !== null) {
+      // 7. UPDATE STOCK (if applicable) - only for real products
+      if (!productNotFound && product.stock !== null) {
         try {
           await storage.updateProduct(product.id, {
             ...product,
