@@ -11,6 +11,7 @@ import { leads, leadItems, products } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import type { ShopifyOrder, ShopifyFulfillmentOrder, ShopifyAssignedFulfillmentOrder } from './types';
 import { formatPhone } from '../../phoneValidation';
+import { checkDuplicateLeadToday } from '../../leadDuplicateValidation';
 
 /**
  * Validation result interface
@@ -154,6 +155,9 @@ export const convertShopifyOrderToEcomLatamLead = async (
       ? await formatPhone(customerPhoneRaw, 'AR', 'shopify', shop)
       : { originalPhone: '', formattedPhone: null, isValid: false };
 
+    // Check for duplicate phone number today
+    const duplicateCheck = await checkDuplicateLeadToday(phoneValidation.formattedPhone);
+
     // Build address
     const address = order.shipping_address || order.billing_address;
     const customerAddress = address
@@ -172,8 +176,21 @@ export const convertShopifyOrderToEcomLatamLead = async (
     let leadStatus: 'sale' | 'hold' | 'rejected' | 'trash' = 'hold';
     let notes = order.note || `Imported from Shopify: ${order.name}`;
 
-    // If validation failed, mark as trash and include error details
-    if (!validationResult.isValid) {
+    // Check for duplicate first (highest priority)
+    if (duplicateCheck.isDuplicate) {
+      leadStatus = 'trash';
+      notes = `⚠️ LEAD DUPLICADO - AUTOMATIC TRASH\n\n` +
+        `Mismo número de teléfono ya ingresado hoy.\n` +
+        `Lead original: ${duplicateCheck.duplicateLead?.leadNumber}\n` +
+        `Fecha original: ${duplicateCheck.duplicateLead?.createdAt.toISOString()}\n\n` +
+        `---\nOriginal Note: ${order.note || 'None'}`;
+
+      console.warn(`[Shopify Import] Order ${order.name} marked as TRASH due to duplicate phone:`, {
+        phone: phoneValidation.formattedPhone,
+        originalLead: duplicateCheck.duplicateLead?.leadNumber
+      });
+    } else if (!validationResult.isValid) {
+      // If validation failed, mark as trash and include error details
       leadStatus = 'trash';
       notes = `⚠️ ORDER VALIDATION FAILED - AUTOMATIC TRASH\n\n` +
         `Validation Errors:\n${validationResult.errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}\n\n` +
@@ -471,6 +488,9 @@ export const convertFulfillmentOrderToEcomLatamLead = async (
       ? await formatPhone(customerPhoneRaw, 'AR', 'shopify', shop)
       : { originalPhone: '', formattedPhone: null, isValid: false };
 
+    // Check for duplicate phone number today
+    const duplicateCheck = await checkDuplicateLeadToday(phoneValidation.formattedPhone);
+
     // Build address
     const customerAddress = destination.address1
       ? `${destination.address1} ${destination.address2 || ''}`.trim()
@@ -488,8 +508,21 @@ export const convertFulfillmentOrderToEcomLatamLead = async (
     let leadStatus: 'sale' | 'hold' | 'rejected' | 'trash' = 'hold';
     let notes = order.note || `Imported from Shopify (Fulfillment Service): ${order.name}`;
 
-    // If validation failed, mark as trash and include error details
-    if (!validationResult.isValid) {
+    // Check for duplicate first (highest priority)
+    if (duplicateCheck.isDuplicate) {
+      leadStatus = 'trash';
+      notes = `⚠️ LEAD DUPLICADO - AUTOMATIC TRASH\n\n` +
+        `Mismo número de teléfono ya ingresado hoy.\n` +
+        `Lead original: ${duplicateCheck.duplicateLead?.leadNumber}\n` +
+        `Fecha original: ${duplicateCheck.duplicateLead?.createdAt.toISOString()}\n\n` +
+        `---\nOriginal Note: ${order.note || 'None'}`;
+
+      console.warn(`[Shopify Fulfillment Import] Order ${order.name} marked as TRASH due to duplicate phone:`, {
+        phone: phoneValidation.formattedPhone,
+        originalLead: duplicateCheck.duplicateLead?.leadNumber
+      });
+    } else if (!validationResult.isValid) {
+      // If validation failed, mark as trash and include error details
       leadStatus = 'trash';
       notes = `⚠️ ORDER VALIDATION FAILED - AUTOMATIC TRASH\n\n` +
         `Validation Errors:\n${validationResult.errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}\n\n` +

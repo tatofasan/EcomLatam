@@ -5,6 +5,7 @@ import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import { registerShopifyRoutes } from "./routes-shopify";
 import { validateLead, formatValidationErrors } from "./leadValidation";
 import { formatPhone } from "./phoneValidation";
+import { checkDuplicateLeadToday } from "./leadDuplicateValidation";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -597,6 +598,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           customerPhoneOriginal: phoneValidation.originalPhone,
           customerPhoneFormatted: phoneValidation.formattedPhone
         };
+
+        // Check for duplicate phone number today
+        const duplicateCheck = await checkDuplicateLeadToday(phoneValidation.formattedPhone);
+
+        if (duplicateCheck.isDuplicate) {
+          // If duplicate found, mark as trash automatically
+          orderData.status = "trash";
+          orderData.notes = `Lead duplicado - mismo número de teléfono ya ingresado hoy. Lead original: ${duplicateCheck.duplicateLead?.leadNumber}`;
+
+          console.warn(`[Manual Order Creation] Order marked as TRASH due to duplicate phone:`, {
+            phone: phoneValidation.formattedPhone,
+            originalLead: duplicateCheck.duplicateLead?.leadNumber
+          });
+        }
       }
 
       const order = await storage.createOrder({
@@ -1398,6 +1413,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         leadData.publisherId || 'NODEF'
       );
 
+      // 4.1.1 CHECK FOR DUPLICATE PHONE NUMBER TODAY
+      const duplicateCheck = await checkDuplicateLeadToday(phoneValidation.formattedPhone);
+
       // 4.2 VALIDATE LEAD DATA
       // IMPORTANT: Pass the original lead price (not the fallback) so validation can detect price mismatches
       const priceForValidation = leadProvidedPrice ?? parseFloat(product.price || "0");
@@ -1417,12 +1435,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }]
       });
 
-      // Determine lead status based on validation
+      // Determine lead status based on validation and duplicate check
       let leadStatus: 'sale' | 'hold' | 'rejected' | 'trash' = "hold";
       let notes = "";
       let customFields: any = leadData.customFields || {};
 
-      if (!validationResult.isValid) {
+      // Check for duplicate lead first (highest priority)
+      if (duplicateCheck.isDuplicate) {
+        leadStatus = "trash";
+        notes = `Lead duplicado - mismo número de teléfono ya ingresado hoy. Lead original: ${duplicateCheck.duplicateLead?.leadNumber}`;
+        customFields = {
+          ...customFields,
+          validationStatus: 'duplicate',
+          duplicateReason: 'Same phone number already exists today',
+          originalLeadNumber: duplicateCheck.duplicateLead?.leadNumber,
+          originalLeadDate: duplicateCheck.duplicateLead?.createdAt.toISOString(),
+        };
+
+        console.warn(`[API Lead Ingest] Lead marked as TRASH due to duplicate phone:`, {
+          phone: phoneValidation.formattedPhone,
+          originalLead: duplicateCheck.duplicateLead?.leadNumber
+        });
+      } else if (!validationResult.isValid) {
         leadStatus = "trash";
         notes = formatValidationErrors(validationResult.errors);
         customFields = {
