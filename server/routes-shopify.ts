@@ -51,9 +51,26 @@ export function registerShopifyRoutes(app: Express) {
   app.get('/api/shopify/config', (req, res) => {
     const validation = validateConfig();
 
+    // Debug info (remove in production)
+    const apiSecret = process.env.SHOPIFY_API_SECRET;
+    const secretInfo = apiSecret
+      ? {
+          length: apiSecret.length,
+          firstChars: apiSecret.substring(0, 4),
+          lastChars: apiSecret.substring(apiSecret.length - 4),
+          hasSpaces: apiSecret.includes(' '),
+        }
+      : null;
+
     res.json({
       configured: validation.valid,
       errors: validation.errors,
+      debug: {
+        hasApiKey: !!process.env.SHOPIFY_API_KEY,
+        hasApiSecret: !!process.env.SHOPIFY_API_SECRET,
+        secretInfo,
+        nodeEnv: process.env.NODE_ENV,
+      }
     });
   });
 
