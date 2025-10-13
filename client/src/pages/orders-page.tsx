@@ -529,19 +529,6 @@ export default function OrdersPage() {
                       </th>
                       <th
                         className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none"
-                        onClick={() => handleSort("orderNumber")}
-                      >
-                        <div className="flex items-center">
-                          Order
-                          {sortField === "orderNumber" && (
-                            <span className="ml-1">
-                              {sortDirection === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                            </span>
-                          )}
-                        </div>
-                      </th>
-                      <th
-                        className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none"
                         onClick={() => handleSort("customerName")}
                       >
                         <div className="flex items-center">
@@ -601,7 +588,6 @@ export default function OrdersPage() {
                       .map((order) => (
                         <tr key={order.id} className="border-b border-border hover:bg-accent/20">
                           <td className="py-4 px-4 text-muted-foreground">#{order.id}</td>
-                          <td className="py-4 px-4 font-medium">{order.orderNumber}</td>
                           <td className="py-4 px-4">
                             <div>
                               <p>{order.customerName}</p>

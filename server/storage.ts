@@ -261,6 +261,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteCampaign(id: number): Promise<boolean> {
+    // Delete related records first to avoid foreign key constraint violations
+
+    // 1. Delete click tracking records
+    await db.delete(clickTracking).where(eq(clickTracking.campaignId, id));
+
+    // 2. Delete performance reports
+    await db.delete(performanceReports).where(eq(performanceReports.campaignId, id));
+
+    // 3. Delete leads associated with this campaign (set campaignId to null instead)
+    await db.update(leads)
+      .set({ campaignId: null })
+      .where(eq(leads.campaignId, id));
+
+    // 4. Finally, delete the campaign
     const result = await db.delete(campaigns).where(eq(campaigns.id, id));
     return result.rowCount > 0;
   }
