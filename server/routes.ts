@@ -465,10 +465,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subtotal: parseFloat(item.total || '0') // Map 'total' field to 'subtotal' for frontend
       }));
 
-      res.json({
+      // Map order fields to match frontend expectations
+      const mappedOrder = {
         ...order,
+        totalAmount: parseFloat(order.value || '0'), // Map 'value' to 'totalAmount' and convert to number
         items: mappedItems
-      });
+      };
+
+      res.json(mappedOrder);
     } catch (error) {
       console.error("Error fetching order:", error);
       res.status(500).json({ message: "Failed to fetch order" });
