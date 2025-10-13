@@ -1344,8 +1344,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // 3. CALCULATE VALUES AUTOMATICALLY
-      const productPrice = leadData.productPrice || parseFloat(product.price || "0");
-      const leadValue = productPrice * quantity; // Use provided price or catalog price
+      // Keep the original lead price separate for validation
+      const leadProvidedPrice = leadData.productPrice;
+      // Use provided price or fall back to catalog price for calculations
+      const productPrice = leadProvidedPrice ?? parseFloat(product.price || "0");
+      const leadValue = productPrice * quantity;
 
       // Calculate commission: use product payoutPo or 0
       const commission = parseFloat(product.payoutPo || "0");
@@ -1360,6 +1363,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ].filter(Boolean).join(', ');
 
       // 4.1 VALIDATE LEAD DATA
+      // IMPORTANT: Pass the original lead price (not the fallback) so validation can detect price mismatches
+      const priceForValidation = leadProvidedPrice ?? parseFloat(product.price || "0");
+
       const validationResult = await validateLead({
         customerName: leadData.customerName,
         customerPhone: leadData.customerPhone,
@@ -1370,7 +1376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lineItems: [{
           productName: product.name,
           sku: product.sku || '',
-          price: productPrice,
+          price: priceForValidation,
           quantity: quantity
         }]
       });
