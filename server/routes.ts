@@ -28,7 +28,7 @@ import {
   type InsertTerms
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, asc, sql, inArray } from "drizzle-orm";
+import { eq, desc, asc, sql, inArray, and, gte } from "drizzle-orm";
 import { verifyUserEmail, activateUserAccount } from "./verification";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -434,6 +434,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching orders:", error);
       res.status(500).json({ message: "Failed to fetch orders" });
+    }
+  });
+
+  // Get Shopify orders from last 7 days
+  app.get("/api/orders/shopify/recent", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = req.user.id;
+
+      // Calculate date 7 days ago
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      // Get all leads from the last 7 days where utmSource is 'shopify'
+      const shopifyLeads = await db
+        .select()
+        .from(leads)
+        .where(
+          and(
+            eq(leads.userId, userId),
+            gte(leads.createdAt, sevenDaysAgo)
+          )
+        )
+        .orderBy(desc(leads.createdAt));
+
+      // Filter only Shopify orders (those with utmSource = 'shopify' or leadNumber starts with 'SHOPIFY-')
+      const shopifyOrders = shopifyLeads.filter(lead =>
+        lead.utmSource === 'shopify' || lead.leadNumber?.startsWith('SHOPIFY-')
+      );
+
+      // Get items for each order
+      const ordersWithItems = await Promise.all(
+        shopifyOrders.map(async (order) => {
+          const items = await storage.getLeadItems(order.id);
+          return {
+            ...order,
+            totalAmount: parseFloat(order.value || '0'),
+            items: items.map(item => ({
+              id: item.id,
+              orderId: item.leadId,
+              productName: item.productName,
+              quantity: item.quantity || 1,
+              price: parseFloat(item.price || '0'),
+              subtotal: parseFloat(item.total || '0')
+            }))
+          };
+        })
+      );
+
+      res.json({
+        orders: ordersWithItems,
+        count: ordersWithItems.length,
+        dateRange: {
+          from: sevenDaysAgo.toISOString(),
+          to: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching Shopify orders:", error);
+      res.status(500).json({ message: "Failed to fetch Shopify orders" });
     }
   });
 

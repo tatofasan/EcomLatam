@@ -14,6 +14,7 @@ import WalletPage from "@/pages/wallet-page";
 import TeamPage from "@/pages/team-page";
 import AccountPage from "@/pages/account-page";
 import TermsPage from "@/pages/terms-page";
+import ShopifyOrdersPage from "@/pages/shopify-orders-page";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -26,6 +27,7 @@ function Router() {
       <ProtectedRoute path="/products" component={ProductsPage} />
       <ProtectedRoute path="/orders" component={OrdersPage} />
       <ProtectedRoute path="/orders/statistics" component={OrderStatisticsPage} />
+      <ProtectedRoute path="/shopify/orders" component={ShopifyOrdersPage} />
       <ProtectedRoute path="/connections" component={ConnectionsPage} />
       <ProtectedRoute path="/wallet" component={WalletPage} />
       <ProtectedRoute path="/team" component={TeamPage} />

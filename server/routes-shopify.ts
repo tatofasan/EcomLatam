@@ -126,8 +126,8 @@ export function registerShopifyRoutes(app: Express) {
       // Register webhooks
       await registerWebhooks(shop as string, tokenData.access_token);
 
-      // Redirect to success page
-      res.redirect('/connections?shopify=installed');
+      // Redirect to Shopify orders page (landing page for Shopify app)
+      res.redirect('/shopify/orders?installed=true');
     } catch (error) {
       console.error('Error in Shopify OAuth callback:', error);
       res.status(500).json({ message: 'Failed to complete Shopify installation' });
