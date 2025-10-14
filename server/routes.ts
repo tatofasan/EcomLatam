@@ -1860,7 +1860,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: store.id,
           name: store.shop,
           platform: 'shopify' as const,
-          status: store.isActive ? 'active' as const : 'inactive' as const,
+          status: store.status === 'active' ? 'active' as const : 'inactive' as const,
           products: Number(productsCount[0]?.count || 0),
           orders: Number(ordersCount[0]?.count || 0),
           createdAt: store.installedAt,

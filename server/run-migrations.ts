@@ -20,7 +20,12 @@ async function runMigrations() {
   try {
     // List of migrations to run in order
     // Note: Previously applied migrations have been removed since they only needed to run once
-    const migrations: Array<{ file: string; description: string }> = [];
+    const migrations: Array<{ file: string; description: string }> = [
+      {
+        file: '0010_add_utm_fields.sql',
+        description: 'Add utm_source, utm_medium, and utm_campaign columns to leads table'
+      }
+    ];
 
     if (migrations.length === 0) {
       console.log('[migrations] No pending migrations to run');

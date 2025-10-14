@@ -127,6 +127,9 @@ export const leads = pgTable("leads", {
   userAgent: text("user_agent"),
   referrerUrl: text("referrer_url"),
   landingPage: text("landing_page"),
+  utmSource: text("utm_source"), // UTM tracking: source (e.g., 'shopify', 'facebook', 'google')
+  utmMedium: text("utm_medium"), // UTM tracking: medium (e.g., 'cpc', 'email', 'banner')
+  utmCampaign: text("utm_campaign"), // UTM tracking: campaign name
   utmTerm: text("utm_term"),
   utmContent: text("utm_content"),
   clickId: text("click_id"), // Unique click identifier
