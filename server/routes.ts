@@ -2728,9 +2728,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // SECURITY FIX: Add error handling middleware at the end
-  // This must be the last middleware to catch all errors
-  app.use(notFoundHandler);
+  // SECURITY FIX: Add error handling middleware for API errors only
+  // Note: notFoundHandler is NOT added here because serveStatic (in server/index.ts)
+  // handles the catch-all route for the React SPA. Adding notFoundHandler here
+  // would prevent the frontend from loading.
   app.use(errorHandler);
 
   const httpServer = createServer(app);
