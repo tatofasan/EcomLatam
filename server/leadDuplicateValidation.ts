@@ -35,12 +35,17 @@ function logDuplicateCheck(message: string) {
 /**
  * Checks if a lead with the same formatted phone number already exists today
  *
+ * SECURITY FIX: Enhanced to check both formattedPhone and originalPhone
+ * to prevent bypassing duplicate detection with different phone formats
+ *
  * @param formattedPhone - The formatted phone number to check
+ * @param originalPhone - The original phone number to check (SECURITY FIX: added)
  * @param currentLeadNumber - Optional: exclude this lead number from the search (for updates)
  * @returns Object with isDuplicate flag and duplicate lead info if found
  */
 export async function checkDuplicateLeadToday(
   formattedPhone: string | null | undefined,
+  originalPhone?: string | null | undefined,
   currentLeadNumber?: string
 ): Promise<{
   isDuplicate: boolean;
@@ -51,9 +56,10 @@ export async function checkDuplicateLeadToday(
     userId: number | null;
   };
 }> {
-  // If no formatted phone provided, can't check for duplicates
-  if (!formattedPhone || formattedPhone.trim() === '') {
-    logDuplicateCheck(`No formatted phone provided, skipping duplicate check`);
+  // If no phone provided, can't check for duplicates
+  if ((!formattedPhone || formattedPhone.trim() === '') &&
+      (!originalPhone || originalPhone.trim() === '')) {
+    logDuplicateCheck(`No phone number provided, skipping duplicate check`);
     return { isDuplicate: false };
   }
 
@@ -63,11 +69,32 @@ export async function checkDuplicateLeadToday(
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
     const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
-    logDuplicateCheck(`Checking for duplicates with phone: ${formattedPhone} on ${startOfDay.toISOString().split('T')[0]}`);
+    logDuplicateCheck(
+      `Checking for duplicates - Formatted: ${formattedPhone || 'N/A'}, ` +
+      `Original: ${originalPhone || 'N/A'} on ${startOfDay.toISOString().split('T')[0]}`
+    );
 
-    // Build query conditions
+    // Build query conditions - check BOTH formatted and original phone
+    // SECURITY FIX: This prevents bypassing duplicate detection by sending
+    // the same phone number in different formats
+    const phoneConditions = [];
+
+    if (formattedPhone && formattedPhone.trim() !== '') {
+      phoneConditions.push(eq(leads.customerPhoneFormatted, formattedPhone));
+    }
+
+    if (originalPhone && originalPhone.trim() !== '') {
+      phoneConditions.push(eq(leads.customerPhoneOriginal, originalPhone));
+      // Also check if originalPhone matches any formattedPhone
+      phoneConditions.push(eq(leads.customerPhoneFormatted, originalPhone));
+    }
+
+    if (phoneConditions.length === 0) {
+      return { isDuplicate: false };
+    }
+
     const conditions = [
-      eq(leads.customerPhoneFormatted, formattedPhone),
+      sql`(${sql.join(phoneConditions, sql` OR `)})`,
       gte(leads.createdAt, startOfDay),
       lt(leads.createdAt, endOfDay)
     ];
@@ -84,7 +111,9 @@ export async function checkDuplicateLeadToday(
         customerName: leads.customerName,
         createdAt: leads.createdAt,
         userId: leads.userId,
-        status: leads.status
+        status: leads.status,
+        customerPhoneFormatted: leads.customerPhoneFormatted,
+        customerPhoneOriginal: leads.customerPhoneOriginal
       })
       .from(leads)
       .where(and(...conditions))
@@ -93,7 +122,9 @@ export async function checkDuplicateLeadToday(
     if (existingLeads.length > 0) {
       const duplicate = existingLeads[0];
       logDuplicateCheck(
-        `DUPLICATE FOUND! Phone: ${formattedPhone} | ` +
+        `DUPLICATE FOUND! ` +
+        `Searched - Formatted: ${formattedPhone || 'N/A'}, Original: ${originalPhone || 'N/A'} | ` +
+        `Found - Formatted: ${duplicate.customerPhoneFormatted}, Original: ${duplicate.customerPhoneOriginal} | ` +
         `Original Lead: ${duplicate.leadNumber} | ` +
         `Customer: ${duplicate.customerName} | ` +
         `Created: ${duplicate.createdAt.toISOString()} | ` +
@@ -111,7 +142,7 @@ export async function checkDuplicateLeadToday(
       };
     }
 
-    logDuplicateCheck(`No duplicate found for phone: ${formattedPhone}`);
+    logDuplicateCheck(`No duplicate found for phones - Formatted: ${formattedPhone || 'N/A'}, Original: ${originalPhone || 'N/A'}`);
     return { isDuplicate: false };
 
   } catch (error) {

@@ -9,6 +9,10 @@ import { checkDuplicateLeadToday } from "./leadDuplicateValidation";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+// Security middleware imports
+import { apiLeadLimiter, strictLimiter, orderStatusLimiter } from "./middleware/rateLimiter";
+import { validatePositiveInteger, sanitizeSettings, sanitizeCustomFields } from "./middleware/validators";
+import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import {
   insertProductSchema,
   insertLeadSchema,
@@ -52,25 +56,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
   
   // Middleware to authenticate using API key for API routes
+  // SECURITY: Enhanced with status and email verification checks
   const requireApiKey = async (req: Request, res: Response, next: Function) => {
     const apiKey = req.headers['x-api-key'] as string;
-    
+
     if (!apiKey) {
-      return res.status(401).json({ 
+      // Log attempt without API key for security monitoring
+      console.warn('[Security] API request without key:', {
+        ip: req.ip,
+        endpoint: req.path,
+        timestamp: new Date().toISOString()
+      });
+
+      return res.status(401).json({
         success: false,
-        message: "API key is required" 
+        message: "API key is required"
       });
     }
-    
+
     const user = await storage.getUserByApiKey(apiKey);
-    
+
     if (!user) {
-      return res.status(401).json({ 
+      // Log invalid API key attempt
+      console.warn('[Security] Invalid API key attempt:', {
+        ip: req.ip,
+        apiKeyPrefix: apiKey.substring(0, 8) + '...',
+        endpoint: req.path,
+        timestamp: new Date().toISOString()
+      });
+
+      return res.status(401).json({
         success: false,
-        message: "Invalid API key" 
+        message: "Invalid API key"
       });
     }
-    
+
+    // SECURITY FIX: Verify user account status
+    if (user.status !== 'active') {
+      console.warn('[Security] Inactive user API attempt:', {
+        userId: user.id,
+        username: user.username,
+        status: user.status,
+        endpoint: req.path,
+        timestamp: new Date().toISOString()
+      });
+
+      return res.status(403).json({
+        success: false,
+        message: `Account is ${user.status}. API access denied.`
+      });
+    }
+
+    // SECURITY FIX: Verify email is verified
+    if (!user.isEmailVerified) {
+      console.warn('[Security] Unverified email API attempt:', {
+        userId: user.id,
+        username: user.username,
+        email: user.email,
+        endpoint: req.path,
+        timestamp: new Date().toISOString()
+      });
+
+      return res.status(403).json({
+        success: false,
+        message: "Email not verified. API access denied."
+      });
+    }
+
     // Attach the user to the request object for later use
     req.user = user;
     next();
@@ -207,17 +259,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get a single product
-  app.get("/api/products/:id", async (req, res) => {
+  // SECURITY FIX: Added ownership verification and integer validation
+  app.get("/api/products/:id", requireAuth, async (req, res) => {
     try {
-      const productId = parseInt(req.params.id);
+      // Validate product ID is a positive integer
+      const productId = validatePositiveInteger(req.params.id, 'Product ID');
+
       const product = await storage.getProduct(productId);
-      
+
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
-      
+
+      // SECURITY FIX: Verify ownership or admin access
+      const isOwner = product.userId === req.user?.id;
+      const isAdmin = req.user?.role === 'admin' || req.user?.role === 'moderator';
+
+      if (!isOwner && !isAdmin) {
+        console.warn('[Security] Unauthorized product access attempt:', {
+          userId: req.user?.id,
+          productId,
+          productOwner: product.userId,
+          timestamp: new Date().toISOString()
+        });
+
+        return res.status(403).json({
+          message: "You do not have permission to view this product"
+        });
+      }
+
       res.json(product);
     } catch (error) {
+      // Handle validation errors specifically
+      if (error instanceof Error && error.message.includes('Product ID')) {
+        return res.status(400).json({ message: error.message });
+      }
+
       console.error("Error fetching product:", error);
       res.status(500).json({ message: "Failed to fetch product" });
     }
@@ -362,6 +439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update a product
+  // SECURITY FIX: Added ownership verification and integer validation
   app.put("/api/products/:id", requireAuth, async (req, res) => {
     // Finance users cannot update products (only admin, moderator and regular users)
     if (req.user?.role === 'finance') {
@@ -369,46 +447,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const productId = parseInt(req.params.id);
-      const parseResult = insertProductSchema.safeParse(req.body);
-      
-      if (!parseResult.success) {
-        return res.status(400).json({ 
-          message: "Invalid product data", 
-          errors: parseResult.error.format() 
-        });
-      }
-      
-      const product = await storage.updateProduct(productId, parseResult.data);
-      
-      if (!product) {
+      // Validate product ID is a positive integer
+      const productId = validatePositiveInteger(req.params.id, 'Product ID');
+
+      // SECURITY FIX: Verify that the product exists and check ownership
+      const existingProduct = await storage.getProduct(productId);
+
+      if (!existingProduct) {
         return res.status(404).json({ message: "Product not found" });
       }
-      
+
+      // SECURITY FIX: Ownership verification
+      const isOwner = existingProduct.userId === req.user?.id;
+      const isAdmin = req.user?.role === 'admin';
+
+      if (!isOwner && !isAdmin) {
+        console.warn('[Security] Unauthorized product update attempt:', {
+          userId: req.user?.id,
+          productId,
+          productOwner: existingProduct.userId,
+          timestamp: new Date().toISOString()
+        });
+
+        return res.status(403).json({
+          message: "You do not have permission to update this product"
+        });
+      }
+
+      // Validate product data
+      const parseResult = insertProductSchema.safeParse(req.body);
+
+      if (!parseResult.success) {
+        return res.status(400).json({
+          message: "Invalid product data",
+          errors: parseResult.error.format()
+        });
+      }
+
+      // SECURITY FIX: Prevent userId manipulation (mass assignment protection)
+      const safeData = { ...parseResult.data };
+      delete (safeData as any).userId; // Never allow changing the owner
+
+      const product = await storage.updateProduct(productId, safeData);
+
       res.json(product);
     } catch (error) {
+      // Handle validation errors specifically
+      if (error instanceof Error && error.message.includes('Product ID')) {
+        return res.status(400).json({ message: error.message });
+      }
+
       console.error("Error updating product:", error);
       res.status(500).json({ message: "Failed to update product" });
     }
   });
 
   // Delete a product
+  // SECURITY FIX: Added ownership verification and integer validation
   app.delete("/api/products/:id", requireAuth, async (req, res) => {
     // Finance users cannot delete products (only admin and regular users)
     if (req.user?.role === 'finance') {
       return res.status(403).json({ message: "Forbidden: Finance users cannot delete products" });
     }
-    
+
     try {
-      const productId = parseInt(req.params.id);
-      const success = await storage.deleteProduct(productId);
-      
-      if (!success) {
+      // Validate product ID is a positive integer
+      const productId = validatePositiveInteger(req.params.id, 'Product ID');
+
+      // SECURITY FIX: Verify that the product exists and check ownership
+      const existingProduct = await storage.getProduct(productId);
+
+      if (!existingProduct) {
         return res.status(404).json({ message: "Product not found" });
       }
-      
+
+      // SECURITY FIX: Ownership verification
+      const isOwner = existingProduct.userId === req.user?.id;
+      const isAdmin = req.user?.role === 'admin';
+
+      if (!isOwner && !isAdmin) {
+        console.warn('[Security] Unauthorized product deletion attempt:', {
+          userId: req.user?.id,
+          productId,
+          productOwner: existingProduct.userId,
+          timestamp: new Date().toISOString()
+        });
+
+        return res.status(403).json({
+          message: "You do not have permission to delete this product"
+        });
+      }
+
+      const success = await storage.deleteProduct(productId);
+
+      if (!success) {
+        return res.status(500).json({ message: "Failed to delete product" });
+      }
+
       res.status(204).send();
     } catch (error) {
+      // Handle validation errors specifically
+      if (error instanceof Error && error.message.includes('Product ID')) {
+        return res.status(400).json({ message: error.message });
+      }
+
       console.error("Error deleting product:", error);
       res.status(500).json({ message: "Failed to delete product" });
     }
@@ -600,7 +742,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
 
         // Check for duplicate phone number today
-        const duplicateCheck = await checkDuplicateLeadToday(phoneValidation.formattedPhone);
+        // SECURITY FIX: Pass both formatted and original phone for enhanced duplicate detection
+        const duplicateCheck = await checkDuplicateLeadToday(
+          phoneValidation.formattedPhone,
+          phoneValidation.originalPhone
+        );
 
         if (duplicateCheck.isDuplicate) {
           // If duplicate found, mark as trash automatically
@@ -642,7 +788,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update order status - only admin or finance users can update
-  app.patch("/api/orders/:id/status", requireAuth, async (req, res) => {
+  // SECURITY FIX: Added rate limiting (30 updates per minute)
+  app.patch("/api/orders/:id/status", requireAuth, orderStatusLimiter, async (req, res) => {
     try {
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -903,34 +1050,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Create a withdrawal transaction
-  app.post("/api/wallet/withdraw", requireAuth, async (req, res) => {
+  // SECURITY FIX: Added rate limiting and database-level locking to prevent race conditions
+  app.post("/api/wallet/withdraw", requireAuth, strictLimiter, async (req, res) => {
     try {
       if (!req.user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      
+
       const userId = req.user.id;
       const { amount, walletAddress, walletId, walletName } = req.body;
-      
+
       // Validate request
       if (!amount || typeof amount !== 'number' || amount <= 0) {
         return res.status(400).json({ message: "Invalid withdrawal amount" });
       }
-      
+
       if (!walletAddress || typeof walletAddress !== 'string') {
         return res.status(400).json({ message: "Wallet address is required" });
       }
-      
-      // Check if user has sufficient balance
-      const currentBalance = await storage.getUserBalance(userId);
-      
-      if (amount > currentBalance) {
-        return res.status(400).json({ message: "Insufficient balance for withdrawal" });
-      }
-      
+
       // Format wallet description
-      const walletDescription = walletName ? `${walletName} (${walletAddress.substring(0, 8)}...)` : walletAddress;
-      
+      const walletDescription = walletName
+        ? `${walletName} (${walletAddress.substring(0, 8)}...)`
+        : walletAddress;
+
       // Create withdrawal transaction (negative amount)
       const withdrawal: InsertTransaction = {
         type: "withdrawal",
@@ -944,10 +1087,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           walletName
         }
       };
-      
-      const transaction = await storage.createTransaction(withdrawal, userId);
-      
-      res.status(201).json(transaction);
+
+      // SECURITY FIX: Use method with database-level locking to prevent race conditions
+      const result = await storage.createWithdrawalWithLock(
+        userId,
+        amount,
+        withdrawal
+      );
+
+      if (!result.success) {
+        return res.status(400).json({
+          message: result.error || "Insufficient balance for withdrawal"
+        });
+      }
+
+      res.status(201).json(result.transaction);
     } catch (error) {
       console.error("Error creating withdrawal:", error);
       res.status(500).json({ message: "Failed to process withdrawal" });
@@ -1104,11 +1258,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!user) {
           return res.status(404).json({ message: "User not found" });
         }
-        
-        // Merge existing settings with new settings
+
+        // SECURITY FIX: Sanitize settings to prevent mass assignment attacks
+        const sanitizedSettings = sanitizeSettings(userData.settings);
+
+        // Merge existing settings with sanitized new settings
         allowedUpdates.settings = {
           ...(user.settings || {}),
-          ...(userData.settings || {})
+          ...sanitizedSettings
         };
       }
       
@@ -1303,7 +1460,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // API endpoint for lead ingestion (requires API key) - supports both productId and productSku
   // Enhanced version with robust validations and better error handling
-  app.post("/api/external/orders", requireApiKey, async (req, res) => {
+  // SECURITY FIX: Added rate limiting (10 leads per minute)
+  app.post("/api/external/orders", apiLeadLimiter, requireApiKey, async (req, res) => {
     const startTime = Date.now();
 
     try {
@@ -1414,7 +1572,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       // 4.1.1 CHECK FOR DUPLICATE PHONE NUMBER TODAY
-      const duplicateCheck = await checkDuplicateLeadToday(phoneValidation.formattedPhone);
+      // SECURITY FIX: Pass both formatted and original phone for enhanced duplicate detection
+      const duplicateCheck = await checkDuplicateLeadToday(
+        phoneValidation.formattedPhone,
+        phoneValidation.originalPhone
+      );
 
       // 4.2 VALIDATE LEAD DATA
       // IMPORTANT: Pass the original lead price (not the fallback) so validation can detect price mismatches
@@ -2565,6 +2727,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // SECURITY FIX: Add error handling middleware at the end
+  // This must be the last middleware to catch all errors
+  app.use(notFoundHandler);
+  app.use(errorHandler);
 
   const httpServer = createServer(app);
 

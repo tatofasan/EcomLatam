@@ -65,6 +65,7 @@ export interface IStorage {
   createTransaction(transaction: InsertTransaction, userId: number): Promise<Transaction>;
   updateTransactionStatus(id: number, status: string, paymentProof?: string): Promise<Transaction | undefined>;
   getUserBalance(userId: number): Promise<number>;
+  createWithdrawalWithLock(userId: number, amount: number, withdrawal: InsertTransaction): Promise<{ success: boolean; transaction?: Transaction; error?: string }>;
   
   // Click tracking methods
   trackClick(clickData: Partial<ClickTrack>): Promise<ClickTrack>;
@@ -364,7 +365,7 @@ export class DatabaseStorage implements IStorage {
 
   async getUserBalance(userId: number): Promise<number> {
     const result = await db.select({
-      balance: sql<number>`COALESCE(SUM(CASE 
+      balance: sql<number>`COALESCE(SUM(CASE
         WHEN type IN ('deposit', 'commission', 'bonus') THEN CAST(amount AS DECIMAL)
         WHEN type IN ('withdrawal', 'adjustment') THEN -CAST(amount AS DECIMAL)
         ELSE 0 END), 0)`
@@ -374,8 +375,95 @@ export class DatabaseStorage implements IStorage {
       eq(transactions.userId, userId),
       eq(transactions.status, "completed" as any)
     ));
-    
+
     return Number(result[0]?.balance || 0);
+  }
+
+  /**
+   * SECURITY FIX: Creates a withdrawal with database-level locking to prevent race conditions
+   *
+   * This method uses a pessimistic lock (SELECT FOR UPDATE) to ensure that the balance
+   * cannot be modified by concurrent transactions. This prevents double-spending attacks
+   * where multiple withdrawal requests could be processed simultaneously.
+   *
+   * @param userId - User ID requesting the withdrawal
+   * @param amount - Withdrawal amount (positive number)
+   * @param withdrawal - Withdrawal transaction data
+   * @returns Result object with success flag, transaction, or error message
+   */
+  async createWithdrawalWithLock(
+    userId: number,
+    amount: number,
+    withdrawal: InsertTransaction
+  ): Promise<{ success: boolean; transaction?: Transaction; error?: string }> {
+    try {
+      // Use a database transaction with row-level locking
+      const result = await db.transaction(async (tx) => {
+        // 1. Lock all completed transactions for this user (SELECT FOR UPDATE)
+        // This prevents other transactions from reading/writing balance until we commit
+        const balanceResult = await tx
+          .select({
+            balance: sql<number>`COALESCE(SUM(CASE
+              WHEN type IN ('deposit', 'commission', 'bonus') THEN CAST(amount AS DECIMAL)
+              WHEN type IN ('withdrawal', 'adjustment') THEN -CAST(amount AS DECIMAL)
+              ELSE 0 END), 0)`
+          })
+          .from(transactions)
+          .where(and(
+            eq(transactions.userId, userId),
+            eq(transactions.status, "completed" as any)
+          ))
+          .for('update'); // PESSIMISTIC LOCK - crucial for preventing race conditions
+
+        const currentBalance = Number(balanceResult[0]?.balance || 0);
+
+        console.log('[Withdrawal] Balance check with lock:', {
+          userId,
+          currentBalance,
+          requestedAmount: amount,
+          timestamp: new Date().toISOString()
+        });
+
+        // 2. Verify balance is sufficient (with lock held)
+        if (amount > currentBalance) {
+          console.warn('[Withdrawal] Insufficient balance detected:', {
+            userId,
+            currentBalance,
+            requestedAmount: amount
+          });
+          throw new Error("Insufficient balance");
+        }
+
+        // 3. Create withdrawal transaction (lock still held)
+        const [transaction] = await tx
+          .insert(transactions)
+          .values({ ...withdrawal, userId })
+          .returning();
+
+        console.log('[Withdrawal] Transaction created with lock:', {
+          transactionId: transaction.id,
+          userId,
+          amount,
+          newBalance: currentBalance - amount
+        });
+
+        // 4. Commit transaction (releases lock)
+        return { success: true, transaction };
+      });
+
+      return result;
+    } catch (error) {
+      console.error('[Withdrawal] Transaction failed:', {
+        userId,
+        amount,
+        error: error instanceof Error ? error.message : String(error)
+      });
+
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      };
+    }
   }
 
   // Click tracking methods
