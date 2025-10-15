@@ -33,38 +33,73 @@ async function runMigration() {
   try {
     console.log('🚀 Starting commission → payout migration...\n');
 
-    // Read the SQL migration file
-    const migrationSQL = fs.readFileSync(
-      join(__dirname, 'migrations', 'commission-to-payout.sql'),
-      'utf-8'
-    );
+    // Step 1: Add enum value OUTSIDE transaction (PostgreSQL requirement)
+    console.log('📋 Step 1: Adding new enum value...');
+    try {
+      await client.query("ALTER TYPE transaction_type ADD VALUE IF NOT EXISTS 'payout'");
+      console.log('  ✓ Added "payout" to transaction_type enum');
+    } catch (enumError) {
+      // Ignore if value already exists
+      if (!enumError.message.includes('already exists')) {
+        throw enumError;
+      }
+      console.log('  ✓ Enum value "payout" already exists');
+    }
 
-    console.log('📄 Executing migration SQL...');
+    // Step 2: Create payout_type enum if not exists
+    console.log('📋 Step 2: Creating payout_type enum...');
+    await client.query(`
+      DO $$
+      BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payout_type') THEN
+              CREATE TYPE payout_type AS ENUM ('fixed', 'percentage', 'tiered');
+          END IF;
+      END $$;
+    `);
+    console.log('  ✓ Created payout_type enum');
 
-    // Start transaction
+    // Step 3: Rename columns and update data in transaction
+    console.log('📋 Step 3: Renaming columns and updating data...');
+
     await client.query('BEGIN');
 
-    // Execute the migration
-    await client.query(migrationSQL);
+    // Rename columns
+    await client.query('ALTER TABLE leads RENAME COLUMN commission TO payout');
+    console.log('  ✓ leads.commission → leads.payout');
 
-    // Commit transaction
+    await client.query('ALTER TABLE performance_reports RENAME COLUMN commission TO payout');
+    console.log('  ✓ performance_reports.commission → performance_reports.payout');
+
+    await client.query('ALTER TABLE users RENAME COLUMN commission_rate TO payout_rate');
+    console.log('  ✓ users.commission_rate → users.payout_rate');
+
+    await client.query('ALTER TABLE advertisers RENAME COLUMN commission_settings TO payout_settings');
+    console.log('  ✓ advertisers.commission_settings → advertisers.payout_settings');
+
+    // Update transaction type values
+    await client.query("UPDATE transactions SET type = 'payout' WHERE type = 'commission'");
+    console.log('  ✓ transactions.type: "commission" → "payout"');
+
+    // Add comments
+    await client.query("COMMENT ON COLUMN leads.payout IS 'Payout amount for confirmed sales (in USD)'");
+    await client.query("COMMENT ON COLUMN performance_reports.payout IS 'Total payout for the reporting period (in USD)'");
+    await client.query("COMMENT ON COLUMN users.payout_rate IS 'Default payout rate/percentage for user'");
+    await client.query("COMMENT ON COLUMN advertisers.payout_settings IS 'Default payout rules and settings'");
+    console.log('  ✓ Added column comments');
+
     await client.query('COMMIT');
 
     console.log('\n✅ Migration completed successfully!');
-    console.log('\nChanges applied:');
-    console.log('  ✓ leads.commission → leads.payout');
-    console.log('  ✓ performance_reports.commission → performance_reports.payout');
-    console.log('  ✓ users.commission_rate → users.payout_rate');
-    console.log('  ✓ advertisers.commission_settings → advertisers.payout_settings');
-    console.log('  ✓ transactions.type: "commission" → "payout"');
-    console.log('  ✓ Created payout_type enum');
-
     console.log('\n🎉 Database schema updated successfully!');
     console.log('\n⚠️  IMPORTANT: After this migration, redeploy your application');
     console.log('   to use the new payout terminology.');
 
   } catch (error) {
-    await client.query('ROLLBACK');
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackError) {
+      // Ignore rollback errors
+    }
     console.error('\n❌ Migration failed!');
     console.error('Error:', error.message);
     console.error('\nThe migration was rolled back. No changes were made to the database.');
