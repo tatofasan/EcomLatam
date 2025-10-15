@@ -25,7 +25,7 @@ interface DashboardMetrics {
   totalOffers: number;
   totalLeads: number;
   totalRevenue: number;
-  totalCommission: number;
+  totalPayout: number;
   recentLeads: Array<{
     id: number;
     leadNumber: string;
@@ -136,8 +136,8 @@ export default function HomePage() {
                     <TrendingUp className="w-6 h-6 text-amber-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Commission</p>
-                    <h3 className="text-2xl font-bold">${metrics.totalCommission.toLocaleString()}</h3>
+                    <p className="text-sm text-gray-500">Payout</p>
+                    <h3 className="text-2xl font-bold">${metrics.totalPayout.toLocaleString()}</h3>
                   </div>
                 </CardContent>
               </Card>

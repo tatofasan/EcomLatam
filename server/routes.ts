@@ -215,7 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: "sale", // Estado válido para leads
           quality: "standard",
           value: "199.99",
-          commission: "20.00",
+          payout: "20.00",
           notes: "Lead de prueba (ayer-hoy)",
           isConverted: true,
           postbackSent: false,
@@ -690,7 +690,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         shippingAddress: order.customerAddress || '', // Map 'customerAddress' to 'shippingAddress'
         customerCity: order.customerCity || null, // Include city for shipping info
         customerCountry: order.customerCountry || null, // Include country for shipping info
-        commission: order.commission || '0', // Include commission
+        payout: order.payout || '0', // Include payout
         items: mappedItems
       };
 
@@ -870,9 +870,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate revenue from confirmed sales
       const saleLeads = leadsList.filter(lead => lead.status === 'sale');
       const totalRevenue = saleLeads.reduce((sum, lead) => sum + parseFloat(lead.value || '0'), 0);
-      
-      // Calculate total commission from confirmed sales
-      const totalCommission = saleLeads.reduce((sum, lead) => sum + parseFloat(lead.commission || '0'), 0);
+
+      // Calculate total payout from confirmed sales
+      const totalPayout = saleLeads.reduce((sum, lead) => sum + parseFloat(lead.payout || '0'), 0);
       
       // Get recent leads (limit to 5)
       let recentLeadsRaw;
@@ -962,7 +962,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalOffers: offersList.length,
         totalLeads: leadsList.length,
         totalRevenue: parseFloat(totalRevenue.toFixed(2)),
-        totalCommission: parseFloat(totalCommission.toFixed(2)),
+        totalPayout: parseFloat(totalPayout.toFixed(2)),
         recentLeads: recentLeads || [],
         leadStatus: {
           sale: saleCount,
@@ -1551,9 +1551,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const productPrice = leadProvidedPrice ?? parseFloat(product.price || "0");
       const leadValue = productPrice * quantity;
 
-      // Calculate commission: use product payoutPo or 0
-      const commission = parseFloat(product.payoutPo || "0");
-      const totalCommission = commission * quantity;
+      // Calculate payout: use product payoutPo or 0
+      const payout = parseFloat(product.payoutPo || "0");
+      const totalPayout = payout * quantity;
 
       // 4. BUILD COMPLETE ADDRESS WITH ARGENTINA AS DEFAULT COUNTRY
       const fullAddress = [
@@ -1653,7 +1653,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: leadStatus,
           quality: "standard",
           value: leadValue.toString(),
-          commission: totalCommission.toString(),
+          payout: totalPayout.toString(),
           ipAddress: leadData.ipAddress || null,
           userAgent: leadData.userAgent || null,
           publisherId: leadData.publisherId || null,

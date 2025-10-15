@@ -81,7 +81,7 @@ export interface IStorage {
   getPerformanceReports(userId: number, startDate?: Date, endDate?: Date): Promise<PerformanceReport[]>;
   
   // Lead conversion methods
-  convertLead(leadId: number, conversionData: { value: number; commission: number }): Promise<void>;
+  convertLead(leadId: number, conversionData: { value: number; payout: number }): Promise<void>;
   
   // Legacy compatibility methods
   getAllProducts(): Promise<Product[]>;
@@ -366,7 +366,7 @@ export class DatabaseStorage implements IStorage {
   async getUserBalance(userId: number): Promise<number> {
     const result = await db.select({
       balance: sql<number>`COALESCE(SUM(CASE
-        WHEN type IN ('deposit', 'commission', 'bonus') THEN CAST(amount AS DECIMAL)
+        WHEN type IN ('deposit', 'payout', 'bonus') THEN CAST(amount AS DECIMAL)
         WHEN type IN ('withdrawal', 'adjustment') THEN -CAST(amount AS DECIMAL)
         ELSE 0 END), 0)`
     })
@@ -404,7 +404,7 @@ export class DatabaseStorage implements IStorage {
         const balanceResult = await tx
           .select({
             balance: sql<number>`COALESCE(SUM(CASE
-              WHEN type IN ('deposit', 'commission', 'bonus') THEN CAST(amount AS DECIMAL)
+              WHEN type IN ('deposit', 'payout', 'bonus') THEN CAST(amount AS DECIMAL)
               WHEN type IN ('withdrawal', 'adjustment') THEN -CAST(amount AS DECIMAL)
               ELSE 0 END), 0)`
           })
@@ -530,7 +530,7 @@ export class DatabaseStorage implements IStorage {
       leads: 0,
       sales: 0,
       revenue: "0.00",
-      commission: "0.00",
+      payout: "0.00",
       conversionRate: "0.00",
       costPerLead: "0.00",
       returnOnInvestment: "0.00"
@@ -555,14 +555,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Lead conversion
-  async convertLead(leadId: number, conversionData: { value: number; commission: number }): Promise<void> {
+  async convertLead(leadId: number, conversionData: { value: number; payout: number }): Promise<void> {
     await db.update(leads)
       .set({
         status: "sale" as any,
         isConverted: true,
         conversionTime: new Date(),
         conversionValue: conversionData.value.toString(),
-        commission: conversionData.commission.toString(),
+        payout: conversionData.payout.toString(),
         updatedAt: new Date()
       })
       .where(eq(leads.id, leadId));
@@ -626,8 +626,8 @@ export class DatabaseStorage implements IStorage {
         category: "Electronics",
         sku: "IPHONE15PRO",
         price: "999.00",
-        commission: "50.00",
-        commissionType: "fixed" as any,
+        payout: "50.00",
+        payoutType: "fixed" as any,
         landingPageUrl: "https://example.com/iphone15",
         isActive: true
       },
@@ -636,9 +636,9 @@ export class DatabaseStorage implements IStorage {
         description: "Aprende marketing digital desde cero",
         category: "Education",
         sku: "MKTCOURSE01",
-        price: "297.00", 
-        commission: "89.10",
-        commissionType: "percentage" as any,
+        price: "297.00",
+        payout: "89.10",
+        payoutType: "percentage" as any,
         landingPageUrl: "https://example.com/marketing-course",
         isActive: true
       }
@@ -670,7 +670,7 @@ export class DatabaseStorage implements IStorage {
         status: "sale" as any,
         quality: "premium",
         value: "50.00",
-        commission: "15.00",
+        payout: "15.00",
         isConverted: false,
         postbackSent: false
       },
@@ -684,7 +684,7 @@ export class DatabaseStorage implements IStorage {
         status: "hold" as any,
         quality: "standard",
         value: "30.00",
-        commission: "9.00",
+        payout: "9.00",
         isConverted: false,
         postbackSent: false
       }
@@ -721,16 +721,16 @@ export class DatabaseStorage implements IStorage {
   async seedDemoTransactions(userId: number) {
     const demoTransactions = [
       {
-        type: "commission" as any,
+        type: "payout" as any,
         amount: "15.00",
         status: "completed" as any,
-        description: "Comisión por venta exitosa"
+        description: "Payout por venta exitosa"
       },
       {
-        type: "commission" as any,
-        amount: "9.00", 
+        type: "payout" as any,
+        amount: "9.00",
         status: "pending" as any,
-        description: "Comisión pendiente de aprobación"
+        description: "Payout pendiente de aprobación"
       }
     ];
 

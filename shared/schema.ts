@@ -9,9 +9,9 @@ export const userStatusEnum = pgEnum("user_status", ["pending", "active", "inact
 export const leadStatusEnum = pgEnum("lead_status", ["sale", "hold", "rejected", "trash"]);
 export const campaignStatusEnum = pgEnum("campaign_status", ["active", "paused", "completed", "draft"]);
 export const offerStatusEnum = pgEnum("offer_status", ["active", "inactive", "pending_approval"]);
-export const commissionTypeEnum = pgEnum("commission_type", ["fixed", "percentage", "tiered"]);
+export const payoutTypeEnum = pgEnum("payout_type", ["fixed", "percentage", "tiered"]);
 export const trafficSourceEnum = pgEnum("traffic_source", ["organic", "paid", "social", "email", "direct", "referral"]);
-export const transactionTypeEnum = pgEnum("transaction_type", ["deposit", "withdrawal", "commission", "bonus", "adjustment"]);
+export const transactionTypeEnum = pgEnum("transaction_type", ["deposit", "withdrawal", "payout", "bonus", "adjustment"]);
 export const transactionStatusEnum = pgEnum("transaction_status", ["pending", "completed", "failed", "cancelled"]);
 export const shopifyStoreStatusEnum = pgEnum("shopify_store_status", ["active", "inactive", "error", "pending"]);
 
@@ -25,7 +25,7 @@ export const users = pgTable("users", {
   role: userRoleEnum("role").default("user"),
   status: userStatusEnum("status").default("pending"),
   apiKey: text("api_key").unique(),
-  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).default("0.00"), // Default commission %
+  payoutRate: decimal("payout_rate", { precision: 5, scale: 2 }).default("0.00"), // Default payout %
   referralCode: text("referral_code").unique(),
   country: text("country"),
   phone: text("phone"),
@@ -48,7 +48,7 @@ export const advertisers = pgTable("advertisers", {
   phone: text("phone"),
   website: text("website"),
   status: text("status").default("active"), // active, inactive, suspended
-  commissionSettings: json("commission_settings"), // Default commission rules
+  payoutSettings: json("payout_settings"), // Default payout rules
   postbackUrl: text("postback_url"), // URL to notify conversions
   apiCredentials: json("api_credentials"), // API keys for integration
   createdAt: timestamp("created_at").defaultNow(),
@@ -120,7 +120,7 @@ export const leads = pgTable("leads", {
   status: leadStatusEnum("status").default("hold"),
   quality: text("quality").default("standard"), // premium, standard, basic
   value: decimal("value", { precision: 10, scale: 2 }),
-  commission: decimal("commission", { precision: 10, scale: 2 }),
+  payout: decimal("payout", { precision: 10, scale: 2 }),
   
   // Tracking Information
   ipAddress: text("ip_address"),
@@ -233,7 +233,7 @@ export const performanceReports = pgTable("performance_reports", {
   leads: integer("leads").default(0),
   sales: integer("sales").default(0),
   revenue: decimal("revenue", { precision: 10, scale: 2 }).default("0.00"),
-  commission: decimal("commission", { precision: 10, scale: 2 }).default("0.00"),
+  payout: decimal("payout", { precision: 10, scale: 2 }).default("0.00"),
   conversionRate: decimal("conversion_rate", { precision: 5, scale: 2 }).default("0.00"),
   costPerLead: decimal("cost_per_lead", { precision: 10, scale: 2 }).default("0.00"),
   returnOnInvestment: decimal("roi", { precision: 5, scale: 2 }).default("0.00"),
@@ -274,7 +274,7 @@ export const insertUserSchema = createInsertSchema(users, {
   role: z.enum(["user", "admin", "moderator", "finance"]).default("user"),
   status: z.enum(["pending", "active", "inactive", "suspended"]).default("pending"),
   email: z.string().email("Por favor ingresa un correo electrónico válido"),
-  commissionRate: z.string().transform(val => parseFloat(val)),
+  payoutRate: z.string().transform(val => parseFloat(val)),
 }).omit({
   id: true,
   createdAt: true,
@@ -308,7 +308,7 @@ export const insertCampaignSchema = createInsertSchema(campaigns).omit({
 export const insertLeadSchema = createInsertSchema(leads, {
   status: z.enum(["sale", "hold", "rejected", "trash"]).default("hold"),
   value: z.string().transform(val => parseFloat(val)),
-  commission: z.string().transform(val => parseFloat(val)),
+  payout: z.string().transform(val => parseFloat(val)),
 }).omit({
   id: true,
   createdAt: true,
@@ -321,7 +321,7 @@ export const insertLeadItemSchema = createInsertSchema(leadItems).omit({
 });
 
 export const insertTransactionSchema = createInsertSchema(transactions, {
-  type: z.enum(["deposit", "withdrawal", "commission", "bonus", "adjustment"]),
+  type: z.enum(["deposit", "withdrawal", "payout", "bonus", "adjustment"]),
   status: z.enum(["pending", "completed", "failed", "cancelled"]).default("pending"),
   amount: z.string().transform(val => parseFloat(val)),
 }).omit({

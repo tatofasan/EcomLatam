@@ -1,9 +1,10 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit, Eye } from "lucide-react";
+import { Edit, Eye, Copy, DollarSign } from "lucide-react";
 import { Product } from "@/types";
 import { User } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
 
 interface ProductCardProps {
   product: Product;
@@ -14,6 +15,17 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, viewMode, onClick, onEdit, isAdmin = false }: ProductCardProps) {
+  const { toast } = useToast();
+
+  const copySku = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(product.sku);
+    toast({
+      title: "SKU copied",
+      description: `SKU ${product.sku} has been copied to clipboard`,
+    });
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
@@ -78,12 +90,30 @@ export default function ProductCard({ product, viewMode, onClick, onEdit, isAdmi
               <Badge className={getStatusColor(product.status)}>
                 {getStatusText(product.status)}
               </Badge>
-              <span className="text-sm text-gray-500">SKU: {product.sku}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-sm text-gray-500">SKU: {product.sku}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 hover:bg-gray-100"
+                  onClick={copySku}
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </div>
             </div>
             <h3 className="font-medium">{product.name}</h3>
             <p className="text-sm text-gray-500 mb-2">{product.description}</p>
             <div className="flex items-center justify-between">
-              <span className="font-semibold">${Number(product.price).toFixed(2)}</span>
+              <div className="flex flex-col gap-1">
+                <span className="font-semibold text-primary">${Number(product.price).toFixed(2)} ARS</span>
+                {product.payoutPo !== null && product.payoutPo !== undefined && (
+                  <div className="flex items-center gap-1 text-green-600">
+                    <DollarSign className="h-3 w-3" />
+                    <span className="text-sm font-medium">${Number(product.payoutPo).toFixed(2)} USD Payout</span>
+                  </div>
+                )}
+              </div>
               <span className="text-sm text-gray-500">Stock: {product.stock}</span>
             </div>
           </div>
@@ -125,12 +155,30 @@ export default function ProductCard({ product, viewMode, onClick, onEdit, isAdmi
             <Badge className={getStatusColor(product.status)}>
               {getStatusText(product.status)}
             </Badge>
-            <span className="text-sm text-gray-500">SKU: {product.sku}</span>
+            <div className="flex items-center gap-1">
+              <span className="text-sm text-gray-500">SKU: {product.sku}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 hover:bg-gray-100"
+                onClick={copySku}
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
           <h3 className="font-medium">{product.name}</h3>
-          <p className="text-sm text-gray-500 mb-2">{product.description}</p>
+          <p className="text-sm text-gray-500 mb-2 line-clamp-2">{product.description}</p>
           <div className="flex items-center justify-between">
-            <span className="font-semibold">${Number(product.price).toFixed(2)}</span>
+            <div className="flex flex-col gap-1">
+              <span className="font-semibold text-primary">${Number(product.price).toFixed(2)} ARS</span>
+              {product.payoutPo !== null && product.payoutPo !== undefined && (
+                <div className="flex items-center gap-1 text-green-600">
+                  <DollarSign className="h-3 w-3" />
+                  <span className="text-sm font-medium">${Number(product.payoutPo).toFixed(2)} USD</span>
+                </div>
+              )}
+            </div>
             <span className="text-sm text-gray-500">Stock: {product.stock}</span>
           </div>
         </div>

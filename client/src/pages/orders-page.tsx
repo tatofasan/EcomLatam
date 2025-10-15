@@ -726,10 +726,10 @@ export default function OrdersPage() {
                           </div>
                           {getStatusBadge(selectedOrder.status)}
                         </div>
-                        {(selectedOrder as any).commission && (
+                        {(selectedOrder as any).payout && (
                           <div className="pt-2 border-t border-border mt-2">
-                            <span className="text-sm text-muted-foreground">Commission: </span>
-                            <span className="text-sm font-medium text-green-600">${parseFloat((selectedOrder as any).commission || '0').toFixed(2)}</span>
+                            <span className="text-sm text-muted-foreground">Payout: </span>
+                            <span className="text-sm font-medium text-green-600">${parseFloat((selectedOrder as any).payout || '0').toFixed(2)}</span>
                           </div>
                         )}
                       </div>

@@ -25,6 +25,7 @@ export interface Product {
   reference?: string | null;
   provider?: string | null;
   userId?: number | null;
+  payoutPo?: number | null;
   createdAt?: string | null;
   updatedAt?: string | null;
 }

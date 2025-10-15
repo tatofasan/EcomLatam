@@ -245,7 +245,7 @@ export const convertShopifyOrderToEcomLatamLead = async (
       status: leadStatus,
       quality: 'standard' as const,
       value: value.toString(),
-      commission: (value * 0.1).toString(), // Default 10% commission
+      payout: (value * 0.1).toString(), // Default 10% payout
       trafficSource: 'direct' as const,
       utmSource: 'shopify',
       utmMedium: 'ecommerce',
@@ -578,7 +578,7 @@ export const convertFulfillmentOrderToEcomLatamLead = async (
       status: leadStatus,
       quality: 'standard' as const,
       value: value.toString(),
-      commission: (value * 0.1).toString(), // Default 10% commission
+      payout: (value * 0.1).toString(), // Default 10% payout
       trafficSource: 'direct' as const,
       utmSource: 'shopify',
       utmMedium: 'ecommerce',
