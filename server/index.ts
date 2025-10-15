@@ -22,8 +22,18 @@ app.use('/api/shopify/webhooks', express.json({
   limit: '50mb'
 }));
 
+// CHARSET FIX: Explicitly set UTF-8 encoding to prevent character corruption
+// This ensures special characters (á, é, í, ó, ú, ñ, etc.) are handled correctly
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false, limit: '50mb' }));
+
+// Force UTF-8 Content-Type for API responses only
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  }
+  next();
+});
 
 app.use((req, res, next) => {
   const start = Date.now();

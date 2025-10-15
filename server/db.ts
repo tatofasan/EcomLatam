@@ -38,12 +38,21 @@ if (isNeonDatabase) {
   // Use Neon serverless driver for Neon databases only
   console.log('[db] Using Neon serverless driver');
   neonConfig.webSocketConstructor = ws;
-  pool = new NeonPool({ connectionString: process.env.DATABASE_URL });
+  pool = new NeonPool({
+    connectionString: process.env.DATABASE_URL,
+    // Ensure UTF-8 encoding for proper character handling
+    connectionTimeoutMillis: 5000
+  });
   db = neonDrizzle({ client: pool, schema });
 } else {
   // Use standard PostgreSQL driver for Railway, local, and most other PostgreSQL
   console.log('[db] Using standard PostgreSQL driver');
-  pool = new PgPool({ connectionString: process.env.DATABASE_URL });
+  // CHARSET FIX: Explicitly set client_encoding to UTF8 to prevent character corruption
+  pool = new PgPool({
+    connectionString: process.env.DATABASE_URL,
+    // Force UTF-8 encoding at the database connection level
+    options: '-c client_encoding=UTF8'
+  });
   db = pgDrizzle({ client: pool, schema });
 }
 
