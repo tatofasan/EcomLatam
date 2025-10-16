@@ -190,7 +190,7 @@ export default function OrderStatisticsPage() {
       // Calculate total payout from sale orders
       const payout = dayOrders
         .filter((order: OrderForStats) => order.status === 'sale')
-        .reduce((sum: number, order: OrderForStats) => sum + (order.payout || 0), 0);
+        .reduce((sum: number, order: OrderForStats) => sum + (parseFloat(order.payout as any) || 0), 0);
       
       return {
         date,
