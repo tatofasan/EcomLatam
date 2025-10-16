@@ -33,7 +33,7 @@ interface PostbackConfiguration {
 interface PostbackNotification {
   id: number;
   userId: number;
-  leadId: number;
+  leadId: number | null; // Null for test postbacks
   url: string;
   status: 'success' | 'failed' | 'pending';
   httpStatus?: number;
@@ -148,6 +148,11 @@ export default function PostbackPage() {
           variant: "destructive",
         });
       }
+
+      // Refresh notification history to show the test result
+      queryClient.invalidateQueries({
+        queryKey: isModerator ? ["/api/postback/notifications/all"] : ["/api/postback/notifications"]
+      });
     },
     onError(error) {
       toast({
@@ -432,7 +437,16 @@ export default function PostbackPage() {
                         </div>
 
                         <div>
-                          <p className="text-sm font-medium">Lead ID: {notification.leadId}</p>
+                          <p className="text-sm font-medium">
+                            {notification.leadId ? (
+                              `Lead ID: ${notification.leadId}`
+                            ) : (
+                              <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                                <TestTube className="w-3 h-3 mr-1" />
+                                Test
+                              </Badge>
+                            )}
+                          </p>
                           <p className="text-sm text-gray-600 break-all">{notification.url}</p>
                           {notification.httpStatus && (
                             <p className="text-sm">HTTP Status: {notification.httpStatus}</p>

@@ -286,7 +286,7 @@ export const postbackConfigurations = pgTable("postback_configurations", {
 export const postbackNotifications = pgTable("postback_notifications", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
-  leadId: integer("lead_id").references(() => leads.id).notNull(),
+  leadId: integer("lead_id").references(() => leads.id), // Nullable for test postbacks
   url: text("url").notNull(),
   status: text("status").default("pending"), // success, failed, pending
   httpStatus: integer("http_status"),

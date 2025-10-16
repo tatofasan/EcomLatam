@@ -253,6 +253,19 @@ export class PostbackService {
       });
 
       const responseBody = await response.text();
+      const isSuccess = response.ok;
+
+      // Save test result to database
+      await storage.createPostbackNotification({
+        userId,
+        leadId: null, // NULL for test postbacks
+        url: finalUrl,
+        status: isSuccess ? 'success' : 'failed',
+        httpStatus: response.status,
+        responseBody: responseBody.substring(0, 1000),
+        errorMessage: isSuccess ? null : `HTTP ${response.status}: ${response.statusText}`,
+        retryCount: 0
+      });
 
       const result = {
         success: response.ok,
@@ -276,6 +289,18 @@ export class PostbackService {
         : error.message || 'Network error occurred';
 
       console.error(`Postback test failed for URL ${finalUrl}:`, error);
+
+      // Save failed test to database
+      await storage.createPostbackNotification({
+        userId,
+        leadId: null, // NULL for test postbacks
+        url: finalUrl,
+        status: 'failed',
+        httpStatus: null,
+        responseBody: null,
+        errorMessage,
+        retryCount: 0
+      });
 
       return {
         success: false,
