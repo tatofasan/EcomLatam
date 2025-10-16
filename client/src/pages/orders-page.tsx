@@ -54,6 +54,8 @@ interface OrderType {
   totalAmount: number;
   notes: string;
   utmSource?: string;
+  publisherId?: string;
+  productId?: number;
   createdAt: string;
   updatedAt: string;
   // Índice para poder acceder a propiedades con strings
@@ -70,9 +72,20 @@ interface OrderItemType {
   productName?: string;
 }
 
-interface OrderWithItems extends Omit<OrderType, 'items'> {
+interface OrderWithItems extends OrderType {
   items?: OrderItemType[];
-  [key: string]: OrderItemType[] | string | number | undefined;
+}
+
+interface User {
+  id: number;
+  username: string;
+  fullName?: string;
+}
+
+interface Product {
+  id: number;
+  name: string;
+  sku: string;
 }
 
 export default function OrdersPage() {
@@ -85,20 +98,33 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
-  
+
   // Date filter - default to last 30 days
   const [dateRange, setDateRange] = useState<DateRange>({
     from: subDays(new Date(), 30),
     to: new Date(),
   });
-  
+
   // Sort states
   const [sortField, setSortField] = useState<string>("createdAt");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+
+  // New filter states
+  const [affiliateFilter, setAffiliateFilter] = useState("all");
+  const [publisherIdFilter, setPublisherIdFilter] = useState("all");
+  const [productFilter, setProductFilter] = useState("all");
+
+  // Data for filters (users and products)
+  const [users, setUsers] = useState<User[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingFilters, setIsLoadingFilters] = useState(false);
+
+  // Check if user is admin or finance
+  const isAdminOrFinance = user?.role === 'admin' || user?.role === 'finance';
 
   // Function to load order details
   const fetchOrderDetails = async (orderId: number) => {
@@ -121,16 +147,43 @@ export default function OrdersPage() {
     }
   };
 
+  // Function to load users and products for filters (admin/finance only)
+  const loadFiltersData = async () => {
+    if (!isAdminOrFinance) return;
+
+    try {
+      setIsLoadingFilters(true);
+
+      // Fetch users
+      const usersResponse = await fetch('/api/users');
+      if (usersResponse.ok) {
+        const usersData = await usersResponse.json();
+        setUsers(usersData);
+      }
+
+      // Fetch products
+      const productsResponse = await fetch('/api/products');
+      if (productsResponse.ok) {
+        const productsData = await productsResponse.json();
+        setProducts(productsData);
+      }
+    } catch (err) {
+      console.error("Error loading filter data:", err);
+    } finally {
+      setIsLoadingFilters(false);
+    }
+  };
+
   // Function to load orders from API
   const loadOrders = async () => {
     try {
       setIsLoading(true);
       const response = await fetch('/api/orders');
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch orders: ${response.statusText}`);
       }
-      
+
       const data = await response.json() as OrderType[];
       setOrders(data);
       setError(null);
@@ -180,10 +233,11 @@ export default function OrdersPage() {
     }
   };
 
-  // Load orders on mount
+  // Load orders and filter data on mount
   useEffect(() => {
     setActiveItem("orders");
     loadOrders();
+    loadFiltersData();
   }, []);
 
   // Filter orders based on all criteria
@@ -195,35 +249,46 @@ export default function OrdersPage() {
         (order.orderNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (order.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (order.customerEmail || '').toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       // Status filter
       const matchesStatus = statusFilter === "all" || order.status === statusFilter;
-      
+
+      // Affiliate filter (admin/finance only)
+      const matchesAffiliate = affiliateFilter === "all" || order.userId?.toString() === affiliateFilter;
+
+      // Publisher ID filter
+      const matchesPublisherId = publisherIdFilter === "all" ||
+        (order.publisherId || '').toLowerCase().includes(publisherIdFilter.toLowerCase());
+
+      // Product filter
+      const matchesProduct = productFilter === "all" || order.productId?.toString() === productFilter;
+
       // Date range filter
       const orderDate = new Date(order.createdAt);
       let matchesDateRange = true;
-      
+
       if (dateRange.from) {
         // Set time to beginning of day for "from" date
         const fromDate = new Date(dateRange.from);
         fromDate.setHours(0, 0, 0, 0);
-        
+
         // Check if order date is on or after the fromDate
-        matchesDateRange = matchesDateRange && 
+        matchesDateRange = matchesDateRange &&
           (isAfter(orderDate, fromDate) || isEqual(orderDate, fromDate));
       }
-      
+
       if (dateRange.to) {
         // Set time to end of day for "to" date
         const toDate = new Date(dateRange.to);
         toDate.setHours(23, 59, 59, 999);
-        
+
         // Check if order date is on or before the toDate
-        matchesDateRange = matchesDateRange && 
+        matchesDateRange = matchesDateRange &&
           (isBefore(orderDate, toDate) || isEqual(orderDate, toDate));
       }
-      
-      return matchesSearch && matchesStatus && matchesDateRange;
+
+      return matchesSearch && matchesStatus && matchesAffiliate &&
+             matchesPublisherId && matchesProduct && matchesDateRange;
     });
     
     // Then sort the filtered orders
@@ -247,7 +312,7 @@ export default function OrdersPage() {
       // Apply sort direction
       return sortDirection === "asc" ? comparison : -comparison;
     });
-  }, [orders, searchTerm, statusFilter, dateRange, sortField, sortDirection]);
+  }, [orders, searchTerm, statusFilter, dateRange, sortField, sortDirection, affiliateFilter, publisherIdFilter, productFilter]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -464,6 +529,51 @@ export default function OrdersPage() {
               </SelectContent>
             </Select>
           </div>
+
+          {/* Affiliate Filter (admin/finance only) */}
+          {isAdminOrFinance && (
+            <div className="w-[200px]">
+              <Select value={affiliateFilter} onValueChange={setAffiliateFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by Affiliate" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Affiliates</SelectItem>
+                  {users.map((u) => (
+                    <SelectItem key={u.id} value={u.id.toString()}>
+                      {u.fullName || u.username}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Publisher ID Filter */}
+          <div className="w-[200px]">
+            <Input
+              placeholder="Publisher ID"
+              value={publisherIdFilter === "all" ? "" : publisherIdFilter}
+              onChange={(e) => setPublisherIdFilter(e.target.value || "all")}
+            />
+          </div>
+
+          {/* Product Filter */}
+          <div className="w-[200px]">
+            <Select value={productFilter} onValueChange={setProductFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by Product" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Products</SelectItem>
+                {products.map((p) => (
+                  <SelectItem key={p.id} value={p.id.toString()}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         
         {/* Orders table */}
@@ -541,6 +651,16 @@ export default function OrdersPage() {
                           )}
                         </div>
                       </th>
+                      {isAdminOrFinance && (
+                        <th className="text-left py-3 px-4 font-medium text-primary">
+                          Affiliate
+                        </th>
+                      )}
+                      {isAdminOrFinance && (
+                        <th className="text-left py-3 px-4 font-medium text-primary">
+                          Publisher ID
+                        </th>
+                      )}
                       <th
                         className="text-left py-3 px-4 font-medium text-primary cursor-pointer select-none"
                         onClick={() => handleSort("createdAt")}
@@ -595,6 +715,18 @@ export default function OrdersPage() {
                               <p className="text-muted-foreground text-xs">{order.customerEmail}</p>
                             </div>
                           </td>
+                          {isAdminOrFinance && (
+                            <td className="py-4 px-4">
+                              {users.find((u) => u.id === order.userId)?.fullName ||
+                               users.find((u) => u.id === order.userId)?.username ||
+                               `User #${order.userId}`}
+                            </td>
+                          )}
+                          {isAdminOrFinance && (
+                            <td className="py-4 px-4 text-muted-foreground text-sm">
+                              {order.publisherId || '-'}
+                            </td>
+                          )}
                           <td className="py-4 px-4">{new Date(order.createdAt).toLocaleDateString()}</td>
                           <td className="py-4 px-4 font-medium text-primary">${(order.totalAmount || 0).toFixed(2)}</td>
                           <td className="py-4 px-4">
@@ -735,6 +867,34 @@ export default function OrdersPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Affiliate and Publisher ID (admin/finance only) */}
+                  {isAdminOrFinance && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <h4 className="text-sm font-medium text-primary mb-2">Affiliate Information</h4>
+                        <div className="border rounded-md p-3 bg-accent">
+                          <p className="text-sm">
+                            <span className="text-muted-foreground">Affiliate: </span>
+                            <span className="font-medium">
+                              {users.find((u) => u.id === selectedOrder.userId)?.fullName ||
+                               users.find((u) => u.id === selectedOrder.userId)?.username ||
+                               `User #${selectedOrder.userId}`}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-primary mb-2">Publisher Information</h4>
+                        <div className="border rounded-md p-3 bg-accent">
+                          <p className="text-sm">
+                            <span className="text-muted-foreground">Publisher ID: </span>
+                            <span className="font-medium">{selectedOrder.publisherId || '-'}</span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   
                   <div>
                     <h4 className="text-sm font-medium text-primary mb-2">Shipping Information</h4>
