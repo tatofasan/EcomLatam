@@ -396,9 +396,9 @@ export class DatabaseStorage implements IStorage {
   /**
    * SECURITY FIX: Creates a withdrawal with database-level locking to prevent race conditions
    *
-   * This method uses a pessimistic lock (SELECT FOR UPDATE) to ensure that the balance
-   * cannot be modified by concurrent transactions. This prevents double-spending attacks
-   * where multiple withdrawal requests could be processed simultaneously.
+   * This method uses a pessimistic lock (SELECT FOR UPDATE) on the user row to ensure that
+   * the balance cannot be modified by concurrent withdrawal transactions. This prevents
+   * double-spending attacks where multiple withdrawal requests could be processed simultaneously.
    *
    * @param userId - User ID requesting the withdrawal
    * @param amount - Withdrawal amount (positive number)
@@ -413,8 +413,15 @@ export class DatabaseStorage implements IStorage {
     try {
       // Use a database transaction with row-level locking
       const result = await db.transaction(async (tx) => {
-        // 1. Lock all completed transactions for this user (SELECT FOR UPDATE)
-        // This prevents other transactions from reading/writing balance until we commit
+        // 1. Lock the user row to prevent concurrent withdrawals (SELECT FOR UPDATE)
+        // This is a simple and effective way to prevent race conditions at the user level
+        await tx
+          .select()
+          .from(users)
+          .where(eq(users.id, userId))
+          .for('update');
+
+        // 2. Calculate balance (now safe because user is locked)
         const balanceResult = await tx
           .select({
             balance: sql<number>`COALESCE(SUM(CASE
@@ -426,8 +433,7 @@ export class DatabaseStorage implements IStorage {
           .where(and(
             eq(transactions.userId, userId),
             eq(transactions.status, "completed" as any)
-          ))
-          .for('update'); // PESSIMISTIC LOCK - crucial for preventing race conditions
+          ));
 
         const currentBalance = Number(balanceResult[0]?.balance || 0);
 
@@ -438,7 +444,7 @@ export class DatabaseStorage implements IStorage {
           timestamp: new Date().toISOString()
         });
 
-        // 2. Verify balance is sufficient (with lock held)
+        // 3. Verify balance is sufficient (with lock held)
         if (amount > currentBalance) {
           console.warn('[Withdrawal] Insufficient balance detected:', {
             userId,
@@ -448,7 +454,7 @@ export class DatabaseStorage implements IStorage {
           throw new Error("Insufficient balance");
         }
 
-        // 3. Create withdrawal transaction (lock still held)
+        // 4. Create withdrawal transaction (lock still held)
         const [transaction] = await tx
           .insert(transactions)
           .values({ ...withdrawal, userId })
@@ -461,7 +467,7 @@ export class DatabaseStorage implements IStorage {
           newBalance: currentBalance - amount
         });
 
-        // 4. Commit transaction (releases lock)
+        // 5. Commit transaction (releases lock)
         return { success: true, transaction };
       });
 
