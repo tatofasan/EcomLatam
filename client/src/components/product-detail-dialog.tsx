@@ -17,14 +17,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { AdditionalImagesUpload } from "@/components/ui/additional-images-upload";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  ShoppingCart, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  ShoppingCart,
   Save,
   X,
   AlertCircle,
-  Download
+  Download,
+  Copy,
+  DollarSign
 } from "lucide-react";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
@@ -291,6 +293,14 @@ export default function ProductDetailDialog({
     }
   };
 
+  const copySku = () => {
+    navigator.clipboard.writeText(productData.sku);
+    toast({
+      title: "SKU copied",
+      description: `SKU ${productData.sku} has been copied to clipboard`,
+    });
+  };
+
   const handleSave = () => {
     if (onSave && formData) {
       // Validate form before saving
@@ -525,18 +535,53 @@ export default function ProductDetailDialog({
           <div className="space-y-4">
             {mode === "view" ? (
               <>
-                <div className="flex items-center justify-between">
-                  <Badge 
-                    variant="outline" 
+                <div className="flex items-center justify-between mb-4">
+                  <Badge
+                    variant="outline"
                     className={`
-                      ${productData.status === 'active' ? 'bg-green-50 text-green-600 border-green-200' : 
-                       productData.status === 'low' ? 'bg-yellow-50 text-yellow-600 border-yellow-200' : 
+                      ${productData.status === 'active' ? 'bg-green-50 text-green-600 border-green-200' :
+                       productData.status === 'low' ? 'bg-yellow-50 text-yellow-600 border-yellow-200' :
                        'bg-gray-50 text-gray-600 border-gray-200'}
                     `}
                   >
                     {getStatusText(productData.status)}
                   </Badge>
-                  <div className="text-2xl font-bold text-primary">${Number(productData.price).toFixed(2)}</div>
+                </div>
+
+                {/* SKU with copy button */}
+                <div className="mb-4 p-3 bg-muted/30 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-muted-foreground">SKU:</span>
+                      <span className="text-sm font-mono font-semibold">{productData.sku}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 hover:bg-muted"
+                      onClick={copySku}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Price (ARS) and Payout (USD) */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-lg">
+                    <div className="text-xs text-blue-600 font-medium mb-1">Price (ARS)</div>
+                    <div className="text-xl font-bold text-blue-700">${Number(productData.price).toFixed(2)}</div>
+                  </div>
+
+                  {productData.payoutPo !== null && productData.payoutPo !== undefined && (
+                    <div className="p-3 bg-green-50/50 border border-green-100 rounded-lg">
+                      <div className="flex items-center gap-1 text-xs text-green-600 font-medium mb-1">
+                        <DollarSign className="h-3 w-3" />
+                        <span>Payout (USD)</span>
+                      </div>
+                      <div className="text-xl font-bold text-green-700">${Number(productData.payoutPo).toFixed(2)}</div>
+                    </div>
+                  )}
                 </div>
                 
                 <Tabs defaultValue="details">
