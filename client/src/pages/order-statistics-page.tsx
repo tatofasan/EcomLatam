@@ -31,6 +31,7 @@ import { DateRange } from "react-day-picker";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { format, subDays } from "date-fns";
 
 interface OrderStatsByDay {
@@ -46,11 +47,13 @@ interface OrderStatsByDay {
 
 interface OrderForStats {
   id: number;
+  userId: number;
   createdAt: string;
   updatedAt?: string; // date of last activity
   status: string;
   totalAmount: number;
   payout: number;
+  publisherId?: string;
   orderItems?: Array<{
     id: number;
     productId: number;
@@ -58,6 +61,12 @@ interface OrderForStats {
     quantity: number;
     price: number;
   }>;
+}
+
+interface User {
+  id: number;
+  username: string;
+  fullName?: string;
 }
 
 export default function OrderStatisticsPage() {
@@ -72,11 +81,13 @@ export default function OrderStatisticsPage() {
   // Filters
   const [useActivityDate, setUseActivityDate] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [selectedAffiliateId, setSelectedAffiliateId] = useState<number | null>(null);
+  const [publisherIdFilter, setPublisherIdFilter] = useState<string>("");
   const [dateRange, setDateRange] = useState<DateRange>({
     from: subDays(new Date(), 30),
     to: new Date(),
   });
-  
+
   // Sorting states
   const [sortField, setSortField] = useState<string>("date");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
@@ -99,12 +110,11 @@ export default function OrderStatisticsPage() {
     return total > 0 ? (sale / total * 100).toFixed(2) : "0.00";
   }, [calcTotalsByStatus]);
 
-  // Get user role - no data regeneration in production
-
   // Get user role
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  
+  const isAdminOrFinance = user?.role === 'admin' || user?.role === 'finance';
+
   // Fetch orders based on user role - admin gets all orders, regular users only see their orders
   const { data: orders, isLoading: ordersLoading } = useQuery<OrderForStats[]>({
     queryKey: ["/api/orders"],
@@ -114,7 +124,7 @@ export default function OrderStatisticsPage() {
       return res.json();
     },
   });
-  
+
   // Fetch products for filter
   const { data: products, isLoading: productsLoading } = useQuery<Product[]>({
     queryKey: ["/api/products"],
@@ -124,8 +134,20 @@ export default function OrderStatisticsPage() {
       return res.json();
     },
   });
-  
-  const isLoading = ordersLoading || productsLoading;
+
+  // Fetch users for affiliate filter (admin/finance only)
+  const { data: users, isLoading: usersLoading } = useQuery<User[]>({
+    queryKey: ["/api/users"],
+    queryFn: async () => {
+      if (!isAdminOrFinance) return [];
+      const res = await fetch("/api/users");
+      if (!res.ok) throw new Error("Failed to fetch users");
+      return res.json();
+    },
+    enabled: isAdminOrFinance,
+  });
+
+  const isLoading = ordersLoading || productsLoading || (isAdminOrFinance && usersLoading);
 
   // Process orders into daily statistics when orders data changes or filters change
   useEffect(() => {
@@ -133,19 +155,32 @@ export default function OrderStatisticsPage() {
 
     // Filter orders first
     let filteredOrders = [...orders];
-    
+
+    // Apply affiliate filter if selected (admin/finance only)
+    if (selectedAffiliateId && isAdminOrFinance) {
+      filteredOrders = filteredOrders.filter(order => order.userId === selectedAffiliateId);
+    }
+
+    // Apply publisher ID filter if set
+    if (publisherIdFilter.trim()) {
+      const filterLowerCase = publisherIdFilter.toLowerCase().trim();
+      filteredOrders = filteredOrders.filter(order =>
+        order.publisherId?.toLowerCase().includes(filterLowerCase)
+      );
+    }
+
     // Apply product filter if selected
     if (selectedProductId) {
-      filteredOrders = filteredOrders.filter(order => 
+      filteredOrders = filteredOrders.filter(order =>
         order.orderItems?.some(item => item.productId === selectedProductId)
       );
     }
-    
+
     // Apply date range filter if set
     if (dateRange?.from || dateRange?.to) {
       filteredOrders = filteredOrders.filter(order => {
         const orderDate = new Date(useActivityDate && order.updatedAt ? order.updatedAt : order.createdAt);
-        
+
         if (dateRange?.from && dateRange?.to) {
           return orderDate >= dateRange.from && orderDate <= dateRange.to;
         } else if (dateRange?.from) {
@@ -153,7 +188,7 @@ export default function OrderStatisticsPage() {
         } else if (dateRange?.to) {
           return orderDate <= dateRange.to;
         }
-        
+
         return true;
       });
     }
@@ -233,7 +268,7 @@ export default function OrderStatisticsPage() {
     });
     
     setStatistics(sortedStats);
-  }, [orders, selectedProductId, dateRange, useActivityDate, sortField, sortDirection]);
+  }, [orders, selectedProductId, selectedAffiliateId, publisherIdFilter, dateRange, useActivityDate, sortField, sortDirection, isAdminOrFinance]);
   
   // Function to handle sort change
   const handleSort = (field: string) => {
@@ -250,6 +285,8 @@ export default function OrderStatisticsPage() {
   // Fix TypeScript error with date range reset
   const resetFilters = () => {
     setSelectedProductId(null);
+    setSelectedAffiliateId(null);
+    setPublisherIdFilter("");
     setDateRange({
       from: subDays(new Date(), 30),
       to: new Date(),
@@ -297,8 +334,42 @@ export default function OrderStatisticsPage() {
                 {/* Filters Section */}
                 <div className="bg-muted/40 p-4 rounded-md mb-6 space-y-4">
                   <h2 className="text-lg font-medium mb-2">Filters</h2>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* Affiliate Filter - Admin/Finance Only */}
+                    {isAdminOrFinance && (
+                      <div>
+                        <Label htmlFor="affiliate-filter" className="mb-1 block">Affiliate</Label>
+                        <Select
+                          value={selectedAffiliateId?.toString() || "all"}
+                          onValueChange={(value) => setSelectedAffiliateId(value === "all" ? null : Number(value))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="All Affiliates" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Affiliates</SelectItem>
+                            {users?.map((user) => (
+                              <SelectItem key={user.id} value={user.id.toString()}>
+                                {user.fullName || user.username}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {/* Publisher ID Filter - All Users */}
+                    <div>
+                      <Label htmlFor="publisher-filter" className="mb-1 block">Publisher ID</Label>
+                      <Input
+                        id="publisher-filter"
+                        placeholder="Filter by Publisher ID"
+                        value={publisherIdFilter}
+                        onChange={(e) => setPublisherIdFilter(e.target.value)}
+                      />
+                    </div>
+
                     {/* Product Filter */}
                     <div>
                       <Label htmlFor="product-filter" className="mb-1 block">Product</Label>
@@ -319,10 +390,9 @@ export default function OrderStatisticsPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    
-                    {/* Date Range - From */}
-                    {/* Unified Date Range Picker */}
-                    <div className="md:col-span-2">
+
+                    {/* Date Range Picker */}
+                    <div className={isAdminOrFinance ? "md:col-span-2 lg:col-span-3" : "md:col-span-2"}>
                       <Label htmlFor="date-range" className="mb-1 block">Date Range</Label>
                       <Popover>
                         <PopoverTrigger asChild>
@@ -357,11 +427,11 @@ export default function OrderStatisticsPage() {
                       </Popover>
                     </div>
                   </div>
-                  
+
                   {/* Reset Filters */}
                   <div className="flex justify-end">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       onClick={resetFilters}
                     >
