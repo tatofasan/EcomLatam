@@ -33,6 +33,23 @@ async function runMigration() {
   try {
     console.log('🚀 Starting commission → payout migration...\n');
 
+    // Check if migration was already applied
+    console.log('📋 Checking if migration was already applied...');
+    const checkResult = await client.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'leads' AND column_name = 'payout'
+      ) as migration_applied;
+    `);
+
+    if (checkResult.rows[0].migration_applied) {
+      console.log('✅ Migration already applied! Skipping...');
+      console.log('   All columns have been renamed to use "payout" terminology.');
+      return;
+    }
+
+    console.log('📋 Migration not yet applied. Proceeding...\n');
+
     // Step 1: Add enum value OUTSIDE transaction (PostgreSQL requirement)
     console.log('📋 Step 1: Adding new enum value...');
     try {
