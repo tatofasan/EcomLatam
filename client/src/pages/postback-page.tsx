@@ -107,10 +107,7 @@ export default function PostbackPage() {
         ? `/api/postback/config/${selectedUserId}`
         : "/api/postback/config";
 
-      return await apiRequest(url, {
-        method: "PUT",
-        body: JSON.stringify(config),
-      });
+      return await apiRequest("PUT", url, config);
     },
     onSuccess: () => {
       toast({
@@ -134,10 +131,7 @@ export default function PostbackPage() {
   // Test URL mutation
   const testUrlMutation = useMutation({
     mutationFn: async (url: string) => {
-      const response = await apiRequest("/api/postback/test", {
-        method: "POST",
-        body: JSON.stringify({ url }),
-      });
+      const response = await apiRequest("POST", "/api/postback/test", { url });
       return await response.json();
     },
     onSuccess(result) {
