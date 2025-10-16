@@ -6,6 +6,7 @@ import { registerShopifyRoutes } from "./routes-shopify";
 import { validateLead, formatValidationErrors } from "./leadValidation";
 import { formatPhone } from "./phoneValidation";
 import { checkDuplicateLeadToday } from "./leadDuplicateValidation";
+import { postbackService } from "./postback";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -823,7 +824,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Forbidden: Only admin, moderator, or finance users can update order status" });
       }
 
+      const oldStatus = order.status;
       const updatedOrder = await storage.updateOrderStatus(orderId, status);
+
+      // Send postback notification if status changed
+      if (updatedOrder && oldStatus !== status) {
+        try {
+          await postbackService.sendPostback(updatedOrder, oldStatus);
+        } catch (postbackError) {
+          console.error("Error sending postback:", postbackError);
+          // Don't fail the request if postback fails - it's logged in the database
+        }
+      }
 
       res.json(updatedOrder);
     } catch (error) {
@@ -1415,7 +1427,228 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch transaction" });
     }
   });
-  
+
+  // -----------------------------------------------
+  // POSTBACK CONFIGURATION AND NOTIFICATIONS
+  // -----------------------------------------------
+
+  // Get current user's postback configuration
+  app.get("/api/postback/config", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const config = await storage.getPostbackConfiguration(req.user.id);
+
+      if (!config) {
+        // Return default configuration if none exists
+        return res.json({
+          userId: req.user.id,
+          isEnabled: false,
+          saleUrl: null,
+          holdUrl: null,
+          rejectedUrl: null,
+          trashUrl: null
+        });
+      }
+
+      res.json(config);
+    } catch (error) {
+      console.error("Error fetching postback configuration:", error);
+      res.status(500).json({ message: "Failed to fetch configuration" });
+    }
+  });
+
+  // Get specific user's postback configuration (admin/moderator only)
+  app.get("/api/postback/config/:userId", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const isAdmin = req.user.role === 'admin';
+      const isModerator = req.user.role === 'moderator';
+
+      if (!isAdmin && !isModerator) {
+        return res.status(403).json({ message: "Forbidden: Admin or Moderator access required" });
+      }
+
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const config = await storage.getPostbackConfiguration(userId);
+
+      if (!config) {
+        // Return default configuration if none exists
+        return res.json({
+          userId: userId,
+          isEnabled: false,
+          saleUrl: null,
+          holdUrl: null,
+          rejectedUrl: null,
+          trashUrl: null
+        });
+      }
+
+      res.json(config);
+    } catch (error) {
+      console.error("Error fetching postback configuration:", error);
+      res.status(500).json({ message: "Failed to fetch configuration" });
+    }
+  });
+
+  // Update current user's postback configuration
+  app.put("/api/postback/config", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { isEnabled, saleUrl, holdUrl, rejectedUrl, trashUrl } = req.body;
+
+      // Validate configuration data
+      if (typeof isEnabled !== 'boolean') {
+        return res.status(400).json({ message: "isEnabled must be a boolean" });
+      }
+
+      const configData = {
+        isEnabled,
+        saleUrl: saleUrl || null,
+        holdUrl: holdUrl || null,
+        rejectedUrl: rejectedUrl || null,
+        trashUrl: trashUrl || null
+      };
+
+      const config = await storage.createOrUpdatePostbackConfiguration(req.user.id, configData);
+
+      res.json(config);
+    } catch (error) {
+      console.error("Error updating postback configuration:", error);
+      res.status(500).json({ message: "Failed to update configuration" });
+    }
+  });
+
+  // Update specific user's postback configuration (admin/moderator only)
+  app.put("/api/postback/config/:userId", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const isAdmin = req.user.role === 'admin';
+      const isModerator = req.user.role === 'moderator';
+
+      if (!isAdmin && !isModerator) {
+        return res.status(403).json({ message: "Forbidden: Admin or Moderator access required" });
+      }
+
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const { isEnabled, saleUrl, holdUrl, rejectedUrl, trashUrl } = req.body;
+
+      // Validate configuration data
+      if (typeof isEnabled !== 'boolean') {
+        return res.status(400).json({ message: "isEnabled must be a boolean" });
+      }
+
+      const configData = {
+        isEnabled,
+        saleUrl: saleUrl || null,
+        holdUrl: holdUrl || null,
+        rejectedUrl: rejectedUrl || null,
+        trashUrl: trashUrl || null
+      };
+
+      const config = await storage.createOrUpdatePostbackConfiguration(userId, configData);
+
+      res.json(config);
+    } catch (error) {
+      console.error("Error updating postback configuration:", error);
+      res.status(500).json({ message: "Failed to update configuration" });
+    }
+  });
+
+  // Test a postback URL
+  app.post("/api/postback/test", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { url } = req.body;
+
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ message: "URL is required" });
+      }
+
+      const result = await postbackService.testPostbackUrl(url, req.user.id);
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error testing postback URL:", error);
+      res.status(500).json({ message: "Failed to test URL" });
+    }
+  });
+
+  // Get current user's postback notifications
+  app.get("/api/postback/notifications", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const notifications = await storage.getPostbackNotifications(req.user.id, 15);
+
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching postback notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  // Get all postback notifications (admin/moderator only)
+  app.get("/api/postback/notifications/all", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const isAdmin = req.user.role === 'admin';
+      const isModerator = req.user.role === 'moderator';
+
+      if (!isAdmin && !isModerator) {
+        return res.status(403).json({ message: "Forbidden: Admin or Moderator access required" });
+      }
+
+      const notifications = await storage.getAllPostbackNotifications(15);
+
+      // Include user information for each notification
+      const notificationsWithUsers = await Promise.all(
+        notifications.map(async (notification) => {
+          const user = await storage.getUser(notification.userId);
+          return {
+            ...notification,
+            user: user ? {
+              id: user.id,
+              username: user.username
+            } : null
+          };
+        })
+      );
+
+      res.json(notificationsWithUsers);
+    } catch (error) {
+      console.error("Error fetching all postback notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
   // -----------------------------------------------
   // API KEY MANAGEMENT AND API ENDPOINTS
   // -----------------------------------------------

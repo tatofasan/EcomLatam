@@ -11,6 +11,7 @@ import OrdersPage from "@/pages/orders-page";
 import OrderStatisticsPage from "@/pages/order-statistics-page";
 import ConnectionsPage from "@/pages/connections-page";
 import WalletPage from "@/pages/wallet-page";
+import PostbackPage from "@/pages/postback-page";
 import TeamPage from "@/pages/team-page";
 import AccountPage from "@/pages/account-page";
 import TermsPage from "@/pages/terms-page";
@@ -30,6 +31,7 @@ function Router() {
       <ProtectedRoute path="/shopify/orders" component={ShopifyOrdersPage} />
       <ProtectedRoute path="/connections" component={ConnectionsPage} />
       <ProtectedRoute path="/wallet" component={WalletPage} />
+      <ProtectedRoute path="/postback" component={PostbackPage} />
       <ProtectedRoute path="/team" component={TeamPage} />
       <ProtectedRoute path="/account" component={AccountPage} />
       <Route component={NotFound} />

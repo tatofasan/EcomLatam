@@ -1,4 +1,4 @@
-import { 
+import {
   users, type User, type InsertUser,
   advertisers, type Advertiser, type InsertAdvertiser,
   products, type Product, type InsertProduct,
@@ -9,6 +9,8 @@ import {
   postbacks, type Postback,
   clickTracking, type ClickTrack,
   performanceReports, type PerformanceReport,
+  postbackConfigurations, type PostbackConfiguration, type InsertPostbackConfiguration,
+  postbackNotifications, type PostbackNotification, type InsertPostbackNotification,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, asc, sql, inArray, gte, lte, count, sum } from "drizzle-orm";
@@ -75,7 +77,19 @@ export interface IStorage {
   createPostback(postbackData: Partial<Postback>): Promise<Postback>;
   getPendingPostbacks(): Promise<Postback[]>;
   updatePostbackStatus(id: number, status: string, response?: any): Promise<void>;
-  
+
+  // Postback Configuration methods
+  getPostbackConfiguration(userId: number): Promise<PostbackConfiguration | undefined>;
+  createOrUpdatePostbackConfiguration(userId: number, config: Partial<InsertPostbackConfiguration>): Promise<PostbackConfiguration>;
+
+  // Postback Notification methods
+  createPostbackNotification(notification: InsertPostbackNotification): Promise<PostbackNotification>;
+  getPostbackNotifications(userId: number, limit?: number): Promise<PostbackNotification[]>;
+  getAllPostbackNotifications(limit?: number): Promise<PostbackNotification[]>;
+
+  // Payout calculation
+  calculatePayoutAmount(productId: number, userId: number): Promise<number>;
+
   // Performance reporting
   generatePerformanceReport(userId: number, date: Date): Promise<PerformanceReport>;
   getPerformanceReports(userId: number, startDate?: Date, endDate?: Date): Promise<PerformanceReport[]>;
@@ -568,6 +582,74 @@ export class DatabaseStorage implements IStorage {
       .where(eq(leads.id, leadId));
   }
 
+  // Postback Configuration methods
+  async getPostbackConfiguration(userId: number): Promise<PostbackConfiguration | undefined> {
+    const [config] = await db.select()
+      .from(postbackConfigurations)
+      .where(eq(postbackConfigurations.userId, userId));
+    return config || undefined;
+  }
+
+  async createOrUpdatePostbackConfiguration(
+    userId: number,
+    configData: Partial<InsertPostbackConfiguration>
+  ): Promise<PostbackConfiguration> {
+    const existing = await this.getPostbackConfiguration(userId);
+
+    if (existing) {
+      // Update existing configuration
+      const updateData = { ...configData, updatedAt: new Date() };
+      const [updated] = await db.update(postbackConfigurations)
+        .set(updateData)
+        .where(eq(postbackConfigurations.userId, userId))
+        .returning();
+      return updated;
+    } else {
+      // Create new configuration
+      const [created] = await db.insert(postbackConfigurations)
+        .values({ ...configData, userId })
+        .returning();
+      return created;
+    }
+  }
+
+  // Postback Notification methods
+  async createPostbackNotification(notification: InsertPostbackNotification): Promise<PostbackNotification> {
+    const [created] = await db.insert(postbackNotifications)
+      .values(notification)
+      .returning();
+    return created;
+  }
+
+  async getPostbackNotifications(userId: number, limit: number = 15): Promise<PostbackNotification[]> {
+    return await db.select()
+      .from(postbackNotifications)
+      .where(eq(postbackNotifications.userId, userId))
+      .orderBy(desc(postbackNotifications.createdAt))
+      .limit(limit);
+  }
+
+  async getAllPostbackNotifications(limit: number = 15): Promise<PostbackNotification[]> {
+    return await db.select()
+      .from(postbackNotifications)
+      .orderBy(desc(postbackNotifications.createdAt))
+      .limit(limit);
+  }
+
+  // Payout calculation
+  async calculatePayoutAmount(productId: number, userId: number): Promise<number> {
+    try {
+      const product = await this.getProduct(productId);
+      if (!product) return 0;
+
+      // For now, return the product's payout amount directly
+      // In the future, this could be enhanced with user-specific payout rates or exceptions
+      return parseFloat(product.payoutPo?.toString() || "0");
+    } catch (error) {
+      console.error('Error calculating payout amount:', error);
+      return 0;
+    }
+  }
 
   async getAllOrders(userId?: number): Promise<Order[]> {
     return await this.getAllLeads(userId) as Order[];

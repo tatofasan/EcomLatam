@@ -12,6 +12,7 @@ import {
   ShoppingCart,
   Link2,
   Wallet,
+  Send,
   Users,
   UserCog,
   User,
@@ -127,6 +128,12 @@ export default function SidebarNav({
       href: "/wallet",
       icon: <Wallet className="h-5 w-5" />,
       key: "wallet"
+    },
+    {
+      title: "Postback",
+      href: "/postback",
+      icon: <Send className="h-5 w-5" />,
+      key: "postback"
     },
     // Show Team management for admin, moderator, and finance users
     ...(user?.role === 'admin' || user?.role === 'moderator' || user?.role === 'finance' ? [

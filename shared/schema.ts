@@ -269,6 +269,33 @@ export const termsAndConditions = pgTable("terms_and_conditions", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Postback Configurations Table - User-specific postback URL settings
+export const postbackConfigurations = pgTable("postback_configurations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull().unique(),
+  isEnabled: boolean("is_enabled").default(false),
+  saleUrl: text("sale_url"), // URL for successful sales
+  holdUrl: text("hold_url"), // URL for leads on hold
+  rejectedUrl: text("rejected_url"), // URL for rejected leads
+  trashUrl: text("trash_url"), // URL for trashed leads
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Postback Notifications Table - Log of all postback attempts
+export const postbackNotifications = pgTable("postback_notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  leadId: integer("lead_id").references(() => leads.id).notNull(),
+  url: text("url").notNull(),
+  status: text("status").default("pending"), // success, failed, pending
+  httpStatus: integer("http_status"),
+  responseBody: text("response_body"),
+  errorMessage: text("error_message"),
+  retryCount: integer("retry_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Schema validation
 export const insertUserSchema = createInsertSchema(users, {
   role: z.enum(["user", "admin", "moderator", "finance"]).default("user"),
@@ -343,6 +370,17 @@ export const insertTermsSchema = createInsertSchema(termsAndConditions).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+});
+
+export const insertPostbackConfigurationSchema = createInsertSchema(postbackConfigurations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPostbackNotificationSchema = createInsertSchema(postbackNotifications).omit({
+  id: true,
+  createdAt: true,
 });
 
 // Legacy schema aliases for backward compatibility
@@ -468,6 +506,12 @@ export type ShopifyStore = typeof shopifyStores.$inferSelect;
 export type InsertTerms = z.infer<typeof insertTermsSchema>;
 export type TermsAndConditions = typeof termsAndConditions.$inferSelect;
 
+export type InsertPostbackConfiguration = z.infer<typeof insertPostbackConfigurationSchema>;
+export type PostbackConfiguration = typeof postbackConfigurations.$inferSelect;
+
+export type InsertPostbackNotification = z.infer<typeof insertPostbackNotificationSchema>;
+export type PostbackNotification = typeof postbackNotifications.$inferSelect;
+
 export type ClickTrack = typeof clickTracking.$inferSelect;
 export type Postback = typeof postbacks.$inferSelect;
 export type PerformanceReport = typeof performanceReports.$inferSelect;
@@ -486,12 +530,14 @@ export type Connection = Campaign;
 export type InsertConnection = InsertCampaign;
 
 // Relations
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
   leads: many(leads),
   campaigns: many(campaigns),
   transactions: many(transactions),
   clickTracking: many(clickTracking),
   shopifyStores: many(shopifyStores),
+  postbackConfiguration: one(postbackConfigurations),
+  postbackNotifications: many(postbackNotifications),
 }));
 
 export const advertisersRelations = relations(advertisers, ({ many }) => ({
@@ -586,6 +632,24 @@ export const shopifyStoresRelations = relations(shopifyStores, ({ one }) => ({
   user: one(users, {
     fields: [shopifyStores.userId],
     references: [users.id],
+  }),
+}));
+
+export const postbackConfigurationsRelations = relations(postbackConfigurations, ({ one }) => ({
+  user: one(users, {
+    fields: [postbackConfigurations.userId],
+    references: [users.id],
+  }),
+}));
+
+export const postbackNotificationsRelations = relations(postbackNotifications, ({ one }) => ({
+  user: one(users, {
+    fields: [postbackNotifications.userId],
+    references: [users.id],
+  }),
+  lead: one(leads, {
+    fields: [postbackNotifications.leadId],
+    references: [leads.id],
   }),
 }));
 
