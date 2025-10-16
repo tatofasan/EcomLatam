@@ -1048,13 +1048,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         balance = totalBalanceResult.total ? Number(totalBalanceResult.total) : 0;
         console.log(`Admin/Finance balance calculation: Total balance across all users: ${balance}`);
+        res.json({ balance });
       } else {
-        // Regular users see only their balance
+        // Regular users see their balance and available balance
+        // Available balance = completed balance - pending withdrawals
         balance = await storage.getUserBalance(userId);
-        console.log(`Regular user balance for user ${userId}: ${balance}`);
+        const availableBalance = await storage.getUserAvailableBalance(userId);
+        console.log(`Regular user balance for user ${userId}: balance=${balance}, available=${availableBalance}`);
+        res.json({
+          balance,
+          availableBalance
+        });
       }
-      
-      res.json({ balance });
     } catch (error) {
       console.error("Error fetching balance:", error);
       res.status(500).json({ message: "Failed to fetch balance" });

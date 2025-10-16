@@ -563,13 +563,15 @@ export default function WalletPage() {
   };
   
   // Calculate current balance from balanceData with fallback for regular users
-  // This ensures we're always displaying the user's own balance
-  const currentBalance = balanceData?.balance ?? 0;
-  
+  // For regular users: use availableBalance (balance minus pending withdrawals)
+  // For admin/finance: use total balance across all users
+  const currentBalance = balanceData?.availableBalance ?? balanceData?.balance ?? 0;
+  const totalBalance = balanceData?.balance ?? 0;
+
   // Calculate total pending withdrawals
   const pendingWithdrawals = useMemo(() => {
     if (!transactions || !Array.isArray(transactions)) return 0;
-    
+
     return transactions
       .filter((tx: any) => tx.type === 'withdrawal' && (tx.status === 'pending' || tx.status === 'processing'))
       .reduce((sum: number, tx: any) => sum + Math.abs(tx.amount), 0);
@@ -742,27 +744,35 @@ export default function WalletPage() {
             <CardContent>
               <div className="flex items-center">
                 <Wallet className="h-12 w-12 text-primary mr-4" />
-                <div>
+                <div className="flex-1">
                   {isLoadingBalance ? (
                     <p className="text-3xl font-bold">Loading...</p>
                   ) : (
-                    <p className="text-3xl font-bold">${currentBalance.toFixed(2)}</p>
+                    <>
+                      <p className="text-3xl font-bold">${currentBalance.toFixed(2)}</p>
+                      <p className="text-sm text-gray-500">
+                        {user?.role === "admin"
+                          ? "Total funds across all accounts"
+                          : "Available for withdrawal"
+                        }
+                      </p>
+                      {/* Show total balance for regular users if different from available */}
+                      {user?.role !== "admin" && totalBalance !== currentBalance && (
+                        <p className="text-xs text-gray-600 mt-1">
+                          Total balance: ${totalBalance.toFixed(2)}
+                        </p>
+                      )}
+                    </>
                   )}
-                  <p className="text-sm text-gray-500">
-                    {user?.role === "admin" 
-                      ? "Total funds across all accounts" 
-                      : "Available for withdrawal"
-                    }
-                  </p>
                 </div>
               </div>
             </CardContent>
             <CardFooter className="border-t pt-4 flex justify-between">
               {/* Only show withdraw button for regular users */}
               {user?.role !== "admin" && (
-                <div className="flex flex-col">
-                  <Button 
-                    variant="outline" 
+                <div className="flex flex-col w-full">
+                  <Button
+                    variant="outline"
                     className="flex items-center gap-2"
                     onClick={() => setWithdrawDialogOpen(true)}
                     disabled={wallets.length === 0 || currentBalance <= 0}
@@ -770,9 +780,10 @@ export default function WalletPage() {
                     <ArrowUp className="h-4 w-4" />
                     Withdraw
                   </Button>
-                  
+
                   {pendingWithdrawals > 0 && (
-                    <p className="text-xs text-gray-500 mt-2">
+                    <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
                       Pending withdrawals: ${pendingWithdrawals.toFixed(2)}
                     </p>
                   )}

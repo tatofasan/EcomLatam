@@ -67,6 +67,7 @@ export interface IStorage {
   createTransaction(transaction: InsertTransaction, userId: number): Promise<Transaction>;
   updateTransactionStatus(id: number, status: string, paymentProof?: string): Promise<Transaction | undefined>;
   getUserBalance(userId: number): Promise<number>;
+  getUserAvailableBalance(userId: number): Promise<number>;
   createWithdrawalWithLock(userId: number, amount: number, withdrawal: InsertTransaction): Promise<{ success: boolean; transaction?: Transaction; error?: string }>;
   
   // Click tracking methods
@@ -394,6 +395,40 @@ export class DatabaseStorage implements IStorage {
   }
 
   /**
+   * Get user's available balance for withdrawals
+   *
+   * This calculates the actual available balance by subtracting pending withdrawals
+   * from the completed balance. This prevents users from requesting more withdrawals
+   * than they have available while previous withdrawal requests are still pending.
+   *
+   * Example:
+   * - Total completed balance: $400
+   * - Pending withdrawal: $100
+   * - Available balance: $300
+   *
+   * @param userId - User ID
+   * @returns Available balance (completed balance minus pending withdrawals)
+   */
+  async getUserAvailableBalance(userId: number): Promise<number> {
+    const result = await db.select({
+      completedBalance: sql<number>`COALESCE(SUM(CASE
+        WHEN type IN ('deposit', 'payout', 'bonus') AND status = 'completed' THEN CAST(amount AS DECIMAL)
+        WHEN type IN ('withdrawal', 'adjustment') AND status = 'completed' THEN -CAST(amount AS DECIMAL)
+        ELSE 0 END), 0)`,
+      pendingWithdrawals: sql<number>`COALESCE(SUM(CASE
+        WHEN type = 'withdrawal' AND status = 'pending' THEN ABS(CAST(amount AS DECIMAL))
+        ELSE 0 END), 0)`
+    })
+    .from(transactions)
+    .where(eq(transactions.userId, userId));
+
+    const completedBalance = Number(result[0]?.completedBalance || 0);
+    const pendingWithdrawals = Number(result[0]?.pendingWithdrawals || 0);
+
+    return Math.max(0, completedBalance - pendingWithdrawals);
+  }
+
+  /**
    * SECURITY FIX: Creates a withdrawal with database-level locking to prevent race conditions
    *
    * This method uses a pessimistic lock (SELECT FOR UPDATE) on the user row to ensure that
@@ -421,34 +456,41 @@ export class DatabaseStorage implements IStorage {
           .where(eq(users.id, userId))
           .for('update');
 
-        // 2. Calculate balance (now safe because user is locked)
+        // 2. Calculate available balance (completed balance minus pending withdrawals)
+        // This prevents users from withdrawing more than available while pending withdrawals exist
         const balanceResult = await tx
           .select({
-            balance: sql<number>`COALESCE(SUM(CASE
-              WHEN type IN ('deposit', 'payout', 'bonus') THEN CAST(amount AS DECIMAL)
-              WHEN type IN ('withdrawal', 'adjustment') THEN -CAST(amount AS DECIMAL)
+            completedBalance: sql<number>`COALESCE(SUM(CASE
+              WHEN type IN ('deposit', 'payout', 'bonus') AND status = 'completed' THEN CAST(amount AS DECIMAL)
+              WHEN type IN ('withdrawal', 'adjustment') AND status = 'completed' THEN -CAST(amount AS DECIMAL)
+              ELSE 0 END), 0)`,
+            pendingWithdrawals: sql<number>`COALESCE(SUM(CASE
+              WHEN type = 'withdrawal' AND status = 'pending' THEN ABS(CAST(amount AS DECIMAL))
               ELSE 0 END), 0)`
           })
           .from(transactions)
-          .where(and(
-            eq(transactions.userId, userId),
-            eq(transactions.status, "completed" as any)
-          ));
+          .where(eq(transactions.userId, userId));
 
-        const currentBalance = Number(balanceResult[0]?.balance || 0);
+        const completedBalance = Number(balanceResult[0]?.completedBalance || 0);
+        const pendingWithdrawals = Number(balanceResult[0]?.pendingWithdrawals || 0);
+        const availableBalance = Math.max(0, completedBalance - pendingWithdrawals);
 
         console.log('[Withdrawal] Balance check with lock:', {
           userId,
-          currentBalance,
+          completedBalance,
+          pendingWithdrawals,
+          availableBalance,
           requestedAmount: amount,
           timestamp: new Date().toISOString()
         });
 
-        // 3. Verify balance is sufficient (with lock held)
-        if (amount > currentBalance) {
-          console.warn('[Withdrawal] Insufficient balance detected:', {
+        // 3. Verify available balance is sufficient (with lock held)
+        if (amount > availableBalance) {
+          console.warn('[Withdrawal] Insufficient available balance detected:', {
             userId,
-            currentBalance,
+            completedBalance,
+            pendingWithdrawals,
+            availableBalance,
             requestedAmount: amount
           });
           throw new Error("Insufficient balance");
@@ -464,7 +506,9 @@ export class DatabaseStorage implements IStorage {
           transactionId: transaction.id,
           userId,
           amount,
-          newBalance: currentBalance - amount
+          previousAvailableBalance: availableBalance,
+          newAvailableBalance: availableBalance - amount,
+          newPendingWithdrawals: pendingWithdrawals + amount
         });
 
         // 5. Commit transaction (releases lock)
