@@ -122,10 +122,10 @@ export default function PostbackPage() {
         queryClient.invalidateQueries({ queryKey: [`/api/postback/config/${selectedUserId}`] });
       }
     },
-    onError: (error: any) => {
+    onError(error) {
       toast({
         title: "Error",
-        description: error.message || "Error updating configuration",
+        description: (error as Error).message || "Error updating configuration",
         variant: "destructive",
       });
     },
@@ -140,7 +140,7 @@ export default function PostbackPage() {
       });
       return await response.json();
     },
-    onSuccess: (result: any) => {
+    onSuccess(result) {
       console.log("Postback test result received:", result);
       if (result.success) {
         toast({
@@ -155,10 +155,10 @@ export default function PostbackPage() {
         });
       }
     },
-    onError: (error: any) {
+    onError(error) {
       toast({
         title: "Test Error",
-        description: error.message || "Error testing URL",
+        description: (error as Error).message || "Error testing URL",
         variant: "destructive",
       });
     },
