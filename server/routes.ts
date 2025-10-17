@@ -1245,23 +1245,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
       // Get product sales from the last 7 days (only from "sale" status leads)
+      // Note: Using leads.productId since leadItems doesn't have productId field
       const hotProductsData = await db
         .select({
-          productId: leadItems.productId,
-          productName: leadItems.productName,
-          salesCount: sql<number>`COUNT(${leadItems.id})::int`,
+          productId: leads.productId,
+          salesCount: sql<number>`COUNT(${leads.id})::int`,
         })
-        .from(leadItems)
-        .innerJoin(leads, eq(leadItems.leadId, leads.id))
+        .from(leads)
         .where(
           and(
             gte(leads.createdAt, sevenDaysAgo),
             eq(leads.status, 'sale' as any),
+            sql`${leads.productId} IS NOT NULL`,
             hasSupervisorAccess ? sql`true` : eq(leads.userId, userId)
           )
         )
-        .groupBy(leadItems.productId, leadItems.productName)
-        .orderBy(desc(sql`COUNT(${leadItems.id})`))
+        .groupBy(leads.productId)
+        .orderBy(desc(sql`COUNT(${leads.id})`))
         .limit(6);
 
       // Get full product information for hot products
