@@ -41,7 +41,7 @@ export default function PayoutExceptionsDialog({ product, isOpen, onClose }: Pay
       const url = canManageExceptions
         ? `/api/payout-exceptions?productId=${product.id}`
         : `/api/payout-exceptions?productId=${product.id}&userId=${user?.id}`;
-      const res = await apiRequest(url, { method: 'GET' });
+      const res = await apiRequest('GET', url);
       if (!res.ok) throw new Error("Failed to fetch payout exceptions");
       return res.json();
     },
@@ -51,7 +51,7 @@ export default function PayoutExceptionsDialog({ product, isOpen, onClose }: Pay
   // Fetch all users for affiliate selection (admin/moderator only)
   useEffect(() => {
     if (isOpen && (user?.role === 'admin' || user?.role === 'moderator')) {
-      apiRequest('/api/users', { method: 'GET' })
+      apiRequest('GET', '/api/users')
         .then(res => res.json())
         .then(users => {
           const affiliates = users.filter((u: any) => u.role === 'affiliate');
@@ -77,10 +77,7 @@ export default function PayoutExceptionsDialog({ product, isOpen, onClose }: Pay
   // Create payout exception mutation
   const createExceptionMutation = useMutation({
     mutationFn: async (data: InsertPayoutException) => {
-      return await apiRequest("/api/payout-exceptions", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return await apiRequest("POST", "/api/payout-exceptions", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/payout-exceptions"] });
@@ -97,9 +94,7 @@ export default function PayoutExceptionsDialog({ product, isOpen, onClose }: Pay
   // Delete payout exception mutation
   const deleteExceptionMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest(`/api/payout-exceptions/${id}`, {
-        method: "DELETE",
-      });
+      return await apiRequest("DELETE", `/api/payout-exceptions/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/payout-exceptions"] });
