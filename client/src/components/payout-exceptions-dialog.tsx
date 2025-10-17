@@ -29,6 +29,9 @@ export default function PayoutExceptionsDialog({ product, isOpen, onClose }: Pay
   });
   const [allUsers, setAllUsers] = useState<Array<{id: number, username: string}>>([]);
 
+  // Check permissions first (needed by queries)
+  const canManageExceptions = user?.role === 'admin' || user?.role === 'moderator';
+
   // Fetch payout exceptions for this product
   const { data: exceptions, isLoading } = useQuery<PayoutException[]>({
     queryKey: ["/api/payout-exceptions", product?.id, user?.id],
@@ -38,7 +41,7 @@ export default function PayoutExceptionsDialog({ product, isOpen, onClose }: Pay
       const url = canManageExceptions
         ? `/api/payout-exceptions?productId=${product.id}`
         : `/api/payout-exceptions?productId=${product.id}&userId=${user?.id}`;
-      const res = await fetch(url);
+      const res = await apiRequest(url, { method: 'GET' });
       if (!res.ok) throw new Error("Failed to fetch payout exceptions");
       return res.json();
     },
@@ -48,13 +51,15 @@ export default function PayoutExceptionsDialog({ product, isOpen, onClose }: Pay
   // Fetch all users for affiliate selection (admin/moderator only)
   useEffect(() => {
     if (isOpen && (user?.role === 'admin' || user?.role === 'moderator')) {
-      fetch('/api/users')
+      apiRequest('/api/users', { method: 'GET' })
         .then(res => res.json())
         .then(users => {
           const affiliates = users.filter((u: any) => u.role === 'affiliate');
           setAllUsers(affiliates);
         })
-        .catch(console.error);
+        .catch(error => {
+          console.error('Error fetching users:', error);
+        });
     }
   }, [isOpen, user?.role]);
 
@@ -120,8 +125,6 @@ export default function PayoutExceptionsDialog({ product, isOpen, onClose }: Pay
 
     createExceptionMutation.mutate(dataToSubmit);
   };
-
-  const canManageExceptions = user?.role === 'admin' || user?.role === 'moderator';
 
   if (!product) return null;
 
