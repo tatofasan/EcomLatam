@@ -4,11 +4,15 @@
  * Detects duplicate leads based on formatted phone number within the same day.
  * This ensures we don't accept multiple orders from the same phone number
  * on the same day, even if they come from different affiliates or sources.
+ *
+ * IMPORTANT: Only validates against leads in 'hold' or 'sale' status.
+ * Leads in 'rejected' or 'trash' are ignored as they likely had errors
+ * that a new lead may correct.
  */
 
 import { db } from './db';
 import { leads } from '../shared/schema';
-import { and, eq, gte, lt, sql } from 'drizzle-orm';
+import { and, eq, gte, lt, sql, inArray } from 'drizzle-orm';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -37,6 +41,10 @@ function logDuplicateCheck(message: string) {
  *
  * SECURITY FIX: Enhanced to check both formattedPhone and originalPhone
  * to prevent bypassing duplicate detection with different phone formats
+ *
+ * IMPORTANT: Only checks against leads in 'hold' or 'sale' status.
+ * Leads in 'rejected' or 'trash' status are intentionally ignored to allow
+ * corrected versions of previously failed leads.
  *
  * @param formattedPhone - The formatted phone number to check
  * @param originalPhone - The original phone number to check (SECURITY FIX: added)
@@ -70,7 +78,7 @@ export async function checkDuplicateLeadToday(
     const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
     logDuplicateCheck(
-      `Checking for duplicates - Formatted: ${formattedPhone || 'N/A'}, ` +
+      `Checking for duplicates (only 'hold' or 'sale' status) - Formatted: ${formattedPhone || 'N/A'}, ` +
       `Original: ${originalPhone || 'N/A'} on ${startOfDay.toISOString().split('T')[0]}`
     );
 
@@ -96,7 +104,10 @@ export async function checkDuplicateLeadToday(
     const conditions = [
       sql`(${sql.join(phoneConditions, sql` OR `)})`,
       gte(leads.createdAt, startOfDay),
-      lt(leads.createdAt, endOfDay)
+      lt(leads.createdAt, endOfDay),
+      // Only check duplicates against leads in 'hold' or 'sale' status
+      // Leads in 'rejected' or 'trash' are ignored as they may have errors that the new lead corrects
+      inArray(leads.status, ['hold', 'sale'])
     ];
 
     // Exclude current lead if updating
@@ -104,7 +115,7 @@ export async function checkDuplicateLeadToday(
       conditions.push(sql`${leads.leadNumber} != ${currentLeadNumber}`);
     }
 
-    // Search for existing lead with same phone today
+    // Search for existing lead with same phone today (only in 'hold' or 'sale' status)
     const existingLeads = await db
       .select({
         leadNumber: leads.leadNumber,
@@ -142,7 +153,7 @@ export async function checkDuplicateLeadToday(
       };
     }
 
-    logDuplicateCheck(`No duplicate found for phones - Formatted: ${formattedPhone || 'N/A'}, Original: ${originalPhone || 'N/A'}`);
+    logDuplicateCheck(`No duplicate found in 'hold'/'sale' leads for phones - Formatted: ${formattedPhone || 'N/A'}, Original: ${originalPhone || 'N/A'}`);
     return { isDuplicate: false };
 
   } catch (error) {
