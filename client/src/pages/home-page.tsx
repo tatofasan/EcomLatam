@@ -1,21 +1,25 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import ProductCard from "@/components/product-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { 
-  Package, 
-  ShoppingCart, 
-  CreditCard, 
-  TrendingUp, 
+import {
+  Package,
+  ShoppingCart,
+  CreditCard,
+  TrendingUp,
   Clock,
   CheckCircle2,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Flame
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
+import { Product } from "@/types";
 
 // Color constants
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d"];
@@ -50,10 +54,12 @@ interface DashboardMetrics {
     name: string;
     value: number;
   }>;
+  hotProducts: Product[];
 }
 
 export default function HomePage() {
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const isAdmin = user?.role === 'admin';
 
   // Fetch dashboard metrics based on user role
@@ -65,6 +71,11 @@ export default function HomePage() {
       return await res.json();
     }
   });
+
+  // Handle product click - navigate to products page
+  const handleProductClick = (product: Product) => {
+    setLocation('/products');
+  };
 
   return (
     <DashboardLayout activeItem="dashboard">
@@ -212,62 +223,41 @@ export default function HomePage() {
               </Card>
             </div>
             
-            {/* Recent Leads */}
+            {/* Hot Products */}
             <Card>
               <CardHeader>
-                <CardTitle>Recent Leads</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Flame className="h-5 w-5 text-orange-500" />
+                  Hot Products
+                </CardTitle>
                 <CardDescription>
-                  {isAdmin 
-                    ? 'Latest leads from all users' 
-                    : 'Your latest leads'}
+                  {isAdmin
+                    ? 'Top selling products from all affiliates in the last 7 days'
+                    : 'Your top selling products in the last 7 days'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-3 px-4 font-medium">Lead</th>
-                        <th className="text-left py-3 px-4 font-medium">Customer</th>
-                        <th className="text-left py-3 px-4 font-medium">Value</th>
-                        <th className="text-left py-3 px-4 font-medium">Date</th>
-                        <th className="text-left py-3 px-4 font-medium">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {metrics.recentLeads && metrics.recentLeads.length > 0 ? (
-                        metrics.recentLeads.map((lead) => (
-                          <tr key={lead.id} className="border-b hover:bg-gray-50">
-                            <td className="py-3 px-4">{lead.leadNumber}</td>
-                            <td className="py-3 px-4">{lead.customerName}</td>
-                            <td className="py-3 px-4">${parseFloat(lead.value || '0').toFixed(2)}</td>
-                            <td className="py-3 px-4">
-                              {format(new Date(lead.createdAt), "dd/MM/yyyy")}
-                            </td>
-                            <td className="py-3 px-4">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                ${lead.status === 'sale' ? 'bg-green-100 text-green-800' : 
-                                  lead.status === 'hold' ? 'bg-blue-100 text-blue-800' : 
-                                    lead.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                                      'bg-amber-100 text-amber-800'}`}>
-                                {lead.status === 'sale' ? <CheckCircle2 className="w-3 h-3 mr-1" /> : 
-                                  lead.status === 'hold' ? <Clock className="w-3 h-3 mr-1" /> : 
-                                    <Clock className="w-3 h-3 mr-1" />}
-                                {lead.status ? lead.status.charAt(0).toUpperCase() + lead.status.slice(1) : 'Unknown'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={5} className="py-4 text-center text-muted-foreground">
-                            No recent leads to display
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                {metrics.hotProducts && metrics.hotProducts.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {metrics.hotProducts.map((product) => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        viewMode="grid"
+                        onClick={handleProductClick}
+                        isAdmin={isAdmin}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-48 text-center">
+                    <Flame className="h-12 w-12 text-gray-300 mb-3" />
+                    <p className="text-lg font-medium text-gray-500">No hot products yet</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Products with sales in the last 7 days will appear here
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </>

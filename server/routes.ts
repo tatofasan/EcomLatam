@@ -1239,7 +1239,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name,
         value
       }));
-      
+
+      // Calculate Hot Products (top 6 most sold products in last 7 days)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      // Get product sales from the last 7 days (only from "sale" status leads)
+      const hotProductsData = await db
+        .select({
+          productId: leadItems.productId,
+          productName: leadItems.productName,
+          salesCount: sql<number>`COUNT(${leadItems.id})::int`,
+        })
+        .from(leadItems)
+        .innerJoin(leads, eq(leadItems.leadId, leads.id))
+        .where(
+          and(
+            gte(leads.createdAt, sevenDaysAgo),
+            eq(leads.status, 'sale' as any),
+            hasSupervisorAccess ? sql`true` : eq(leads.userId, userId)
+          )
+        )
+        .groupBy(leadItems.productId, leadItems.productName)
+        .orderBy(desc(sql`COUNT(${leadItems.id})`))
+        .limit(6);
+
+      // Get full product information for hot products
+      const hotProductIds = hotProductsData.map(hp => hp.productId).filter(id => id !== null);
+      let hotProducts: any[] = [];
+
+      if (hotProductIds.length > 0) {
+        const hotProductsFullData = await db
+          .select()
+          .from(products)
+          .where(inArray(products.id, hotProductIds));
+
+        // Sort by sales count (maintain order from hotProductsData)
+        hotProducts = hotProductsFullData
+          .map(product => {
+            const salesInfo = hotProductsData.find(hp => hp.productId === product.id);
+            return {
+              ...product,
+              salesCount: salesInfo?.salesCount || 0
+            };
+          })
+          .sort((a, b) => b.salesCount - a.salesCount);
+      }
+
       // Return dashboard data with current lead/offer schema
       res.json({
         totalOffers: offersList.length,
@@ -1255,7 +1301,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           total: leadsList.length
         },
         salesData: salesData || [],
-        offerCategoriesData: offerCategoriesData || []
+        offerCategoriesData: offerCategoriesData || [],
+        hotProducts: hotProducts || []
       });
     } catch (error) {
       console.error("Error fetching dashboard metrics:", error);
