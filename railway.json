@@ -5,7 +5,7 @@
     "buildCommand": "npm run build"
   },
   "deploy": {
-    "preDeployCommand": "node apply-commission-to-payout-migration.mjs && node apply-postback-migration.mjs && node apply-postback-leadid-nullable-migration.mjs",
+    "preDeployCommand": "node apply-commission-to-payout-migration.mjs && node apply-postback-migration.mjs && node apply-postback-leadid-nullable-migration.mjs && node apply-payout-exceptions-migration.mjs",
     "startCommand": "npm start",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10

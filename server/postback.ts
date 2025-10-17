@@ -103,7 +103,8 @@ export class PostbackService {
   }
 
   /**
-   * Calculate payout amount for a lead
+   * Calculate payout amount for a lead using hierarchical logic
+   * Priority: Publisher-specific > Affiliate-level > Default product payout
    */
   private async calculatePayout(lead: Lead, userId: number): Promise<number> {
     try {
@@ -123,8 +124,17 @@ export class PostbackService {
 
       if (!product) return 0;
 
-      // Check for payout exceptions
-      const payoutAmount = await storage.calculatePayoutAmount(product.id, userId);
+      // Calculate payout using hierarchical logic with publisherId
+      // This will automatically check:
+      // 1. Publisher-specific exception (if publisherId provided)
+      // 2. Affiliate-level exception (publisherId=NULL)
+      // 3. Default product payout (product.payoutPo)
+      const payoutAmount = await storage.calculatePayoutAmount(
+        product.id,
+        userId,
+        lead.publisherId || undefined
+      );
+
       return payoutAmount;
     } catch (error) {
       console.error('Error calculating payout:', error);

@@ -32,6 +32,7 @@ import JSZip from "jszip";
 import { saveAs } from "file-saver";
 
 import { Product } from "@/types";
+import PayoutExceptionsDialog from "./payout-exceptions-dialog";
 
 interface ProductDetailDialogProps {
   product: Product | null;
@@ -42,17 +43,18 @@ interface ProductDetailDialogProps {
   isAdmin?: boolean;
 }
 
-export default function ProductDetailDialog({ 
-  product, 
-  isOpen, 
-  onClose, 
-  mode = "view", 
+export default function ProductDetailDialog({
+  product,
+  isOpen,
+  onClose,
+  mode = "view",
   onSave,
   isAdmin = false
 }: ProductDetailDialogProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [formData, setFormData] = useState<Partial<Product>>({});
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [isPayoutExceptionsOpen, setIsPayoutExceptionsOpen] = useState(false);
   const { toast } = useToast();
   
   // Inicializar los datos del formulario cuando cambia el producto o el modo
@@ -786,9 +788,17 @@ export default function ProductDetailDialog({
             <X className="h-4 w-4 mr-2" />
             Cancel
           </Button>
-          
+
           {mode === "view" ? (
             <>
+              {/* Botón "Manage Payouts" para admin/moderator */}
+              {isAdmin && (
+                <Button variant="secondary" onClick={() => setIsPayoutExceptionsOpen(true)}>
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  Manage Payouts
+                </Button>
+              )}
+
               {/* Solo mostrar el botón "Add to My Shop" para usuarios regulares (no admins) */}
               {!isAdmin && (
                 <Button>
@@ -805,6 +815,13 @@ export default function ProductDetailDialog({
           )}
         </DialogFooter>
       </DialogContent>
+
+      {/* Payout Exceptions Dialog */}
+      <PayoutExceptionsDialog
+        product={product}
+        isOpen={isPayoutExceptionsOpen}
+        onClose={() => setIsPayoutExceptionsOpen(false)}
+      />
     </Dialog>
   );
 }

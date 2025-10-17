@@ -296,6 +296,17 @@ export const postbackNotifications = pgTable("postback_notifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Payout Exceptions Table - Hierarchical payout configuration
+export const payoutExceptions = pgTable("payout_exceptions", {
+  id: serial("id").primaryKey(),
+  productId: integer("product_id").references(() => products.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  publisherId: text("publisher_id"), // NULL = applies to entire affiliate
+  payoutAmount: decimal("payout_amount", { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Schema validation
 export const insertUserSchema = createInsertSchema(users, {
   role: z.enum(["user", "admin", "moderator", "finance"]).default("user"),
@@ -381,6 +392,15 @@ export const insertPostbackConfigurationSchema = createInsertSchema(postbackConf
 export const insertPostbackNotificationSchema = createInsertSchema(postbackNotifications).omit({
   id: true,
   createdAt: true,
+});
+
+export const insertPayoutExceptionSchema = createInsertSchema(payoutExceptions, {
+  payoutAmount: z.string().transform(val => parseFloat(val)),
+  publisherId: z.string().optional().nullable(),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 // Legacy schema aliases for backward compatibility
@@ -511,6 +531,9 @@ export type PostbackConfiguration = typeof postbackConfigurations.$inferSelect;
 
 export type InsertPostbackNotification = z.infer<typeof insertPostbackNotificationSchema>;
 export type PostbackNotification = typeof postbackNotifications.$inferSelect;
+
+export type InsertPayoutException = z.infer<typeof insertPayoutExceptionSchema>;
+export type PayoutException = typeof payoutExceptions.$inferSelect;
 
 export type ClickTrack = typeof clickTracking.$inferSelect;
 export type Postback = typeof postbacks.$inferSelect;
@@ -650,6 +673,17 @@ export const postbackNotificationsRelations = relations(postbackNotifications, (
   lead: one(leads, {
     fields: [postbackNotifications.leadId],
     references: [leads.id],
+  }),
+}));
+
+export const payoutExceptionsRelations = relations(payoutExceptions, ({ one }) => ({
+  product: one(products, {
+    fields: [payoutExceptions.productId],
+    references: [products.id],
+  }),
+  user: one(users, {
+    fields: [payoutExceptions.userId],
+    references: [users.id],
   }),
 }));
 

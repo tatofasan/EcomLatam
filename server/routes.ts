@@ -25,6 +25,7 @@ import {
   apiLeadStatusSchema,
   apiLeadIngestSchema,
   insertTermsSchema,
+  insertPayoutExceptionSchema,
   products,
   leads,
   leadItems,
@@ -32,10 +33,12 @@ import {
   users,
   termsAndConditions,
   shopifyStores,
+  payoutExceptions,
   type InsertTransaction,
   type ApiLead,
   type ApiLeadIngest,
-  type InsertTerms
+  type InsertTerms,
+  type InsertPayoutException
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, sql, inArray, and, gte } from "drizzle-orm";
@@ -556,6 +559,260 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to delete product" });
     }
   });
+
+  // ==================== PAYOUT EXCEPTIONS ROUTES ====================
+
+  // GET /api/payout-exceptions - Get payout exceptions with optional filters
+  // Admin/Moderator: can view all exceptions
+  // Finance: can view all exceptions (read-only)
+  // Affiliate: can only view their own exceptions
+  app.get("/api/payout-exceptions", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { productId, userId, publisherId } = req.query;
+      const userRole = req.user.role;
+      const currentUserId = req.user.id;
+
+      // Parse query parameters
+      const filters: { productId?: number; userId?: number; publisherId?: string } = {};
+
+      if (productId) {
+        const parsed = parseInt(productId as string, 10);
+        if (isNaN(parsed)) {
+          return res.status(400).json({ message: "Invalid productId parameter" });
+        }
+        filters.productId = parsed;
+      }
+
+      if (userId) {
+        const parsed = parseInt(userId as string, 10);
+        if (isNaN(parsed)) {
+          return res.status(400).json({ message: "Invalid userId parameter" });
+        }
+        filters.userId = parsed;
+      }
+
+      if (publisherId) {
+        filters.publisherId = publisherId as string;
+      }
+
+      // Role-based access control
+      if (userRole === 'affiliate') {
+        // Affiliates can only see their own exceptions
+        filters.userId = currentUserId;
+      } else if (userRole === 'admin' || userRole === 'moderator' || userRole === 'finance') {
+        // Admin/Moderator/Finance can filter by userId if provided
+        // If userId filter is provided, use it; otherwise show all
+      } else {
+        return res.status(403).json({ message: "Forbidden: Insufficient permissions" });
+      }
+
+      const exceptions = await storage.getPayoutExceptions(
+        filters.productId,
+        filters.userId,
+        filters.publisherId
+      );
+
+      res.json(exceptions);
+    } catch (error) {
+      console.error("Error fetching payout exceptions:", error);
+      res.status(500).json({ message: "Failed to fetch payout exceptions" });
+    }
+  });
+
+  // POST /api/payout-exceptions - Create new payout exception
+  // Only Admin/Moderator can create exceptions
+  app.post("/api/payout-exceptions", requireModerator, async (req, res) => {
+    try {
+      // Validate request body
+      const validationResult = insertPayoutExceptionSchema.safeParse(req.body);
+
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid payout exception data",
+          errors: validationResult.error.errors
+        });
+      }
+
+      const exceptionData = validationResult.data;
+
+      // Verify product exists
+      const product = await storage.getProduct(exceptionData.productId);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      // Verify user exists
+      const user = await storage.getUser(exceptionData.userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check for duplicate exception (same productId + userId + publisherId combination)
+      const existingExceptions = await storage.getPayoutExceptions(
+        exceptionData.productId,
+        exceptionData.userId,
+        exceptionData.publisherId || undefined
+      );
+
+      if (existingExceptions.length > 0) {
+        return res.status(409).json({
+          message: "A payout exception already exists for this combination of product, user, and publisher"
+        });
+      }
+
+      const created = await storage.createPayoutException(exceptionData);
+
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Error creating payout exception:", error);
+      res.status(500).json({ message: "Failed to create payout exception" });
+    }
+  });
+
+  // PUT /api/payout-exceptions/:id - Update payout exception
+  // Only Admin/Moderator can update exceptions
+  app.put("/api/payout-exceptions/:id", requireModerator, async (req, res) => {
+    try {
+      const exceptionId = validatePositiveInteger(req.params.id, 'Exception ID');
+
+      // Verify exception exists
+      const existing = await storage.getPayoutException(exceptionId);
+      if (!existing) {
+        return res.status(404).json({ message: "Payout exception not found" });
+      }
+
+      // Validate update data
+      const validationResult = insertPayoutExceptionSchema.partial().safeParse(req.body);
+
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid payout exception data",
+          errors: validationResult.error.errors
+        });
+      }
+
+      const updateData = validationResult.data;
+
+      // If productId is being changed, verify it exists
+      if (updateData.productId !== undefined) {
+        const product = await storage.getProduct(updateData.productId);
+        if (!product) {
+          return res.status(404).json({ message: "Product not found" });
+        }
+      }
+
+      // If userId is being changed, verify it exists
+      if (updateData.userId !== undefined) {
+        const user = await storage.getUser(updateData.userId);
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+      }
+
+      const updated = await storage.updatePayoutException(exceptionId, updateData);
+
+      if (!updated) {
+        return res.status(500).json({ message: "Failed to update payout exception" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Exception ID')) {
+        return res.status(400).json({ message: error.message });
+      }
+
+      console.error("Error updating payout exception:", error);
+      res.status(500).json({ message: "Failed to update payout exception" });
+    }
+  });
+
+  // DELETE /api/payout-exceptions/:id - Delete payout exception
+  // Only Admin/Moderator can delete exceptions
+  app.delete("/api/payout-exceptions/:id", requireModerator, async (req, res) => {
+    try {
+      const exceptionId = validatePositiveInteger(req.params.id, 'Exception ID');
+
+      // Verify exception exists
+      const existing = await storage.getPayoutException(exceptionId);
+      if (!existing) {
+        return res.status(404).json({ message: "Payout exception not found" });
+      }
+
+      const success = await storage.deletePayoutException(exceptionId);
+
+      if (!success) {
+        return res.status(500).json({ message: "Failed to delete payout exception" });
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Exception ID')) {
+        return res.status(400).json({ message: error.message });
+      }
+
+      console.error("Error deleting payout exception:", error);
+      res.status(500).json({ message: "Failed to delete payout exception" });
+    }
+  });
+
+  // GET /api/calculate-payout - Calculate payout for a specific combination
+  // All authenticated users can calculate payouts
+  app.get("/api/calculate-payout", requireAuth, async (req, res) => {
+    try {
+      const { productId, userId, publisherId } = req.query;
+
+      // Validate required parameters
+      if (!productId || !userId) {
+        return res.status(400).json({
+          message: "Missing required parameters: productId and userId are required"
+        });
+      }
+
+      const parsedProductId = parseInt(productId as string, 10);
+      const parsedUserId = parseInt(userId as string, 10);
+
+      if (isNaN(parsedProductId) || isNaN(parsedUserId)) {
+        return res.status(400).json({
+          message: "Invalid parameters: productId and userId must be valid integers"
+        });
+      }
+
+      // Verify product exists
+      const product = await storage.getProduct(parsedProductId);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      // Verify user exists
+      const user = await storage.getUser(parsedUserId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Calculate payout using hierarchical logic
+      const payoutAmount = await storage.calculatePayoutAmount(
+        parsedProductId,
+        parsedUserId,
+        publisherId as string | undefined
+      );
+
+      res.json({
+        productId: parsedProductId,
+        userId: parsedUserId,
+        publisherId: publisherId || null,
+        payoutAmount
+      });
+    } catch (error) {
+      console.error("Error calculating payout:", error);
+      res.status(500).json({ message: "Failed to calculate payout" });
+    }
+  });
+
+  // ==================== END PAYOUT EXCEPTIONS ROUTES ====================
 
   // Get all orders filtered by user role (admin sees all, regular users see only their orders)
   app.get("/api/orders", requireAuth, async (req, res) => {

@@ -11,6 +11,7 @@ import {
   performanceReports, type PerformanceReport,
   postbackConfigurations, type PostbackConfiguration, type InsertPostbackConfiguration,
   postbackNotifications, type PostbackNotification, type InsertPostbackNotification,
+  payoutExceptions, type PayoutException, type InsertPayoutException,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, asc, sql, inArray, gte, lte, count, sum } from "drizzle-orm";
@@ -88,8 +89,15 @@ export interface IStorage {
   getPostbackNotifications(userId: number, limit?: number): Promise<PostbackNotification[]>;
   getAllPostbackNotifications(limit?: number): Promise<PostbackNotification[]>;
 
-  // Payout calculation
-  calculatePayoutAmount(productId: number, userId: number): Promise<number>;
+  // Payout Exception methods
+  getPayoutExceptions(productId?: number, userId?: number, publisherId?: string): Promise<PayoutException[]>;
+  getPayoutException(id: number): Promise<PayoutException | undefined>;
+  createPayoutException(exception: InsertPayoutException): Promise<PayoutException>;
+  updatePayoutException(id: number, exception: Partial<InsertPayoutException>): Promise<PayoutException | undefined>;
+  deletePayoutException(id: number): Promise<boolean>;
+
+  // Payout calculation (with hierarchical logic)
+  calculatePayoutAmount(productId: number, userId: number, publisherId?: string): Promise<number>;
 
   // Performance reporting
   generatePerformanceReport(userId: number, date: Date): Promise<PerformanceReport>;
@@ -686,15 +694,110 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
   }
 
-  // Payout calculation
-  async calculatePayoutAmount(productId: number, userId: number): Promise<number> {
-    try {
-      const product = await this.getProduct(productId);
-      if (!product) return 0;
+  // Payout Exception methods
+  async getPayoutExceptions(
+    productId?: number,
+    userId?: number,
+    publisherId?: string
+  ): Promise<PayoutException[]> {
+    let conditions = [];
 
-      // For now, return the product's payout amount directly
-      // In the future, this could be enhanced with user-specific payout rates or exceptions
-      return parseFloat(product.payoutPo?.toString() || "0");
+    if (productId !== undefined) {
+      conditions.push(eq(payoutExceptions.productId, productId));
+    }
+    if (userId !== undefined) {
+      conditions.push(eq(payoutExceptions.userId, userId));
+    }
+    if (publisherId !== undefined) {
+      conditions.push(eq(payoutExceptions.publisherId, publisherId));
+    }
+
+    if (conditions.length === 0) {
+      return await db.select().from(payoutExceptions).orderBy(desc(payoutExceptions.createdAt));
+    }
+
+    return await db.select()
+      .from(payoutExceptions)
+      .where(and(...conditions))
+      .orderBy(desc(payoutExceptions.createdAt));
+  }
+
+  async getPayoutException(id: number): Promise<PayoutException | undefined> {
+    const [exception] = await db.select()
+      .from(payoutExceptions)
+      .where(eq(payoutExceptions.id, id));
+    return exception || undefined;
+  }
+
+  async createPayoutException(exception: InsertPayoutException): Promise<PayoutException> {
+    const [created] = await db.insert(payoutExceptions)
+      .values(exception)
+      .returning();
+    return created;
+  }
+
+  async updatePayoutException(
+    id: number,
+    exception: Partial<InsertPayoutException>
+  ): Promise<PayoutException | undefined> {
+    const updateData = { ...exception, updatedAt: new Date() };
+    const [updated] = await db.update(payoutExceptions)
+      .set(updateData)
+      .where(eq(payoutExceptions.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deletePayoutException(id: number): Promise<boolean> {
+    const result = await db.delete(payoutExceptions)
+      .where(eq(payoutExceptions.id, id));
+    return result.rowCount > 0;
+  }
+
+  // Payout calculation with hierarchical logic
+  /**
+   * Calculate payout amount using hierarchical priority system:
+   * 1. Publisher-specific exception (productId + userId + publisherId)
+   * 2. Affiliate-level exception (productId + userId + publisherId=NULL)
+   * 3. Default product payout (product.payoutPo)
+   */
+  async calculatePayoutAmount(
+    productId: number,
+    userId: number,
+    publisherId?: string
+  ): Promise<number> {
+    try {
+      // Build hierarchical query using SQL CASE to prioritize exceptions
+      const result = await db.select({
+        payoutAmount: sql<string>`
+          COALESCE(
+            -- Priority 1: Publisher-specific exception
+            (SELECT payout_amount
+             FROM ${payoutExceptions}
+             WHERE product_id = ${productId}
+               AND user_id = ${userId}
+               AND publisher_id = ${publisherId || null}
+             LIMIT 1),
+            -- Priority 2: Affiliate-level exception (NULL publisherId)
+            (SELECT payout_amount
+             FROM ${payoutExceptions}
+             WHERE product_id = ${productId}
+               AND user_id = ${userId}
+               AND publisher_id IS NULL
+             LIMIT 1),
+            -- Priority 3: Default product payout
+            (SELECT payout_po
+             FROM ${products}
+             WHERE id = ${productId}
+             LIMIT 1),
+            -- Fallback: 0 if nothing found
+            '0'
+          )
+        `
+      }).from(sql`(SELECT 1) as dummy`);
+
+      const payoutAmount = result[0]?.payoutAmount || '0';
+      return parseFloat(payoutAmount);
     } catch (error) {
       console.error('Error calculating payout amount:', error);
       return 0;
