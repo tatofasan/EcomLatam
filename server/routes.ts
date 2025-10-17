@@ -978,6 +978,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const orderData = parseResult.data;
 
+      // Calculate payout if productId is provided
+      // This ensures the payout is frozen at lead creation time
+      let calculatedPayout: string | undefined;
+      if (orderData.productId) {
+        const payoutAmount = await storage.calculatePayoutAmount(
+          orderData.productId,
+          userId,
+          orderData.publisherId || undefined
+        );
+        calculatedPayout = payoutAmount.toString();
+      }
+
       // Validate and format phone number if provided
       let phoneData = {
         customerPhone: orderData.customerPhone,
@@ -1020,7 +1032,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const order = await storage.createOrder({
         ...orderData,
-        ...phoneData
+        ...phoneData,
+        ...(calculatedPayout && { payout: calculatedPayout })
       }, userId);
       
       // Handle order items if provided
@@ -2046,8 +2059,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const productPrice = leadProvidedPrice ?? parseFloat(product.price || "0");
       const leadValue = productPrice * quantity;
 
-      // Calculate payout: use product payoutPo or 0
-      const payout = parseFloat(product.payoutPo || "0");
+      // Calculate payout: use hierarchical payout calculation (exceptions > default)
+      // This ensures the payout is frozen at lead creation time
+      const payout = await storage.calculatePayoutAmount(
+        product.id,
+        userId,
+        leadData.publisherId || undefined
+      );
       const totalPayout = payout * quantity;
 
       // 4. BUILD COMPLETE ADDRESS WITH ARGENTINA AS DEFAULT COUNTRY
