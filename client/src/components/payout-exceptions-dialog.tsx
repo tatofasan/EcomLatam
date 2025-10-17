@@ -51,14 +51,18 @@ export default function PayoutExceptionsDialog({ product, isOpen, onClose }: Pay
   // Fetch all users for affiliate selection (admin/moderator only)
   useEffect(() => {
     if (isOpen && (user?.role === 'admin' || user?.role === 'moderator')) {
+      console.log('[PayoutExceptions] Fetching users...');
       apiRequest('GET', '/api/users')
         .then(res => res.json())
         .then(users => {
-          const affiliates = users.filter((u: any) => u.role === 'affiliate');
+          console.log('[PayoutExceptions] Users received:', users);
+          // Filter for regular users (affiliates) - not admin, moderator, or finance
+          const affiliates = users.filter((u: any) => u.role === 'user');
+          console.log('[PayoutExceptions] Filtered affiliates:', affiliates);
           setAllUsers(affiliates);
         })
         .catch(error => {
-          console.error('Error fetching users:', error);
+          console.error('[PayoutExceptions] Error fetching users:', error);
         });
     }
   }, [isOpen, user?.role]);
