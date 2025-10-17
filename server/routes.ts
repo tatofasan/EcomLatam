@@ -600,8 +600,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Role-based access control
-      if (userRole === 'affiliate') {
-        // Affiliates can only see their own exceptions
+      // SECURITY: Affiliates (role='user') can ONLY see their own exceptions
+      if (userRole === 'user') {
+        // Force userId to be the current user - affiliates cannot query other users
         filters.userId = currentUserId;
       } else if (userRole === 'admin' || userRole === 'moderator' || userRole === 'finance') {
         // Admin/Moderator/Finance can filter by userId if provided
@@ -2557,9 +2558,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.user?.role !== "admin" && req.user?.role !== "finance" && req.user?.role !== "moderator") {
         return res.status(403).json({ message: "Forbidden: Admin or Finance access required" });
       }
-      
+
       const users = await storage.getAllUsers();
-      res.json(users);
+
+      // SECURITY: Remove sensitive fields before sending to client
+      const sanitizedUsers = users.map(user => ({
+        id: user.id,
+        username: user.username,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        createdAt: user.createdAt,
+        lastLogin: user.lastLogin
+        // Explicitly NOT including: password, apiKey, verificationToken, paymentMethods, settings
+      }));
+
+      res.json(sanitizedUsers);
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).send("Error fetching users");

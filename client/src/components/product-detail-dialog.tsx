@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   DialogDescription,
   DialogFooter
 } from "@/components/ui/dialog";
@@ -17,6 +17,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { AdditionalImagesUpload } from "@/components/ui/additional-images-upload";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
+import { apiRequest } from "@/lib/queryClient";
 import {
   ChevronLeft,
   ChevronRight,
@@ -32,6 +35,7 @@ import JSZip from "jszip";
 import { saveAs } from "file-saver";
 
 import { Product } from "@/types";
+import type { PayoutException } from "@shared/schema";
 import PayoutExceptionsDialog from "./payout-exceptions-dialog";
 
 interface ProductDetailDialogProps {
@@ -56,6 +60,20 @@ export default function ProductDetailDialog({
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isPayoutExceptionsOpen, setIsPayoutExceptionsOpen] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Fetch payout exceptions for this product (affiliates only)
+  // SECURITY: The backend ensures affiliates only see their own exceptions
+  const { data: payoutExceptions } = useQuery<PayoutException[]>({
+    queryKey: ["/api/payout-exceptions", product?.id, user?.id],
+    queryFn: async () => {
+      if (!product?.id || !user?.id || user.role !== 'user') return [];
+      const res = await apiRequest('GET', `/api/payout-exceptions?productId=${product.id}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!product?.id && !!user?.id && user.role === 'user' && isOpen,
+  });
   
   // Inicializar los datos del formulario cuando cambia el producto o el modo
   useEffect(() => {
@@ -582,9 +600,40 @@ export default function ProductDetailDialog({
                         <span>Payout (USD)</span>
                       </div>
                       <div className="text-xl font-bold text-green-700">${Number(productData.payoutPo).toFixed(2)}</div>
+                      {user?.role === 'user' && <div className="text-xs text-green-600 mt-0.5">Default rate</div>}
                     </div>
                   )}
                 </div>
+
+                {/* Payout Exceptions for Affiliates */}
+                {user?.role === 'user' && payoutExceptions && payoutExceptions.length > 0 && (
+                  <div className="mb-4 p-4 bg-amber-50/50 border border-amber-200 rounded-lg">
+                    <div className="flex items-center gap-2 mb-3">
+                      <DollarSign className="h-4 w-4 text-amber-700" />
+                      <h3 className="text-sm font-semibold text-amber-900">Your Special Payout Rates</h3>
+                    </div>
+                    <div className="space-y-2">
+                      {payoutExceptions.map((exception) => (
+                        <div key={exception.id} className="flex items-center justify-between p-2 bg-white/60 rounded">
+                          <div className="flex flex-col">
+                            <span className="text-xs text-muted-foreground">
+                              {exception.publisherId ? `Publisher: ${exception.publisherId}` : 'All Publishers'}
+                            </span>
+                            <span className="text-xs text-amber-700 font-medium">
+                              {exception.publisherId ? 'Publisher-specific rate' : 'Your affiliate rate'}
+                            </span>
+                          </div>
+                          <div className="text-lg font-bold text-amber-700">
+                            ${Number(exception.payoutAmount).toFixed(2)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-3 text-xs text-amber-700 bg-white/40 p-2 rounded">
+                      ℹ️ These rates apply automatically when you generate leads for this product
+                    </div>
+                  </div>
+                )}
                 
                 <Tabs defaultValue="details">
                   <TabsList className="w-full">
