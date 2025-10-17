@@ -1241,6 +1241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
 
       // Calculate Hot Products (top 6 most sold products in last 7 days)
+      // Always show platform-wide hot products regardless of user role
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -1256,8 +1257,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           and(
             gte(leads.createdAt, sevenDaysAgo),
             eq(leads.status, 'sale' as any),
-            sql`${leads.productId} IS NOT NULL`,
-            hasSupervisorAccess ? sql`true` : eq(leads.userId, userId)
+            sql`${leads.productId} IS NOT NULL`
           )
         )
         .groupBy(leads.productId)

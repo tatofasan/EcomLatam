@@ -231,9 +231,7 @@ export default function HomePage() {
                   Hot Products
                 </CardTitle>
                 <CardDescription>
-                  {isAdmin
-                    ? 'Top selling products from all affiliates in the last 7 days'
-                    : 'Your top selling products in the last 7 days'}
+                  Top selling products
                 </CardDescription>
               </CardHeader>
               <CardContent>
