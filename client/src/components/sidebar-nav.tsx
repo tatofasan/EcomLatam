@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSidebar } from "@/hooks/use-sidebar";
-import { EcomdropLogo } from "@/lib/logos";
+import { LatinEcomLogo } from "@/lib/logos";
 import {
   LayoutDashboard,
   Package,
@@ -189,7 +189,7 @@ export default function SidebarNav({
         )}
       >
         <div className="p-4 border-b border-border bg-primary/10 flex justify-between items-center">
-          <EcomdropLogo className="h-8" />
+          <LatinEcomLogo className="h-8" />
           <button 
             onClick={() => {
               toggleSidebar();

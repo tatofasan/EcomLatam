@@ -341,7 +341,7 @@ export default function TeamPage() {
               <DialogHeader>
                 <DialogTitle>Add Team Member</DialogTitle>
                 <DialogDescription>
-                  Invite a new team member to your Ecomdrop account.
+                  Invite a new team member to your LatinEcom account.
                 </DialogDescription>
               </DialogHeader>
               <Form {...form}>

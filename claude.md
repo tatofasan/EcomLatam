@@ -1,8 +1,8 @@
-# Ecomdrop - Arquitectura de la Aplicación
+# LatinEcom - Arquitectura de la Aplicación
 
 ## Resumen Ejecutivo
 
-Ecomdrop es una plataforma de e-commerce avanzada construida con una arquitectura full-stack moderna que permite la gestión completa de productos, órdenes, conexiones con plataformas externas y transacciones financieras. La aplicación está diseñada para ser escalable, segura y mantenible.
+LatinEcom es una plataforma de e-commerce avanzada construida con una arquitectura full-stack moderna que permite la gestión completa de productos, órdenes, conexiones con plataformas externas y transacciones financieras. La aplicación está diseñada para ser escalable, segura y mantenible.
 
 ## Stack Tecnológico
 
@@ -566,6 +566,6 @@ app.use(cors({
 
 ## Conclusión
 
-Ecomdrop presenta una arquitectura sólida y bien estructurada que balancea funcionalidad, mantenibilidad y escalabilidad. La aplicación está construida con tecnologías modernas y siguiendo mejores prácticas de desarrollo, proporcionando una base robusta para crecimiento futuro.
+LatinEcom presenta una arquitectura sólida y bien estructurada que balancea funcionalidad, mantenibilidad y escalabilidad. La aplicación está construida con tecnologías modernas y siguiendo mejores prácticas de desarrollo, proporcionando una base robusta para crecimiento futuro.
 
 La separación clara de responsabilidades, el uso de TypeScript para type safety, y la implementación de patrones de diseño modernos hacen que el código sea fácil de mantener y extender. El sistema está preparado para escalar tanto vertical como horizontalmente según las necesidades del negocio.

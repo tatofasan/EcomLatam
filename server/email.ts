@@ -31,7 +31,7 @@ interface SendEmailOptions {
 export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
   try {
     const info = await transporter.sendMail({
-      from: `"EcomLatam" <${process.env.SMTP_USER}>`,
+      from: `"LatinEcom" <${process.env.SMTP_USER}>`,
       to: options.to,
       subject: options.subject,
       text: options.text,
@@ -59,10 +59,10 @@ export async function sendVerificationEmail(email: string, token: string): Promi
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9f9f9; padding: 20px; border-radius: 10px;">
       <div style="text-align: center; margin-bottom: 20px;">
-        <h1 style="color: #3c98e0; font-size: 28px; margin-bottom: 5px;">EcomLatam</h1>
+        <h1 style="color: #3c98e0; font-size: 28px; margin-bottom: 5px;">LatinEcom</h1>
         <div style="width: 50px; height: 4px; background-color: #4aaeed; margin: 0 auto;"></div>
       </div>
-      <h2 style="color: #4a4a4a; text-align: center;">Welcome to EcomLatam</h2>
+      <h2 style="color: #4a4a4a; text-align: center;">Welcome to LatinEcom</h2>
       <p style="font-size: 16px; line-height: 1.5; color: #666;">Thank you for registering. Please confirm your email address by clicking the button below:</p>
       <div style="text-align: center; margin: 30px 0;">
         <a href="${verificationUrl}" style="display: inline-block; padding: 12px 25px; background-color: #3c98e0; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">Verify My Email</a>
@@ -73,13 +73,13 @@ export async function sendVerificationEmail(email: string, token: string): Promi
       <p style="font-size: 14px; color: #666;">If you didn't request this verification, you can ignore this email.</p>
       <hr style="border: 1px solid #eee; margin: 20px 0;">
       <p style="color: #999; font-size: 12px; text-align: center;">This is an automated email, please do not reply to this message.</p>
-      <p style="color: #999; font-size: 12px; text-align: center;">&copy; ${new Date().getFullYear()} EcomLatam. All rights reserved.</p>
+      <p style="color: #999; font-size: 12px; text-align: center;">&copy; ${new Date().getFullYear()} LatinEcom. All rights reserved.</p>
     </div>
   `;
   
   return sendEmail({
     to: email,
-    subject: 'Email Verification - EcomLatam',
+    subject: 'Email Verification - LatinEcom',
     html,
   });
 }

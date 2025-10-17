@@ -13,7 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, User, Lock, Mail, UserCog } from "lucide-react";
-import { EcomdropLogo } from "@/lib/logos";
+import { LatinEcomLogo } from "@/lib/logos";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -77,7 +77,7 @@ export default function AuthPage() {
       {/* Left Panel */}
       <div className="w-full md:w-1/2 bg-secondary flex flex-col items-center justify-center p-8">
         <div className="max-w-sm mb-8">
-          <EcomdropLogo className="mx-auto w-48" />
+          <LatinEcomLogo className="mx-auto w-48" />
           <p className="text-center text-sm text-muted-foreground mt-2">La plataforma más simple y veloz</p>
         </div>
       </div>

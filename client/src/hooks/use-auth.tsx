@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.setQueryData(["/api/user"], user);
       toast({
         title: "Login successful",
-        description: "Welcome to EcomDrop!",
+        description: "Welcome to LatinEcom!",
       });
     },
     onError: (error: Error) => {
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         queryClient.setQueryData(["/api/user"], response);
         toast({
           title: "Registration successful",
-          description: "Welcome to EcomDrop!",
+          description: "Welcome to LatinEcom!",
         });
       } else if (response.success === true) {
         // The response is a verification message

@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
-import { EcomdropLogo } from "@/lib/logos";
+import { LatinEcomLogo } from "@/lib/logos";
 
 export default function VerifyEmailPage() {
   const [status, setStatus] = useState<"verifying" | "success" | "error">("verifying");
@@ -85,7 +85,7 @@ export default function VerifyEmailPage() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 flex flex-col items-center">
-          <EcomdropLogo className="h-12 mb-4" />
+          <LatinEcomLogo className="h-12 mb-4" />
           <CardTitle className="text-2xl font-bold text-center">
             Email Verification
           </CardTitle>
