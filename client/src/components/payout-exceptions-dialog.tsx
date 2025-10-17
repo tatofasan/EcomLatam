@@ -7,8 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Trash2, Plus, Save, X } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useUser } from "@/hooks/use-user";
-import type { Product, PayoutException, InsertPayoutException } from "@db/schema";
+import { useAuth } from "@/hooks/use-auth";
+import type { Product, PayoutException, InsertPayoutException } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 
 interface PayoutExceptionsDialogProps {
@@ -18,7 +18,7 @@ interface PayoutExceptionsDialogProps {
 }
 
 export default function PayoutExceptionsDialog({ product, isOpen, onClose }: PayoutExceptionsDialogProps) {
-  const { user } = useUser();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isCreating, setIsCreating] = useState(false);
   const [newException, setNewException] = useState<Partial<InsertPayoutException>>({
